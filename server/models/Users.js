@@ -71,6 +71,9 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    targetCGPA: {
+        type: Number,
+    },
     preset_param: {
         status: {
             type: Boolean,

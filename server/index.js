@@ -28,6 +28,8 @@ app.use("/api/users/institutions", userRoutes);
 
 app.use("/api/auth/", authRoutes);
 app.use("/api/auth/logout", authRoutes);
+app.use("/api/auth/admin", authRoutes);
+
 
 app.get('/', function(req, res) {
     res.send(req.useragent);

@@ -11,6 +11,7 @@ const path = require('path');
 
 // Models
 const { User, validate } = require('../models/Users')
+const Admin = require('../models/Admin')
 const Activity = require('../models/Activities')
 const Institutions = require('../models/Institutions')
 const gpaSchema = require('../models/Gpa')
@@ -54,7 +55,8 @@ router.post("/", async(req, res) => {
 
         user = await new User({
             ...req.body,
-            password: hashPassword
+            password: hashPassword,
+            accountType: 'user'
         }).save();
         const token = await new Token({ userId: user._id, token: crypto.randomBytes(32).toString("hex") }).save();
 
@@ -83,6 +85,24 @@ router.post("/", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error })
     }
 });
+
+// router.post("/admin", async(req, res) => {
+//     console.log(req.body);
+//     try {
+
+//         const salt = await bcrypt.genSalt(Number(process.env.SALT));
+//         const hashPassword = await bcrypt.hash(req.body.password, salt);
+
+//         await new Admin({
+//             ...req.body,
+//             password: hashPassword
+//         }).save();
+
+//         res.status(201).send({ message: "Account Created Successfully" })
+//     } catch (error) {
+//         res.status(500).send({ message: "Internal Server Error", error: error })
+//     }
+// });
 
 router.get('/:id/verify/:token', async(req, res) => {
     try { // check if user exists
@@ -368,6 +388,30 @@ router.patch('/:userId/preset-scale', async(req, res) => {
     }
 });
 
+
+// Update user Target GPA
+router.patch('/:userId/target-cgpa', async(req, res) => {
+    try {
+        const userId = req.params.userId;
+        const target = req.body.data.target;
+
+        const user = await User.findOne({ _id: userId });
+        const updatedUser = await User.findOneAndUpdate({
+            _id: user._id
+        }, {
+            $set: {
+                'targetCGPA': target
+            }
+        }, { new: true }).select('-password -token');
+
+        res.status(200).send({ user: updatedUser, message: "Target CGPA  Updated Successfully!" });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
 // Update user preset_param scale
 router.delete('/:userId/preset_param/scale', async(req, res) => {
     try {
@@ -488,6 +532,7 @@ router.post('/add-gpa', async(req, res) => {
             creditUnit,
             user,
             semester,
+            institution,
             level
         } = req.body;
 
@@ -515,6 +560,7 @@ router.post('/add-gpa', async(req, res) => {
                 userId: user,
                 level,
                 semester,
+                institution,
                 courses: [{
                     code,
                     title,
@@ -557,10 +603,10 @@ router.get('/:userId/get-result/:resultId', async(req, res) => {
     }
 })
 
-router.get('/get-user-gpa/:userId', async(req, res) => {
-
+router.get('/get-user-gpa/:userId/:institutionType', async(req, res) => {
+    const institution = req.params.institutionType;
     try {
-        let gpa = await gpaSchema.find({ userId: req.params.userId });
+        let gpa = await gpaSchema.find({ userId: req.params.userId, institution: institution });
         if (!gpa) {
             return res.status(400).send({ message: 'No GPA Found' });
         }

@@ -9,6 +9,9 @@ const gpaSchema = new mongoose.Schema({
     level: {
         type: String
     },
+    institution: {
+        type: String
+    },
     semester: {
         type: String
     },
