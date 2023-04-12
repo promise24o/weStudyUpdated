@@ -4,7 +4,7 @@ const Admin = require("../models/Admin");
 const Activity = require("../models/Activities");
 const Joi = require("joi");
 const bcrypt = require("bcrypt");
-const auth = require("../middleware/auth");
+const { auth, auth2 } = require("../middleware/auth");
 var express = require('express');
 var app = express();
 var useragent = require('express-useragent');
@@ -89,6 +89,23 @@ router.post("/logout", auth, async(req, res) => {
         res.status(500).send({ error: "Internal Server Error" });
     }
 });
+
+//Logout Admin 
+router.post("/admin-logout", auth2, async(req, res) => {
+    const adminId = req.body.id;
+
+    try { // Remove the token from the user's document
+        const user = await Admin.findOne({ _id: adminId })
+
+        user.token = null;
+        await user.save();
+
+        res.status(200).send({ message: "Logout successful" });
+    } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+    }
+});
+
 
 const validate = (data) => {
     const schema = Joi.object({

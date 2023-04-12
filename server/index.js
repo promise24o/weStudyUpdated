@@ -5,6 +5,8 @@ const cors = require('cors');
 const connection = require('./lib/mongoose');
 const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
+const publicRoutes = require('./routes/public');
 var useragent = require('express-useragent');
 
 
@@ -28,7 +30,16 @@ app.use("/api/users/institutions", userRoutes);
 
 app.use("/api/auth/", authRoutes);
 app.use("/api/auth/logout", authRoutes);
+app.use("/api/auth/admin-logout", authRoutes);
 app.use("/api/auth/admin", authRoutes);
+
+app.use("/api/admin/", adminRoutes);
+
+
+app.use("/api/public/", publicRoutes);
+
+
+
 
 
 app.get('/', function(req, res) {

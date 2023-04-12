@@ -1,3 +1,5 @@
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const router = require('express').Router();
 const bcrypt = require('bcrypt')
 
@@ -19,16 +21,35 @@ const gpaSchema = require('../models/Gpa')
 const multer = require('multer');
 
 // Define the multer storage engine
-const storage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        cb(null, './uploads'); // Change this to your desired upload directory
-    },
-    filename: function(req, file, cb) {
-        cb(null, new Date().toISOString().replace(/:/g, '-') + '-' + file.originalname);
-    }
+// const storage = multer.diskStorage({
+//     destination: function(req, file, cb) {
+//         cb(null, './uploads'); // Change this to your desired upload directory
+//     },
+//     filename: function(req, file, cb) {
+//         cb(null, new Date().toISOString().replace(/:/g, '-') + '-' + file.originalname);
+//     }
+// });
+
+
+
+// Configure Cloudinary credentials
+cloudinary.config({
+    cloud_name: 'dbb2dkawt',
+    api_key: '474957451451999',
+    api_secret: 'yWE3adlqWuUOG0l3JjqSoIPSI-Q',
 });
 
-// Create a multer instance with the storage engine and limits (if necessary)
+// Configure Multer to use Cloudinary as the storage engine
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: '/users',
+        format: async(req, file) => 'png',
+        public_id: (req, file) => `user-${1}`,
+    },
+});
+
+// Create a multer instance with the storage engine and limits (if necessary) 
 const upload = multer({
     storage: storage,
     limits: {
@@ -36,6 +57,7 @@ const upload = multer({
         fieldSize: 1024 * 1024 * 5 // 5MB field size limit (adjust as needed)
     }
 });
+
 
 
 router.post("/", async(req, res) => {
@@ -89,7 +111,6 @@ router.post("/", async(req, res) => {
 // router.post("/admin", async(req, res) => {
 //     console.log(req.body);
 //     try {
-
 //         const salt = await bcrypt.genSalt(Number(process.env.SALT));
 //         const hashPassword = await bcrypt.hash(req.body.password, salt);
 
@@ -129,7 +150,6 @@ router.get('/:id/verify/:token', async(req, res) => {
 
 router.post("/resend-verify-email-link", async(req, res) => {
     try {
-
         let user = await User.findOne({ email: req.body.email });
 
         const token = await new Token({ userId: user._id, token: crypto.randomBytes(32).toString("hex") }).save();
@@ -246,38 +266,66 @@ router.post('/change-password', async(req, res) => {
     }
 })
 
+// Route to upload user avatar
 router.post('/upload-avatar', upload.single('file'), async(req, res) => {
-
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No photo uploaded' });
         }
 
-        // Read the contents of the uploaded file
-        const filePath = req.file.path;
-        fs.readFile(filePath, async(err, data) => {
-            if (err) {
-                return res.status(500).json({ error: 'Error reading photo' });
+        // Update the user's photo in the database
+        const user = JSON.parse(req.body.user);
+
+        const result = await cloudinary.uploader.upload(req.file.path);
+
+        const updatedUser = await User.findOneAndUpdate({
+            _id: user._id
+        }, {
+            $set: {
+                profilePhoto: result.secure_url
             }
+        }, { new: true }).select('-password -token');
 
-            // Upload the file contents to MongoDB
-            const user = JSON.parse(req.body.user);
-
-            const updatedUser = await User.findOneAndUpdate({
-                _id: user._id
-            }, {
-                $set: {
-                    'photo.data': data,
-                    'photo.contentType': req.file.mimetype
-                }
-            }, { new: true }).select('-password -token');
-            res.status(200).send({ user: updatedUser, message: "Photo Uploaded Successfully!" });
-        });
-
+        res.status(200).send({ user: updatedUser, message: 'Photo Uploaded Successfully!' });
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error })
+        res.status(500).send({ message: 'Internal Server Error', error: error });
     }
-})
+});
+
+
+
+// router.post('/upload-avatar', upload.single('file'), async(req, res) => {
+
+//     try {
+//         if (!req.file) {
+//             return res.status(400).json({ error: 'No photo uploaded' });
+//         }
+
+//         // Read the contents of the uploaded file
+//         const filePath = req.file.path;
+//         fs.readFile(filePath, async(err, data) => {
+//             if (err) {
+//                 return res.status(500).json({ error: 'Error reading photo' });
+//             }
+
+//             // Upload the file contents to MongoDB
+//             const user = JSON.parse(req.body.user);
+
+//             const updatedUser = await User.findOneAndUpdate({
+//                 _id: user._id
+//             }, {
+//                 $set: {
+//                     'photo.data': data,
+//                     'photo.contentType': req.file.mimetype
+//                 }
+//             }, { new: true }).select('-password -token');
+//             res.status(200).send({ user: updatedUser, message: "Photo Uploaded Successfully!" });
+//         });
+
+//     } catch (error) {
+//         res.status(500).send({ message: "Internal Server Error", error: error })
+//     }
+// })
 
 router.post('/enable-twofa', async(req, res) => {
     try {
