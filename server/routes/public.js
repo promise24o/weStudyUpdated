@@ -36,7 +36,7 @@ router.get('/related-scholarships/:category/:id', async(req, res) => {
     try {
         const { category, id } = req.params;
         const scholarships = await Scholarship.find({
-            category
+            category: category
         }).limit(3);
         if (!scholarships.length) {
             return res.status(404).json({ error: 'Scholarships not found' });
@@ -49,6 +49,16 @@ router.get('/related-scholarships/:category/:id', async(req, res) => {
 });
 
 
+router.get("/category/:id", async(req, res) => {
+    try {
+        const categoryId = req.params.id;
+        const category = await ScholarshipCategory.findOne({ _id: categoryId });
+        const categoryName = category ? category.title : null;
+        res.status(200).json({ categoryName });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
 
 
