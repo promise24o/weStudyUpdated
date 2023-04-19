@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const { ScholarshipCategory, Scholarship } = require('../models/Scholarships');
+const { CourseCategory, Course } = require("../models/Courses");
+
 
 
 
@@ -14,6 +16,18 @@ router.get('/scholarships', async(req, res) => {
             return res.status(400).send({ message: 'No Scholarship Found' });
         }
         res.status(200).send({ scholarships: scholarships });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error })
+    }
+});
+
+router.get('/courses', async(req, res) => {
+    try { // check if user exists
+        let courses = await Course.find().sort({ createdAt: 'desc' });
+        if (!courses) {
+            return res.status(400).send({ message: 'No Courses Found' });
+        }
+        res.status(200).send({ courses: courses });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error: error })
     }

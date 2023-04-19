@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema({
         default: false
     },
     targetCGPA: {
-        type: Number,
+        type: Number
     },
     preset_param: {
         status: {
@@ -98,8 +98,19 @@ const userSchema = new mongoose.Schema({
                 default: Date.now()
             }
         }]
-    }
+    },
+    favoriteMentors: [{
+        mentor: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'mentors'
+        },
+        dateAdded: {
+            type: Date,
+            default: Date.now()
+        }
+    }]
 });
+
 
 
 userSchema.set('timestamps', true);
