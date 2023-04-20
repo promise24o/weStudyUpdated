@@ -391,7 +391,7 @@ router.post("/add-scholarship", upload.single("file"), async(req, res) => {
     try { // Create a new scholarship
         const scholarship = new Scholarship({
             title: data.title,
-            banner_image: result.public_id,
+            banner_image: result.url,
             category: data.category,
             brief: data.brief,
             editorContent: data.editorContent,
@@ -419,9 +419,9 @@ router.post("/add-community-category", upload4.single("file"), async(req, res) =
 
     // Upload the banner_image to cloudinary
     const result = await cloudinary.uploader.upload(req.file.path);
-
+    console.log(result);
     try { // Create a new category
-        const category = new CommunityCategory({ title: data.title, banner_image: result.public_id });
+        const category = new CommunityCategory({ title: data.title, banner_image: result.url });
         // Save the scholarship to the database
         await category.save();
         // Send a response with the saved category
@@ -447,7 +447,7 @@ router.post("/add-course", upload3.single("file"), async(req, res) => {
     try { // Create a new Course
         const course = new Course({
             title: data.title,
-            banner_image: result.public_id,
+            banner_image: result.url,
             category: data.category,
             brief: data.brief,
             editorContent: data.editorContent,
@@ -507,7 +507,7 @@ router.post("/add-mentor", upload2.single("file"), async(req, res) => {
             facebook,
             calendly,
             skills,
-            avatar: result.public_id
+            avatar: result.url
         });
 
         // Save the scholarship to the database
