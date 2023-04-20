@@ -1,22 +1,17 @@
 const mongoose = require('mongoose');
 
-const courseCategorySchema = new mongoose.Schema({
+const communityCenterCategorySchema = new mongoose.Schema({
     title: {
         type: String,
         required: true
     },
-    createdBy: {
-        type: mongoose.ObjectId,
-        required: true,
-        ref: "admin"
+    banner_image: {
+        type: String
     },
-    createdAt: {
-        type: Date,
-        default: Date.now()
-    }
 });
+communityCenterCategorySchema.set('timestamps', true);
 
-const courseSchema = new mongoose.Schema({
+const scholarshipSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true
@@ -37,6 +32,7 @@ const courseSchema = new mongoose.Schema({
     read_time: {
         type: Number,
         min: 1,
+        max: 10
     },
     slug: {
         type: String,
@@ -44,14 +40,6 @@ const courseSchema = new mongoose.Schema({
         required: true
     },
     views: {
-        type: Number,
-        default: 0
-    },
-    lessons: {
-        type: Number,
-        default: 0
-    },
-    students: {
         type: Number,
         default: 0
     },
@@ -70,6 +58,5 @@ const courseSchema = new mongoose.Schema({
 });
 
 module.exports = {
-    CourseCategory: mongoose.model('CourseCategory', courseCategorySchema),
-    Course: mongoose.model('Course', courseSchema)
+    CommunityCategory: mongoose.model('CommunityCategory', communityCenterCategorySchema),
 };

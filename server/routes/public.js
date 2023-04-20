@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { ScholarshipCategory, Scholarship } = require('../models/Scholarships');
 const { CourseCategory, Course } = require("../models/Courses");
-
+const { CommunityCategory } = require("../models/CommunityCenter");
 
 
 
@@ -46,16 +46,55 @@ router.get('/scholarship/:slug', async(req, res) => {
     }
 });
 
+router.get('/course/:slug', async(req, res) => {
+    try {
+        const course = await Course.findOne({ slug: req.params.slug });
+        if (!course) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+        res.json({ course });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 router.get('/related-scholarships/:category/:id', async(req, res) => {
     try {
         const { category, id } = req.params;
+
         const scholarships = await Scholarship.find({
-            category: category
-        }).limit(3);
+            category: category,
+            _id: {
+                $ne: id
+            }
+        }).limit(3).sort({ createdAt: "desc" });
+
         if (!scholarships.length) {
             return res.status(404).json({ error: 'Scholarships not found' });
         }
+
         res.json({ scholarships });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+router.get('/related-courses/:category/:id', async(req, res) => {
+    try {
+        const { category, id } = req.params;
+        const courses = await Course.find({
+            category: category,
+            _id: {
+                $ne: id
+            }
+        }).limit(3).sort({ createdAt: "desc" });
+        if (!courses.length) {
+            return res.status(404).json({ error: 'Courses not found' });
+        }
+        res.json({ courses });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
@@ -74,7 +113,28 @@ router.get("/category/:id", async(req, res) => {
     }
 });
 
+router.get("/course-category/:id", async(req, res) => {
+    try {
+        const categoryId = req.params.id;
+        const category = await CourseCategory.findOne({ _id: categoryId });
+        const categoryName = category ? category.title : null;
+        res.status(200).json({ categoryName });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
+router.get("/community-categories", async(req, res) => {
+    try {
+        let categories = await CommunityCategory.find().sort({ createdAt: 'desc' });
+        if (!categories) {
+            return res.status(400).send({ message: 'No Categories Found' });
+        }
+        res.status(200).send({ categories: categories });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error })
+    }
+});
 
 
 module.exports = router;

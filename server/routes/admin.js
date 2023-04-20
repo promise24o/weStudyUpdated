@@ -9,6 +9,8 @@ const { User, validate } = require("../models/Users");
 const { ScholarshipCategory, Scholarship } = require("../models/Scholarships");
 const { CourseCategory, Course } = require("../models/Courses");
 const { MentorFaculty, Mentors } = require("../models/Mentors");
+const { CommunityCategory } = require("../models/CommunityCenter");
+
 const Admin = require("../models/Admin");
 const Institutions = require("../models/Institutions");
 
@@ -45,6 +47,32 @@ const storage2 = new CloudinaryStorage({
         public_id: (req, file) => `mentors-${
             Date.now ()
         }`
+    }
+});
+
+// Configure Multer to use Cloudinary as the storage engine
+const storage4 = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "/community-categories",
+        format: async(req, file) => "png",
+        public_id: (req, file) => `categories-${
+            Date.now ()
+        }`
+    }
+});
+
+// Create a multer instance with the storage engine and limits (if necessary)
+const upload4 = multer({
+    storage: storage4,
+    limits: {
+        fileSize: 800 * 800 * 5,
+        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+    },
+    // Resize the uploaded image to 800x800
+    resize: {
+        width: 800,
+        height: 800
     }
 });
 
@@ -147,6 +175,18 @@ router.get("/course-categories", auth2, async(req, res) => {
             return res.status(400).send({ message: "No Course Categories Found" });
         }
         res.status(200).send({ categories: courseCategories });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
+router.get("/community-categories", auth2, async(req, res) => {
+    try { // check if user exists
+        let communityCategories = await CommunityCategory.find().sort({ createdAt: "desc" });
+        if (!communityCategories) {
+            return res.status(400).send({ message: "No Categories Found" });
+        }
+        res.status(200).send({ categories: communityCategories });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
@@ -351,7 +391,7 @@ router.post("/add-scholarship", upload.single("file"), async(req, res) => {
     try { // Create a new scholarship
         const scholarship = new Scholarship({
             title: data.title,
-            banner_image: result.secure_url,
+            banner_image: result.public_id,
             category: data.category,
             brief: data.brief,
             editorContent: data.editorContent,
@@ -364,6 +404,29 @@ router.post("/add-scholarship", upload.single("file"), async(req, res) => {
 
         // Send a response with the saved scholarship
         res.status(201).send({ scholarship: scholarship, message: "Scholarship Created Successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error });
+    }
+});
+
+router.post("/add-community-category", upload4.single("file"), async(req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: "No photo uploaded" });
+    }
+
+    // Update the user's photo in the database
+    const data = JSON.parse(req.body.data);
+
+    // Upload the banner_image to cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path);
+
+    try { // Create a new category
+        const category = new CommunityCategory({ title: data.title, banner_image: result.public_id });
+        // Save the scholarship to the database
+        await category.save();
+        // Send a response with the saved category
+        const categories = await CommunityCategory.find({}).sort({ createdAt: "desc" });
+        res.status(201).send({ categories: categories, message: "Category Created Successfully" });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error });
     }
@@ -384,7 +447,7 @@ router.post("/add-course", upload3.single("file"), async(req, res) => {
     try { // Create a new Course
         const course = new Course({
             title: data.title,
-            banner_image: result.secure_url,
+            banner_image: result.public_id,
             category: data.category,
             brief: data.brief,
             editorContent: data.editorContent,
@@ -444,7 +507,7 @@ router.post("/add-mentor", upload2.single("file"), async(req, res) => {
             facebook,
             calendly,
             skills,
-            avatar: result.secure_url
+            avatar: result.public_id
         });
 
         // Save the scholarship to the database
