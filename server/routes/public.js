@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { ScholarshipCategory, Scholarship } = require('../models/Scholarships');
 const { CourseCategory, Course } = require("../models/Courses");
-const { CommunityCategory } = require("../models/CommunityCenter");
+const { CommunityCategory, CommunityCenter } = require("../models/CommunityCenter");
 
 
 
@@ -53,6 +53,19 @@ router.get('/course/:slug', async(req, res) => {
             return res.status(404).json({ error: 'Course not found' });
         }
         res.json({ course });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+router.get('/community-center/:slug', async(req, res) => {
+    try {
+        const post = await CommunityCenter.findOne({ slug: req.params.slug });
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        res.json({ post });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
@@ -135,6 +148,30 @@ router.get("/community-categories", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error })
     }
 });
+
+router.get("/community-posts", async(req, res) => {
+    try {
+        let posts = await CommunityCenter.find().sort({ createdAt: 'desc' });
+        if (!posts) {
+            return res.status(400).send({ message: 'No Posts Found' });
+        }
+        res.status(200).send({ posts: posts });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error })
+    }
+});
+
+router.get("/community-category/:id", async(req, res) => {
+    try {
+        const categoryId = req.params.id;
+        const category = await CommunityCategory.findOne({ _id: categoryId });
+        const categoryName = category ? category.title : null;
+        res.status(200).json({ categoryName });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 
 
 module.exports = router;

@@ -46,17 +46,10 @@ const communityCenterPostSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
-    }
 });
+communityCenterPostSchema.set('timestamps', true);
 
 module.exports = {
     CommunityCategory: mongoose.model('CommunityCategory', communityCenterCategorySchema),
-    CommunityCenterPost: mongoose.model('CommunityCenterPost', communityCenterPostSchema),
+    CommunityCenter: mongoose.model('CommunityCenterPost', communityCenterPostSchema),
 };

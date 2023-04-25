@@ -110,23 +110,26 @@ router.post("/admin", async(req, res) => {
 });
 
 router.get("/:id/verify/:token", async(req, res) => {
+    console.log(req.params.id)
+
     try { // check if user exists
         const user = await User.findOne({ _id: req.params.id });
         if (!user)
-            return res.status(404).send({ message: "Invalid Link" });
+            return res.status(404).send({ message: "This User Does not Exists" });
 
         // check if token is valid
         const token = await Token.findOne({ userId: user._id, token: req.params.token });
         if (!token)
-            return res.status(404).send({ message: "Invalid Link" });
+            return res.status(404).send({ message: "Error: Invalid Link" });
 
         // update user verified status
         await User.updateOne({ _id: user._id, verified: true });
         if (token) { // check if token exists
             await token.deleteOne();
         }
+        const updatedUser = await User.findOne({ _id: user._id });
 
-        res.status(200).send({ message: "Email Verified Successfully" });
+        res.status(200).send({ user: updatedUser, message: "Email Verified Successfully" });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
@@ -136,7 +139,15 @@ router.post("/resend-verify-email-link", async(req, res) => {
     try {
         let user = await User.findOne({ email: req.body.email });
 
-        const token = await new Token({ userId: user._id, token: crypto.randomBytes(32).toString("hex") }).save();
+        const token = await Token.findOneAndUpdate({
+            userId: user._id
+        }, {
+            token: crypto.randomBytes(32).toString("hex"),
+            createdAt: Date.now()
+        }, {
+            upsert: true,
+            new: true
+        });
 
         // construct the file path using the path.join() method
         const filePath = path.join(__dirname, "..", "emails", "verify_email.ejs");

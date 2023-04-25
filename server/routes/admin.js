@@ -9,7 +9,7 @@ const { User, validate } = require("../models/Users");
 const { ScholarshipCategory, Scholarship } = require("../models/Scholarships");
 const { CourseCategory, Course } = require("../models/Courses");
 const { MentorFaculty, Mentors } = require("../models/Mentors");
-const { CommunityCategory, communityCenterPostSchema } = require("../models/CommunityCenter");
+const { CommunityCategory, CommunityCenter } = require("../models/CommunityCenter");
 
 const Admin = require("../models/Admin");
 const Institutions = require("../models/Institutions");
@@ -62,6 +62,18 @@ const storage4 = new CloudinaryStorage({
     }
 });
 
+// Configure Multer to use Cloudinary as the storage engine
+const storage5 = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "/community-center",
+        format: async(req, file) => "png",
+        public_id: (req, file) => `community-${
+            Date.now ()
+        }`
+    }
+});
+
 // Create a multer instance with the storage engine and limits (if necessary)
 const upload4 = multer({
     storage: storage4,
@@ -105,6 +117,20 @@ const storage3 = new CloudinaryStorage({
 // Create a multer instance with the storage engine and limits (if necessary)
 const upload3 = multer({
     storage: storage3,
+    limits: {
+        fileSize: 800 * 800 * 5,
+        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+    },
+    // Resize the uploaded image to 800x800
+    resize: {
+        width: 800,
+        height: 800
+    }
+});
+
+// Create a multer instance with the storage engine and limits (if necessary)
+const upload5 = multer({
+    storage: storage5,
     limits: {
         fileSize: 800 * 800 * 5,
         fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
@@ -211,6 +237,18 @@ router.get("/courses", auth2, async(req, res) => {
             return res.status(400).send({ message: "No Courses Found" });
         }
         res.status(200).send({ courses: courses });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
+router.get("/cc-posts", auth2, async(req, res) => {
+    try { // check if user exists
+        let posts = await CommunityCenter.find().sort({ createdAt: "desc" });
+        if (!posts) {
+            return res.status(400).send({ message: "No Posts Found" });
+        }
+        res.status(200).send({ posts: posts });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
@@ -467,6 +505,39 @@ router.post("/add-course", upload3.single("file"), async(req, res) => {
     }
 });
 
+
+router.post("/add-community-center-post", upload5.single("file"), async(req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded" });
+    }
+
+    // Update the user's photo in the database
+    const data = JSON.parse(req.body.data);
+
+    // Upload the banner_image to cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path);
+
+    try { // Create a new Community Center Post
+        const post = new CommunityCenter({
+            title: data.title,
+            banner_image: result.url,
+            category: data.category,
+            brief: data.brief,
+            editorContent: data.editorContent,
+            read_time: data.read_time,
+            slug: data.slug,
+        });
+
+        // Save the Post to the database
+        await post.save();
+
+        // Send a response with the saved course
+        res.status(201).send({ message: "Post Created Successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error });
+    }
+});
+
 router.post("/add-mentor", upload2.single("file"), async(req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "No photo uploaded" });
@@ -557,6 +628,17 @@ router.get("/course-category/:id", async(req, res) => {
     try {
         const categoryId = req.params.id;
         const category = await CourseCategory.findOne({ _id: categoryId });
+        const categoryName = category ? category.title : null;
+        res.status(200).json({ categoryName });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.get("/cc-category/:id", async(req, res) => {
+    try {
+        const categoryId = req.params.id;
+        const category = await CommunityCategory.findOne({ _id: categoryId });
         const categoryName = category ? category.title : null;
         res.status(200).json({ categoryName });
     } catch (err) {
