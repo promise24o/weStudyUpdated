@@ -9,7 +9,7 @@ const { User, validate } = require("../models/Users");
 const { ScholarshipCategory, Scholarship } = require("../models/Scholarships");
 const { CourseCategory, Course } = require("../models/Courses");
 const { MentorFaculty, Mentors } = require("../models/Mentors");
-const { CommunityCategory } = require("../models/CommunityCenter");
+const { CommunityCategory, communityCenterPostSchema } = require("../models/CommunityCenter");
 
 const Admin = require("../models/Admin");
 const Institutions = require("../models/Institutions");

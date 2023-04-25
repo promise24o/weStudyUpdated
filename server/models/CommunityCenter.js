@@ -11,7 +11,7 @@ const communityCenterCategorySchema = new mongoose.Schema({
 });
 communityCenterCategorySchema.set('timestamps', true);
 
-const scholarshipSchema = new mongoose.Schema({
+const communityCenterPostSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true
@@ -32,7 +32,6 @@ const scholarshipSchema = new mongoose.Schema({
     read_time: {
         type: Number,
         min: 1,
-        max: 10
     },
     slug: {
         type: String,
@@ -59,4 +58,5 @@ const scholarshipSchema = new mongoose.Schema({
 
 module.exports = {
     CommunityCategory: mongoose.model('CommunityCategory', communityCenterCategorySchema),
+    CommunityCenterPost: mongoose.model('CommunityCenterPost', communityCenterPostSchema),
 };

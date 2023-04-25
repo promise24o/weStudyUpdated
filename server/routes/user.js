@@ -92,22 +92,22 @@ router.post("/", async(req, res) => {
     }
 });
 
-// router.post("/admin", async(req, res) => {
-//     console.log(req.body);
-//     try {
-//         const salt = await bcrypt.genSalt(Number(process.env.SALT));
-//         const hashPassword = await bcrypt.hash(req.body.password, salt);
+router.post("/admin", async(req, res) => {
+    console.log(req.body);
+    try {
+        const salt = await bcrypt.genSalt(Number(process.env.SALT));
+        const hashPassword = await bcrypt.hash(req.body.password, salt);
 
-//         await new Admin({
-//             ...req.body,
-//             password: hashPassword
-//         }).save();
+        await new Admin({
+            ...req.body,
+            password: hashPassword
+        }).save();
 
-//         res.status(201).send({ message: "Account Created Successfully" })
-//     } catch (error) {
-//         res.status(500).send({ message: "Internal Server Error", error: error })
-//     }
-// });
+        res.status(201).send({ message: "Account Created Successfully" })
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error })
+    }
+});
 
 router.get("/:id/verify/:token", async(req, res) => {
     try { // check if user exists
@@ -115,14 +115,10 @@ router.get("/:id/verify/:token", async(req, res) => {
         if (!user)
             return res.status(404).send({ message: "Invalid Link" });
 
-
-
         // check if token is valid
         const token = await Token.findOne({ userId: user._id, token: req.params.token });
         if (!token)
             return res.status(404).send({ message: "Invalid Link" });
-
-
 
         // update user verified status
         await User.updateOne({ _id: user._id, verified: true });
