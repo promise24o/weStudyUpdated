@@ -43,7 +43,13 @@ const upload = multer({
     }
 });
 
-router.post("/", async(req, res) => {
+router.get('/', function(req, res) {
+    res.send("User API");
+});
+
+
+
+router.post("/register", async(req, res) => {
     try {
         const { error } = validate(req.body);
         if (error)

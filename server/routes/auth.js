@@ -11,12 +11,130 @@ var useragent = require('express-useragent');
 
 app.use(useragent.express());
 
-router.post("/", async(req, res) => {
-    try {
-        const { error } = validate(req.body);
-        if (error)
-            return res.status(400).send({ message: error.details[0].message });
 
+
+router.get('/', function(req, res) {
+    res.send("Auth API");
+});
+
+
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login an user or admin
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LoginResponse'
+ *       400:
+ *         description: Invalid email address or password
+ *       500:
+ *         description: Internal server error
+ * 
+ * components:
+ *   schemas:
+ *     LoginRequest:
+ *       type: object
+ *       properties:
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: The email address of the user or admin
+ *           example: user@example.com
+ *         password:
+ *           type: string
+ *           description: The password of the user or admin
+ *           example: p@ssw0rd
+ *     LoginResponse:
+ *       type: object
+ *       properties:
+ *         data:
+ *           type: object
+ *           properties:
+ *             token:
+ *               type: string
+ *               description: JWT token for authenticated user or admin
+ *               example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+ *             accountType:
+ *               type: string
+ *               enum: [user, admin]
+ *               description: Type of the account
+ *               example: user
+ *             user:
+ *               type: object
+ *               $ref: '#/components/schemas/User'
+ *             admin:
+ *               type: object
+ *               $ref: '#/components/schemas/Admin'
+ *           required:
+ *             - token
+ *             - accountType
+ *         message:
+ *           type: string
+ *           description: A success message
+ *           example: Login Successfully!
+ *     User:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the user
+ *           example: 507f1f77bcf86cd799439011
+ *         name:
+ *           type: string
+ *           description: The name of the user
+ *           example: John Doe
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: The email address of the user
+ *           example: user@example.com
+ *       required:
+ *         - _id
+ *         - name
+ *         - email
+ *     Admin:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the admin
+ *           example: 507f1f77bcf86cd799439011
+ *         name:
+ *           type: string
+ *           description: The name of the admin
+ *           example: John Doe
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: The email address of the admin
+ *           example: admin@example.com
+ *       required:
+ *         - _id
+ *         - name
+ *         - email
+ */
+
+router.post("/login", async(req, res) => {
+    try {
+        // const { error } = validate(req.body);
+        // if (error)
+        //     return res.status(400).send({ message: error.details[0].message });
+        console.log(req.body);
         const user = await User.findOne({ email: req.body.email });
         const admin = await Admin.findOne({ email: req.body.email });
 
@@ -75,6 +193,54 @@ router.post("/", async(req, res) => {
         console.error(error);
     }
 });
+
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - bearerAuth: []
+ *     produces:
+ *       - application/json
+ *     responses:
+ *       '200':
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Logout successful message
+ *                   example: Logout successful
+ *       '401':
+ *         description: Unauthorized user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Unauthorized user message
+ *                   example: Unauthorized user
+ *       '500':
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Internal Server Error message
+ *                   example: Internal Server Error
+ */
 
 // Logout user
 router.post("/logout", auth, async(req, res) => {
