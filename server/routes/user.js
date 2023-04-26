@@ -49,54 +49,6 @@ router.get('/', function(req, res) {
 
 
 
-router.post("/register", async(req, res) => {
-    try {
-        const { error } = validate(req.body);
-        if (error)
-            return res.status(400).send({ message: error.details[0].message });
-
-
-
-        let user = await User.findOne({ email: req.body.email });
-        if (user)
-            return res.status(409).send({ message: "A User with that email already exists!" });
-
-
-
-        const salt = await bcrypt.genSalt(Number(process.env.SALT));
-        const hashPassword = await bcrypt.hash(req.body.password, salt);
-
-        user = await new User({
-            ...req.body,
-            password: hashPassword,
-            accountType: "user"
-        }).save();
-        const token = await new Token({ userId: user._id, token: crypto.randomBytes(32).toString("hex") }).save();
-
-        // construct the file path using the path.join() method
-        const filePath = path.join(__dirname, "..", "emails", "verify_email.ejs");
-
-        // read the HTML content from a file
-        let template = fs.readFileSync(filePath, "utf8");
-
-        const urlLink = `${
-            process.env.CLIENT_BASE_URL
-        }/users/${
-            user._id
-        }/verify/${
-            token.token
-        }`;
-
-        // compile the EJS template with the url variable
-        let html = ejs.render(template, { url: urlLink });
-
-        await sendEmail(user.email, "Verify Email", html);
-
-        res.status(201).send({ message: "Account Created Successfully! Visit Email to Verify Account" });
-    } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
-    }
-});
 
 router.post("/admin", async(req, res) => {
     console.log(req.body);

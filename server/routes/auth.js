@@ -9,6 +9,15 @@ var express = require('express');
 var app = express();
 var useragent = require('express-useragent');
 
+const Token = require("../models/Token");
+const sendEmail = require("../utils/sendEmail");
+const crypto = require("crypto");
+
+const ejs = require("ejs");
+const fs = require("fs");
+const path = require("path");
+
+
 app.use(useragent.express());
 
 
@@ -22,7 +31,7 @@ router.get('/', function(req, res) {
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Login an user or admin
+ *     summary: Login user 
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -106,34 +115,13 @@ router.get('/', function(req, res) {
  *         - _id
  *         - name
  *         - email
- *     Admin:
- *       type: object
- *       properties:
- *         _id:
- *           type: string
- *           format: uuid
- *           description: The ID of the admin
- *           example: 507f1f77bcf86cd799439011
- *         name:
- *           type: string
- *           description: The name of the admin
- *           example: John Doe
- *         email:
- *           type: string
- *           format: email
- *           description: The email address of the admin
- *           example: admin@example.com
- *       required:
- *         - _id
- *         - name
- *         - email
  */
 
 router.post("/login", async(req, res) => {
     try {
-        // const { error } = validate(req.body);
-        // if (error)
-        //     return res.status(400).send({ message: error.details[0].message });
+        const { error } = validate(req.body);
+        if (error)
+            return res.status(400).send({ message: error.details[0].message });
         console.log(req.body);
         const user = await User.findOne({ email: req.body.email });
         const admin = await Admin.findOne({ email: req.body.email });
@@ -193,6 +181,157 @@ router.post("/login", async(req, res) => {
         console.error(error);
     }
 });
+
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       description: User information to be registered
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UserRegistration'
+ *     responses:
+ *       201:
+ *         description: Account created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A success message
+ *                   example: Account Created Successfully! Visit Email to Verify Account
+ *       400:
+ *         description: Bad request - missing or invalid information provided
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                   example: 'Validation error: "firstname" is required'
+ *       409:
+ *         description: User already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                   example: A User with that email already exists!
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                   example: Internal Server Error
+ *                 error:
+ *                   type: object
+ *                   description: Error object
+ *                   example: {}
+ */
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     UserRegistration:
+ *       type: object
+ *       required:
+ *         - firstname
+ *         - lastname
+ *         - email
+ *         - password
+ *         - confirmPassword
+ *       properties:
+ *         firstname:
+ *           type: string
+ *           description: User's first name
+ *         lastname:
+ *           type: string
+ *           description: User's last name
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User's email address
+ *         password:
+ *           type: string
+ *           description: User's password
+ *         confirmPassword:
+ *           type: string
+ *           description: Confirm the user's password
+ *       example:
+ *         firstname: John
+ *         lastname: Doe
+ *         email: john.doe@example.com
+ *         password: password123
+ *         confirmPassword: password123
+ */
+
+
+router.post("/register", async(req, res) => {
+    try {
+        // const { error } = validate(req.body);
+        // if (error)
+        //     return res.status(400).send({ message: error.details[0].message });
+
+
+
+        let user = await User.findOne({ email: req.body.email });
+        if (user)
+            return res.status(409).send({ message: "A User with that email already exists!" });
+
+
+
+        const salt = await bcrypt.genSalt(Number(process.env.SALT));
+        const hashPassword = await bcrypt.hash(req.body.password, salt);
+
+        user = await new User({
+            ...req.body,
+            password: hashPassword,
+            accountType: "user"
+        }).save();
+        const token = await new Token({ userId: user._id, token: crypto.randomBytes(32).toString("hex") }).save();
+
+        // construct the file path using the path.join() method
+        const filePath = path.join(__dirname, "..", "emails", "verify_email.ejs");
+
+        // read the HTML content from a file
+        let template = fs.readFileSync(filePath, "utf8");
+
+        const urlLink = `${
+            process.env.CLIENT_BASE_URL
+        }/users/${
+            user._id
+        }/verify/${
+            token.token
+        }`;
+
+        // compile the EJS template with the url variable
+        let html = ejs.render(template, { url: urlLink });
+
+        await sendEmail(user.email, "Verify Email", html);
+
+        res.status(201).send({ message: "Account Created Successfully! Visit Email to Verify Account" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
 
 
 /**
