@@ -21,7 +21,6 @@ const path = require("path");
 app.use(useragent.express());
 
 
-
 router.get('/', function(req, res) {
     res.send("Auth API");
 });
@@ -29,6 +28,9 @@ router.get('/', function(req, res) {
 
 /**
  * @swagger
+ *  tags:
+ *   name: Authentication
+ *   description: APIs for all authenticated users
  * /auth/login:
  *   post:
  *     summary: Login user 
@@ -122,6 +124,9 @@ router.post("/login", async(req, res) => {
         const { error } = validate(req.body);
         if (error)
             return res.status(400).send({ message: error.details[0].message });
+
+
+
         console.log(req.body);
         const user = await User.findOne({ email: req.body.email });
         const admin = await Admin.findOne({ email: req.body.email });
@@ -129,11 +134,15 @@ router.post("/login", async(req, res) => {
         if (!user && !admin)
             return res.status(400).send({ message: "Invalid Email Address" });
 
+
+
         if (user) {
             const validPassword = await bcrypt.compare(req.body.password, user.password);
 
             if (!validPassword)
                 return res.status(400).send({ message: "Invalid Password" });
+
+
 
             const token = await user.generateAuthToken();
 
@@ -161,6 +170,8 @@ router.post("/login", async(req, res) => {
             const validPassword = await bcrypt.compare(req.body.password, admin.password);
             if (!validPassword)
                 return res.status(400).send({ message: "Invalid Password" });
+
+
 
             const token = await admin.generateAuthToken();
 
@@ -290,7 +301,6 @@ router.post("/register", async(req, res) => {
         //     return res.status(400).send({ message: error.details[0].message });
 
 
-
         let user = await User.findOne({ email: req.body.email });
         if (user)
             return res.status(409).send({ message: "A User with that email already exists!" });
@@ -331,7 +341,6 @@ router.post("/register", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
-
 
 
 /**
@@ -383,8 +392,7 @@ router.post("/register", async(req, res) => {
 
 // Logout user
 router.post("/logout", auth, async(req, res) => {
-    try {
-        // Remove the token from the user's document
+    try { // Remove the token from the user's document
         const user = req.user;
         user.token = null;
         await user.save();
@@ -395,7 +403,7 @@ router.post("/logout", auth, async(req, res) => {
     }
 });
 
-//Logout Admin 
+// Logout Admin
 router.post("/admin-logout", auth2, async(req, res) => {
     const adminId = req.body.id;
 
@@ -411,12 +419,67 @@ router.post("/admin-logout", auth2, async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /auth/user/{token}:
+ *   get:
+ *     summary: Get user details by token
+ *     tags:
+ *       - Authentication
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Token of the user to retrieve details for
+ *     responses:
+ *       200:
+ *         description: User details successfully retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: User not found with the provided token
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: User not found
+ *       500:
+ *         description: Internal server error occurred
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Internal Server Error
+ *               error: <error message>
+ *     security:
+ *       - BearerAuth: []
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+
+// Route to get user by token
+router.get('/user/:token', auth, async(req, res) => {
+    try {
+        const user = await User.findOne({ token: req.params.token }).select('-password -token');
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 const validate = (data) => {
-    const schema = Joi.object({
-        email: Joi.string().email().required().label("Email"),
-        password: Joi.string().required().label("Password"),
-    });
+    const schema = Joi.object({ email: Joi.string().email().required().label("Email"), password: Joi.string().required().label("Password") });
 
     return schema.validate(data);
 };

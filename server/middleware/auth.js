@@ -55,8 +55,6 @@ const auth2 = async(req, res, next) => { // Get the token from the request heade
     }
 };
 
-
-
 module.exports = {
     auth,
     auth2

@@ -48,24 +48,23 @@ router.get('/', function(req, res) {
 });
 
 
+// router.post("/admin", async(req, res) => {
+//     console.log(req.body);
+//     try {
+//         const salt = await bcrypt.genSalt(Number(process.env.SALT));
+//         const hashPassword = await bcrypt.hash(req.body.password, salt);
 
+//         await new Admin({
+//             ...req.body,
+//             password: hashPassword
+//         }).save();
 
-router.post("/admin", async(req, res) => {
-    console.log(req.body);
-    try {
-        const salt = await bcrypt.genSalt(Number(process.env.SALT));
-        const hashPassword = await bcrypt.hash(req.body.password, salt);
+//         res.status(201).send({ message: "Account Created Successfully" })
+//     } catch (error) {
+//         res.status(500).send({ message: "Internal Server Error", error: error })
+//     }
+// });
 
-        await new Admin({
-            ...req.body,
-            password: hashPassword
-        }).save();
-
-        res.status(201).send({ message: "Account Created Successfully" })
-    } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error })
-    }
-});
 
 router.get("/:id/verify/:token", async(req, res) => {
     console.log(req.params.id)
@@ -75,10 +74,12 @@ router.get("/:id/verify/:token", async(req, res) => {
         if (!user)
             return res.status(404).send({ message: "This User Does not Exists" });
 
+
         // check if token is valid
         const token = await Token.findOne({ userId: user._id, token: req.params.token });
         if (!token)
             return res.status(404).send({ message: "Error: Invalid Link" });
+
 
         // update user verified status
         await User.updateOne({ _id: user._id, verified: true });
@@ -132,6 +133,49 @@ router.post("/resend-verify-email-link", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: User-related endpoints
+ */
+
+/**
+ * @swagger
+ * /users/institutions:
+ *   get:
+ *     summary: Get all institutions of a specific type
+ *     tags:
+ *       - User
+ *     description: Returns a list of institutions of the specified type
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Type of institution to retrieve (e.g.University or Polytechnic.)
+ *     responses:
+ *       200:
+ *         description: List of institutions successfully retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 institutions:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Institution'
+ *       500:
+ *         description: Internal server error occurred
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Internal Server Error
+ *               error: <error message>
+ */
+
 router.get("/institutions", async(req, res) => {
     try {
         let institutions = await Institutions.find({ type: req.query.type });
@@ -140,6 +184,63 @@ router.get("/institutions", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
+/**
+ * @swagger
+ * /users/update-education-info:
+ *   post:
+ *     summary: Update user education information
+ *     tags:
+ *       - User
+ *     requestBody:
+ *       description: User education information to update
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 description: Type of institution attended
+ *               institution:
+ *                 type: string
+ *                 description: Name of institution attended
+ *               current_level:
+ *                 type: string
+ *                 description: Current level of education
+ *               department:
+ *                 type: string
+ *                 description: Department of study
+ *               course_of_study:
+ *                 type: string
+ *                 description: Course of study
+ *               study_mode:
+ *                 type: string
+ *                 description: Mode of study
+ *               user:
+ *                 $ref: '#/components/schemas/User'
+ *     responses:
+ *       200:
+ *         description: User education information updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *       500:
+ *         description: Internal server error occurred
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Internal Server Error
+ *               error: <error message>
+ */
 
 router.post("/update-education-info", async(req, res) => {
     try {
@@ -171,6 +272,69 @@ router.post("/update-education-info", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/update-personal-info:
+ *   post:
+ *     summary: Update personal information of a user
+ *     tags:
+ *       - User
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               city:
+ *                 type: string
+ *               contact_address:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *             example:
+ *               city: Lagos
+ *               contact_address: 123 Main St, Ikeja
+ *               gender: Male
+ *     responses:
+ *       200:
+ *         description: Personal information updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *             example:
+ *               user:
+ *                 _id: 1234567890abcdef
+ *                 email: johndoe@example.com
+ *                 personal:
+ *                   city: Lagos
+ *                   contact_address: 123 Main St, Ikeja
+ *                   gender: Male
+ *                 education:
+ *                   institution_type: University
+ *                   institution: University of Lagos
+ *                   current_level: 200
+ *                   department: Computer Science
+ *                   course_of_study: Computer Science
+ *                   study_mode: Full-time
+ *               message: Updated Successfully!
+ *       500:
+ *         description: Internal server error occurred
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Internal Server Error
+ *               error: <error message>
+ */
+
 router.post("/update-personal-info", async(req, res) => {
     try {
         const { city, contact_address, gender, user } = req.body;
@@ -189,6 +353,62 @@ router.post("/update-personal-info", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
+/**
+ * @swagger
+ * /users/change-password:
+ *   post:
+ *     summary: Change user password
+ *     tags:
+ *       - User
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                 required:
+ *                   - _id
+ *               password:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *               confirmPassword:
+ *                 type: string
+ *             required:
+ *               - user
+ *               - password
+ *               - newPassword
+ *               - confirmPassword
+ *     responses:
+ *       200:
+ *         description: Password change successful
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Password Change Successfully!
+ *       400:
+ *         description: Bad request error
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: New password and confirm password do not match
+ *       500:
+ *         description: Internal server error occurred
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Internal Server Error
+ *               error: <error message>
+ *     security:
+ *       - bearerAuth: []
+ */
 
 router.post("/change-password", async(req, res) => {
     try {
@@ -214,6 +434,55 @@ router.post("/change-password", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
+/**
+ * @swagger
+ * /users/upload-avatar:
+ *   post:
+ *     tags:
+ *       - User
+ *     summary: Uploads user's avatar photo
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: formData
+ *         name: file
+ *         type: file
+ *         description: The file to upload. Only image files are allowed.
+ *       - in: formData
+ *         name: user
+ *         type: string
+ *         required: true
+ *         description: The user object as a JSON string.
+ *     responses:
+ *       200:
+ *         description: User's profile photo uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: A success message
+ *       400:
+ *         description: No photo uploaded or uploaded file is not an image
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message
+ *                 error:
+ *                   type: object
+ *                   description: The error object
+ */
 
 // Route to upload user avatar
 router.post("/upload-avatar", upload.single("file"), async(req, res) => {
@@ -274,6 +543,75 @@ router.post("/upload-avatar", upload.single("file"), async(req, res) => {
 //     }
 // })
 
+/**
+ * @swagger
+ * /users/enable-twofa:
+ *   post:
+ *     summary: Enable Two Factor Authentication for user.
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *               password:
+ *                 type: string
+ *             example:
+ *               user:
+ *                 _id: 611a55a22a2a0900156dca47
+ *               password: password123
+ *     responses:
+ *       200:
+ *         description: 2FA enabled successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *       400:
+ *         description: Current password is incorrect or user ID not provided.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                 error:
+ *                   type: object
+ *                   description: Error object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       description: Error message
+ *                     stack:
+ *                       type: string
+ *                       description: Error stack trace
+ */
+
 router.post("/enable-twofa", async(req, res) => {
     try {
         const user = await User.findOne({ _id: req.body.user._id });
@@ -298,6 +636,72 @@ router.post("/enable-twofa", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/disable-twofa:
+ *   post:
+ *     summary: Disable two-factor authentication for the user.
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user:
+ *                 type: object
+ *                 description: The user object containing the user id (_id).
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *               password:
+ *                 type: string
+ *                 description: The user's current password.
+ *             example:
+ *               user:
+ *                 _id: 612345678901234567890123
+ *               password: pass123
+ *     responses:
+ *       200:
+ *         description: Successfully disabled two-factor authentication.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object.
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: A success message.
+ *                   example: 2FA Disabled Successfully!
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                 error:
+ *                   type: object
+ *                   description: Error object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       description: Error message
+ *                     stack:
+ *                       type: string
+ *                       description: Error stack trace
+ */
+
 router.post("/disable-twofa", async(req, res) => {
     try {
         const user = await User.findOne({ _id: req.body.user._id });
@@ -314,6 +718,69 @@ router.post("/disable-twofa", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
+
+/**
+ * @swagger
+ * /users/update-preset-parameter:
+ *   post:
+ *     summary: Update preset parameter for the user.
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user:
+ *                 type: string
+ *                 description: The user id (_id).
+ *               preset_para:
+ *                 type: boolean
+ *                 description: The new preset parameter value.
+ *             example:
+ *               user: 612345678901234567890123
+ *               preset_para: true
+ *     responses:
+ *       200:
+ *         description: Successfully updated the preset parameter.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object.
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: A success message.
+ *                   example: Preset Parameter Updated Successfully!
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                 error:
+ *                   type: object
+ *                   description: Error object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       description: Error message
+ *                     stack:
+ *                       type: string
+ *                       description: Error stack trace
+ */
 
 router.post("/update-preset-parameter", async(req, res) => {
     try {
@@ -333,6 +800,86 @@ router.post("/update-preset-parameter", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
+
+/**
+ * @swagger
+ * /users/{userId}/presetParam:
+ *   patch:
+ *     summary: Update user preset parameter status
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the user to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               preset_param:
+ *                 type: object
+ *                 description: The preset parameter object containing the status.
+ *                 properties:
+ *                   status:
+ *                     type: boolean
+ *             example:
+ *               preset_param:
+ *                 status: true
+ *     responses:
+ *       200:
+ *         description: Successfully updated user preset parameter status.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object.
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: A success message.
+ *                   example: Preset Parameter Updated Successfully!
+ *       400:
+ *         description: Bad Request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Bad Request. Please provide a valid user ID and preset parameter status.
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Unauthorized. Please provide a valid token.
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Internal Server Error. Please try again later.
+ */
 
 // Update user preset_param status
 router.patch("/:userId/presetParam", async(req, res) => {
@@ -356,6 +903,90 @@ router.patch("/:userId/presetParam", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/{userId}/preset-scale:
+ *   patch:
+ *     summary: Update user's grading scale for preset parameters.
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           description: The user ID.
+ *         description: The ID of the user to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               preset_param:
+ *                 type: object
+ *                 description: The preset parameters object.
+ *                 properties:
+ *                   scale:
+ *                     type: number
+ *                     description: The updated grading scale.
+ *             example:
+ *               preset_param:
+ *                 scale: 4.0
+ *     responses:
+ *       200:
+ *         description: Successfully updated user's grading scale for preset parameters.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object.
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: A success message.
+ *                   example: Grading Scale Updated Successfully!
+ *       400:
+ *         description: Bad Request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Invalid User ID.
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Authorization denied. Token is invalid.
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Server error. Please try again later.
+ */
+
 // Update user preset_param scale
 router.patch("/:userId/preset-scale", async(req, res) => {
     try {
@@ -377,6 +1008,80 @@ router.patch("/:userId/preset-scale", async(req, res) => {
         res.status(500).send("Server error");
     }
 });
+
+/**
+ * @swagger
+ * /users/{userId}/target-cgpa:
+ *   patch:
+ *     summary: Update target CGPA of a user.
+ *     tags: 
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the user.
+ *       - in: body
+ *         name: data
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             target:
+ *               type: number
+ *               description: The new target CGPA of the user.
+ *               example: 3.5
+ *     responses:
+ *       200:
+ *         description: Target CGPA updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                   description: The updated user object.
+ *                 message:
+ *                   type: string
+ *                   description: A success message.
+ *                   example: Target CGPA updated successfully!
+ *       400:
+ *         description: Bad request. Invalid user ID or target CGPA value.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Invalid user ID or target CGPA value.
+ *       401:
+ *         description: Unauthorized. User must be logged in.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: User must be logged in.
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Server error. Please try again later.
+ */
 
 // Update user Target GPA
 router.patch("/:userId/target-cgpa", async(req, res) => {
@@ -400,7 +1105,59 @@ router.patch("/:userId/target-cgpa", async(req, res) => {
     }
 });
 
-// Update user preset_param scale
+/**
+ * @swagger
+ * /users/{userId}/preset_param/scale:
+ *   delete:
+ *     summary: Deletes the preset_param scale of the specified user.
+ *     tags: 
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the user to delete preset_param scale.
+ *     responses:
+ *       200:
+ *         description: The preset_param scale is deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: The success message.
+ *                   example: Grading Scale Deleted Successfully!
+ *       404:
+ *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: User not found.
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Server error. Please try again later.
+ */
+
+// User Delete scale
 router.delete("/:userId/preset_param/scale", async(req, res) => {
     try {
         const userId = req.params.userId;
@@ -419,6 +1176,64 @@ router.delete("/:userId/preset_param/scale", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/{userId}/remove-result/{resultId}:
+ *   delete:
+ *     summary: Delete GPA result
+ *     description: Deletes a specific GPA result for a user
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user whose GPA result needs to be deleted
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: resultId
+ *         required: true
+ *         description: ID of the GPA result to be deleted
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *                   example: Result Deleted successfully
+ *       404:
+ *         description: Not Found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                   example: GPA not found
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                   example: Server error
+ */
+
+// Delete User Result
 router.delete("/:userId/remove-result/:resultId", async(req, res) => {
     const { userId, resultId } = req.params;
     try {
@@ -433,6 +1248,66 @@ router.delete("/:userId/remove-result/:resultId", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /{userId}/remove-grade/{gradeId}:
+ *   delete:
+ *     summary: Delete a specific grade from the user's preset grading scale.
+ *     tags: 
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the user whose grade is to be removed.
+ *       - in: path
+ *         name: gradeId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the grade to be removed.
+ *     responses:
+ *       200:
+ *         description: Grade Deleted Successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                   description: The updated user object after removing the grade.
+ *                 message:
+ *                   type: string
+ *                   description: The success message.
+ *                   example: Grade Deleted Successfully!
+ *       404:
+ *         description: User not found or Grade not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: User not found.
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Server error. Please try again later.
+ */
+
+// Delete User Grades
 router.delete("/:userId/remove-grade/:gradeId", async(req, res) => {
     try {
         const { gradeId, userId } = req.params;
@@ -457,6 +1332,76 @@ router.delete("/:userId/remove-grade/:gradeId", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/{userId}/add-custom-grade:
+ *   post:
+ *     summary: Add a custom grade to a user's preset parameters
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the user
+ *       - in: body
+ *         name: grade
+ *         description: The custom grade symbol and value to be added
+ *         schema:
+ *           type: object
+ *           properties:
+ *             grade_symbol:
+ *               type: string
+ *               description: The symbol for the custom grade
+ *               example: A-
+ *             grade_value:
+ *               type: number
+ *               description: The value for the custom grade
+ *               example: 3.7
+ *           required:
+ *             - grade_symbol
+ *             - grade_value
+ *     responses:
+ *       200:
+ *         description: The updated user object with the custom grade added
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: A success message
+ *                   example: Grade Added Successfully!
+ *       400:
+ *         description: Bad Request - Missing or invalid parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message
+ *                   example: User not found.
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: The error message.
+ *                   example: Server error. Please try again later.
+ */
+
 // Post user custom grade
 router.post("/:userId/add-custom-grade", async(req, res) => {
     try {
@@ -479,6 +1424,68 @@ router.post("/:userId/add-custom-grade", async(req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/{id}/grades:
+ *   get:
+ *     summary: Get all grades for a user
+ *     tags: [User]
+ *     description: Returns an array of all the grades configured for a user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the user whose grades to retrieve
+ *     responses:
+ *       200:
+ *         description: Array of grades
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     description: The ID of the grade
+ *                     example: 6139d3c3540f670017b2111a
+ *                   grade_symbol:
+ *                     type: string
+ *                     description: The symbol representing the grade
+ *                     example: A
+ *                   grade_value:
+ *                     type: number
+ *                     description: The numerical value of the grade
+ *                     example: 4.0
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: The error message
+ *                   example: User not found
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: The error message
+ *                   example: Server Error. Please try again later.
+ */
+
+// Get all Grades for a user
 router.get("/:id/grades", async(req, res) => {
     try {
         const user = await User.findById(req.params.id);
@@ -490,6 +1497,72 @@ router.get("/:id/grades", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/user-activities:
+ *   get:
+ *     summary: Get the recent activities of a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user whose activities are to be fetched
+ *     responses:
+ *       200:
+ *         description: Recent activities of the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 activities:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         description: ID of the activity
+ *                       activity:
+ *                         type: string
+ *                         description: Description of the activity
+ *                       userId:
+ *                         type: string
+ *                         description: ID of the user who performed the activity
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Date and time when the activity was performed
+ *       400:
+ *         description: No activities found for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message indicating no activities found
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message indicating internal server error
+ *                 error:
+ *                   type: object
+ *                   description: Error details
+ */
+
+
+// Get all User Login Activities
 router.get("/user-activities", async(req, res) => {
     try {
         let activities = await Activity.find({ userId: req.query.user_id }).sort({ createdAt: "desc" }).limit(10);
@@ -502,6 +1575,86 @@ router.get("/user-activities", async(req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/gpa/add-gpa:
+ *   post:
+ *     summary: Add or update user GPA
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *               title:
+ *                 type: string
+ *               grade:
+ *                 type: number
+ *               symbol:
+ *                 type: string
+ *               creditUnit:
+ *                 type: number
+ *               user:
+ *                 type: string
+ *               semester:
+ *                 type: string
+ *               institution:
+ *                 type: string
+ *               level:
+ *                 type: string
+ *             example:
+ *               code: "MTH101"
+ *               title: "Calculus"
+ *               grade: 75
+ *               symbol: "B"
+ *               creditUnit: 3
+ *               user: "615349a5cc8cf81d371e8751"
+ *               semester: "First"
+ *               institution: "University of Lagos"
+ *               level: "100 Level"
+ *     responses:
+ *       200:
+ *         description: Course added or updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GPA'
+ *             example:
+ *               gpa:
+ *                 _id: "6234f232dbd67b0ef112ccb7"
+ *                 userId: "615349a5cc8cf81d371e8751"
+ *                 level: "100 Level"
+ *                 institution: "University of Lagos"
+ *                 semester: "First"
+ *                 courses:
+ *                   - code: "MTH101"
+ *                     title: "Calculus"
+ *                     grade: 75
+ *                     symbol: "B"
+ *                     unit: 3
+ *                     createdAt: "2023-04-27T13:14:36.820Z"
+ *                 createdAt: "2023-04-27T13:14:36.820Z"
+ *               message: "Course Added Successfully!"
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 error:
+ *                   type: object
+ *                   nullable: true
+ */
+
+// Add User GPA
 router.post("/add-gpa", async(req, res) => {
     let gpa = null;
 
@@ -558,6 +1711,87 @@ router.post("/add-gpa", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     GPA:
+ *       type: object
+ *       properties:
+ *         userId:
+ *           type: string
+ *           description: The ID of the user this GPA belongs to.
+ *         level:
+ *           type: string
+ *           description: The level of education.
+ *         institution:
+ *           type: string
+ *           description: The institution this GPA belongs to.
+ *         semester:
+ *           type: string
+ *           description: The semester this GPA belongs to.
+ *         courses:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The title of the course.
+ *               code:
+ *                 type: string
+ *                 description: The code of the course.
+ *               unit:
+ *                 type: number
+ *                 description: The credit unit of the course.
+ *               grade:
+ *                 type: number
+ *                 description: The grade obtained for the course.
+ *               symbol:
+ *                 type: string
+ *                 description: The symbol of the grade obtained for the course.
+ *               createdAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The date and time the course was added to the GPA.
+ *
+ * /users/user-gpa:
+ *   get:
+ *     summary: Get a user's GPA for a particular semester and level.
+ *     tags: [User]
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: level
+ *         required: true
+ *         description: The level of education.
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: semester
+ *         required: true
+ *         description: The semester.
+ *         schema:
+ *           type: number
+ *     responses:
+ *       200:
+ *         description: The user's GPA for the specified semester and level.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GPA'
+ *       400:
+ *         description: No GPA found for the specified user, semester, and level.
+ *       500:
+ *         description: Internal Server Error.
+ */
+
+// Get User GPA
 router.get("/user-gpa", async(req, res) => {
     try {
         let gpa = await gpaSchema.findOne({ userId: req.query.user_id, level: req.query.level, semester: req.query.semester });
@@ -570,6 +1804,44 @@ router.get("/user-gpa", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/{userId}/get-result/{resultId}:
+ *   get:
+ *     summary: Retrieve user's result by resultId
+ *     tags : [User]
+ *     description: Retrieve user's result by userId and resultId
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: resultId
+ *         required: true
+ *         description: ID of the result
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved user's result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 gpa:
+ *                   $ref: '#/components/schemas/GPA'
+ *       400:
+ *         description: No GPA found for the user and resultId
+ *       500:
+ *         description: Internal server error occurred
+ */
+
+
+// Get User Result
 router.get("/:userId/get-result/:resultId", async(req, res) => {
     try {
         let gpa = await gpaSchema.findOne({ userId: req.params.userId, _id: req.params.resultId });
@@ -582,6 +1854,104 @@ router.get("/:userId/get-result/:resultId", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/get-user-gpa/{userId}/{institutionType}:
+ *   get:
+ *     summary: Get all GPAs for a user at a specific type of institution   
+ *     tags : [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the user to get GPAs for
+ *       - in: path
+ *         name: institutionType
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The type of institution to get GPAs for (e.g. university, college, etc.)
+ *     responses:
+ *       200:
+ *         description: Returns an array of GPAs for the specified user at the specified institution type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 gpa:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/GPA'
+ *       400:
+ *         description: No GPAs found for the specified user and institution type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message explaining why no GPAs were found
+ *       500:
+ *         description: Internal server error occurred
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message explaining the internal server error
+ *                 error:
+ *                   type: string
+ *                   description: The error message from the server
+ * 
+ * components:
+ *   schemas:
+ *     GPA:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The unique identifier for the GPA
+ *         userId:
+ *           type: string
+ *           description: The ID of the user associated with the GPA
+ *         level:
+ *           type: string
+ *           description: The academic level of the user
+ *         semester:
+ *           type: string
+ *           description: The semester the GPA was obtained
+ *         institution:
+ *           type: string
+ *           description: The type of institution the user attended
+ *         courses:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: The code for the course
+ *               title:
+ *                 type: string
+ *                 description: The title of the course
+ *               symbol:
+ *                 type: string
+ *                 description: The symbol of the course
+ *               unit:
+ *                 type: number
+ *                 description: The number of units for the course
+ *               grade:
+ *                 type: number
+ *                 description: The grade obtained for the course
+ */
+
+// Get User Results Based on Selected Institution
 router.get("/get-user-gpa/:userId/:institutionType", async(req, res) => {
     const institution = req.params.institutionType;
     try {
@@ -595,6 +1965,39 @@ router.get("/get-user-gpa/:userId/:institutionType", async(req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/user-institution:
+ *   get:
+ *     summary: Get user institution logo
+ *     tags: 
+ *       - User
+ *     parameters:
+ *       - in: query
+ *         name: institution
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Institution name
+ *     responses:
+ *       '201':
+ *         description: Institution logo successfully retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 logo:
+ *                   type: string
+ *                   description: Institution logo URL
+ *       '400':
+ *         description: No institution found with the provided name
+ *       '500':
+ *         description: Internal server error
+ */
+
+// Get User Institution Logo
 router.get("/user-institution", async(req, res) => {
     try {
         let institution = await Institutions.findOne({ institution: req.query.institution });
@@ -604,6 +2007,72 @@ router.get("/user-institution", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/remove-course/{courseId}:
+ *   delete:
+ *     summary: Remove course based on the course ID
+ *     description: Removes a course from the GPA document based on the given course ID.
+ *     tags :   [User]
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the course to remove.
+ *       - in: body
+ *         name: body
+ *         description: User object and form data object.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             user:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *             formData:
+ *               type: object
+ *               properties:
+ *                 current_level:
+ *                   type: number
+ *                 semester:
+ *                   type: number
+ *     responses:
+ *       200:
+ *         description: Course deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 gpa:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Course not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+
+// Remove Course Based on the Course ID
 router.delete("/remove-course/:courseId", async(req, res) => {
     try {
         const { courseId } = req.params;
@@ -631,6 +2100,7 @@ router.delete("/remove-course/:courseId", async(req, res) => {
     }
 });
 
+// Get all Mentors
 router.get("/mentors", async(req, res) => {
     try { // check if user exists
         let mentors = await Mentors.find().sort({ createdAt: "desc" });
@@ -643,6 +2113,60 @@ router.get("/mentors", async(req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/mentor/{id}:
+ *   get:
+ *     summary: Get a mentor based on ID
+ *     description: Retrieve a mentor from the database based on the given ID.
+ *     tags :   [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor to retrieve.
+ *     responses:
+ *       200:
+ *         description: Mentor retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mentor:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     bio:
+ *                       type: string
+ *                     specialties:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     availability:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+// Get a Mentor based on ID
 router.get("/mentor/:id", async(req, res) => {
     try {
         const mentorId = req.params.id;
@@ -653,6 +2177,44 @@ router.get("/mentor/:id", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/faculty/{id}:
+ *   get:
+ *     summary: Get faculty name based on ID
+ *     description: Returns the title of a faculty based on the given ID.
+ *     tags : [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the faculty to retrieve the title for.
+ *     responses:
+ *       200:
+ *         description: Faculty name retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 facultyName:
+ *                   type: string
+ *                   description: The title of the faculty.
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: The error message.
+ */
+
+// Get a Facult Name
 router.get("/faculty/:id", async(req, res) => {
     try {
         const facultyId = req.params.id;
@@ -664,6 +2226,70 @@ router.get("/faculty/:id", async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/submit-rating/{mentorId}/{userId}:
+ *   post:
+ *     summary: Submit a rating for a mentor
+ *     description: Allows a user to submit a rating for a specific mentor.
+ *     tags : [User]
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the mentor to rate.
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the user submitting the rating.
+ *       - in: body
+ *         name: rating
+ *         description: The rating and review submitted by the user.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             review:
+ *               type: string
+ *             rating:
+ *               type: number
+ *               minimum: 1
+ *               maximum: 5
+ *     responses:
+ *       200:
+ *         description: Rating submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Mentor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+// User Submit Mentor trading
 router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
     try {
         const { mentorId, userId } = req.params;
@@ -704,6 +2330,92 @@ router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/confirm-schedule/{mentorId}/{userId}:
+ *   post:
+ *     summary: Confirm a meeting schedule with a mentor
+ *     tags :   [User]
+ *     description: Confirms a meeting schedule between a user and a mentor, and saves it in the database.
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor.
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user.
+ *       - in: body
+ *         name: body
+ *         description: Meeting schedule details.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             event_type:
+ *               type: string
+ *               description: Type of the event (e.g. meeting).
+ *             location:
+ *               type: object
+ *               properties:
+ *                 join_url:
+ *                   type: string
+ *                   description: URL to join the meeting.
+ *                 status:
+ *                   type: string
+ *                   description: Status of the meeting (e.g. 'pending', 'approved').
+ *                 type:
+ *                   type: string
+ *                   description: Type of the meeting (e.g. 'online', 'in-person').
+ *             name:
+ *               type: string
+ *               description: Name of the event.
+ *             start_time:
+ *               type: string
+ *               format: date-time
+ *               description: Start time of the event in ISO format.
+ *             end_time:
+ *               type: string
+ *               format: date-time
+ *               description: End time of the event in ISO format.
+ *             status:
+ *               type: string
+ *               description: Status of the schedule (e.g. 'confirmed', 'cancelled').
+ *             created_at:
+ *               type: string
+ *               format: date-time
+ *               description: Time when the schedule was created in ISO format.
+ *             updated_at:
+ *               type: string
+ *               format: date-time
+ *               description: Time when the schedule was last updated in ISO format.
+ *     responses:
+ *       200:
+ *         description: Meeting schedule confirmed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+// Confirm Meeting Schedule
 router.post("/confirm-schedule/:mentorId/:userId", async(req, res) => {
     try {
         const { mentorId, userId } = req.params;
@@ -745,6 +2457,84 @@ router.post("/confirm-schedule/:mentorId/:userId", async(req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/schedules/{mentorId}/{userId}:
+ *   get:
+ *     summary: Get confirmed meeting schedules for a specific mentor and user
+ *     tags :   [User]
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         required: true
+ *         description: ID of the mentor
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 schedules:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       userId:
+ *                         type: string
+ *                       mentorId:
+ *                         type: string
+ *                       eventType:
+ *                         type: string
+ *                       eventName:
+ *                         type: string
+ *                       startTime:
+ *                         type: string
+ *                         format: date-time
+ *                       endTime:
+ *                         type: string
+ *                         format: date-time
+ *                       location:
+ *                         type: object
+ *                         properties:
+ *                           joinUrl:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           type:
+ *                             type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                       status:
+ *                         type: string
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Server Error
+ */
+
+// Get Meeting Schedule Confirmed based on Mentor
 router.get('/schedules/:mentorId/:userId', async(req, res) => {
     try {
         const { userId, mentorId } = req.params;
@@ -757,6 +2547,87 @@ router.get('/schedules/:mentorId/:userId', async(req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/favorite-mentor/{mentorId}/{userId}:
+ *   post:
+ *     summary: Add a mentor as a favorite mentor for a user
+ *     tags :   [User]
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the mentor to add to favorites
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the user who wants to add a mentor to favorites
+ *     requestBody:
+ *       required: false
+ *       description: Request body is not required.
+ *     responses:
+ *       '200':
+ *         description: A successful response, indicating that the mentor has been added to the user's favorites successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object.
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       description: The ID of the user.
+ *                     username:
+ *                       type: string
+ *                       description: The username of the user.
+ *                     email:
+ *                       type: string
+ *                       description: The email of the user.
+ *                     favoriteMentors:
+ *                       type: array
+ *                       description: Array of favorite mentors.
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           mentor:
+ *                             type: string
+ *                             description: The ID of the favorite mentor.
+ *                           dateAdded:
+ *                             type: string
+ *                             description: The date when the mentor was added to favorites.
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the mentor has been added to the user's favorites successfully.
+ *       '404':
+ *         description: The requested user was not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating that the requested user was not found.
+ *       '500':
+ *         description: An error occurred while adding the mentor to the user's favorites.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating that an error occurred while adding the mentor to the user's favorites.
+ */
+
+// Add Mentor as Favorite Mentors
 router.post('/favorite-mentor/:mentorId/:userId', async(req, res) => {
     const { mentorId, userId } = req.params;
 
@@ -785,6 +2656,66 @@ router.post('/favorite-mentor/:mentorId/:userId', async(req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/favorite-mentor/{mentorId}/{userId}:
+ *   delete:
+ *     summary: Remove mentor from user's favorite mentors
+ *     tags  :  [User]
+ *     description: Removes the specified mentor from the list of favorite mentors of the user with the given ID.
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         required: true
+ *         description: The ID of the mentor to be removed from favorites.
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user whose favorite mentors list should be updated.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The updated user object with the mentor removed from favorites.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *                 message:
+ *                   type: string
+ *                   description: A message confirming that the mentor was removed from favorites.
+ *                   example: Mentor Removed from Favorites
+ *       404:
+ *         description: Either the specified user or mentor was not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating what went wrong.
+ *                   example: User not found
+ *       500:
+ *         description: An error occurred while processing the request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred.
+ *                   example: Server error
+ */
+
+// Remove Mentor as Favorite Mentor
 router.delete('/favorite-mentor/:mentorId/:userId', async(req, res) => {
     const { mentorId, userId } = req.params;
 
@@ -813,8 +2744,59 @@ router.delete('/favorite-mentor/:mentorId/:userId', async(req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/faculties:
+ *   get:
+ *     summary: Get all faculties
+ *     tags : [User]
+ *     responses:
+ *       200:
+ *         description: Returns a list of all faculties
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 faculties:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MentorFaculty'
+ *       400:
+ *         description: No faculty found
+ *       500:
+ *         description: Internal server error
+ */
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     MentorFaculty:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The ID of the faculty.
+ *         name:
+ *           type: string
+ *           description: The name of the faculty.
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time the faculty was created.
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time the faculty was last updated.
+ *       required:
+ *         - _id
+ *         - name
+ *         - createdAt
+ *         - updatedAt
+ */
+// Get all Faculties
 router.get("/faculties", async(req, res) => {
-    try { // check if user exists
+    try {
         let faculties = await MentorFaculty.find().sort({ createdAt: "desc" });
         if (!faculties) {
             return res.status(400).send({ message: "No Faculty Found" });
@@ -824,7 +2806,6 @@ router.get("/faculties", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
-
 
 
 module.exports = router;
