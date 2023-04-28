@@ -67,30 +67,32 @@ router.get('/', function(req, res) {
 
 
 router.get("/:id/verify/:token", async(req, res) => {
-    console.log(req.params.id)
-
-    try { // check if user exists
+    try {
         const user = await User.findOne({ _id: req.params.id });
-        if (!user)
+        if (!user) {
             return res.status(404).send({ message: "This User Does not Exists" });
-
-
-        // check if token is valid
-        const token = await Token.findOne({ userId: user._id, token: req.params.token });
-        if (!token)
-            return res.status(404).send({ message: "Error: Invalid Link" });
-
-
-        // update user verified status
-        await User.updateOne({ _id: user._id, verified: true });
-        if (token) { // check if token exists
-            await token.deleteOne();
         }
+
+        const token = await Token.findOne({ userId: user._id, token: req.params.token });
+        if (!token) {
+            return res.status(404).send({ message: "Error: Invalid Link" });
+        }
+
+        await User.updateOne({
+            _id: user._id
+        }, { verified: true });
+        await token.deleteOne();
+
         const updatedUser = await User.findOne({ _id: user._id });
 
         res.status(200).send({ user: updatedUser, message: "Email Verified Successfully" });
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        if (error.code === 11000) {
+            return res.status(400).send({ message: "You have already verified your email" });
+        }
+
+        console.error(error);
+        res.status(500).send({ message: "Internal Server Error" });
     }
 });
 

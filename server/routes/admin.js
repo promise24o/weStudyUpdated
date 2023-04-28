@@ -525,7 +525,7 @@ router.post("/add-community-center-post", upload5.single("file"), async(req, res
             brief: data.brief,
             editorContent: data.editorContent,
             read_time: data.read_time,
-            slug: data.slug,
+            slug: data.slug
         });
 
         // Save the Post to the database
@@ -537,6 +537,42 @@ router.post("/add-community-center-post", upload5.single("file"), async(req, res
         res.status(500).send({ message: "Internal Server Error", error });
     }
 });
+
+router.put("/update-community-center-post/:id", upload5.single("file"), async(req, res) => {
+    try {
+        const postId = req.params.id;
+        const data = JSON.parse(req.body.data);
+
+        let updatedPost = {
+            title: data.title,
+            category: data.category,
+            brief: data.brief,
+            editorContent: data.editorContent,
+            read_time: data.read_time,
+            slug: data.slug
+        };
+
+        // Check if a file was uploaded
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path);
+            updatedPost.banner_image = result.url;
+        }
+
+        // Update the post in the database
+        const filter = {
+            _id: postId
+        };
+        const options = {
+            new: true
+        };
+        const updated = await CommunityCenter.findByIdAndUpdate(filter, updatedPost, options);
+
+        res.status(200).send({ message: "Post Updated Successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error });
+    }
+});
+
 
 router.post("/add-mentor", upload2.single("file"), async(req, res) => {
     if (!req.file) {
@@ -664,6 +700,50 @@ router.get("/mentor/:id", async(req, res) => {
         res.status(200).json({ mentor });
     } catch (err) {
         res.status(500).json({ message: err.message });
+    }
+});
+
+router.get("/cc-post/:id", async(req, res) => {
+    try {
+        const postId = req.params.id;
+        const post = await CommunityCenter.findOne({ _id: postId });
+        res.status(200).json({ post });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Admin Delete Community Center Post
+router.delete("/remove-cc-post/:postId", async(req, res) => {
+    const { postId } = req.params;
+    try {
+        const post = await CommunityCenter.findOneAndDelete({ _id: postId });
+        if (!post) {
+            return res.status(404).send({ message: "Post not found" });
+        }
+        // Retrieve all the posts and send them as a response
+        const posts = await CommunityCenter.find();
+        res.send({ message: "Post deleted successfully", posts: posts });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
+    }
+});
+
+// Admin Delete Community Center Post
+router.delete("/remove-mentor/:mentorId", async(req, res) => {
+    const { mentorId } = req.params;
+    try {
+        const mentor = await Mentors.findOneAndDelete({ _id: mentorId });
+        if (!mentor) {
+            return res.status(404).send({ message: "Mentor not found" });
+        }
+        // Retrieve all the posts and send them as a response
+        const mentors = await Mentors.find();
+        res.send({ message: "Mentor Deleted Successfully", mentors: mentors });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
     }
 });
 
