@@ -8,8 +8,9 @@ const multer = require("multer");
 const { User, validate } = require("../models/Users");
 const { ScholarshipCategory, Scholarship } = require("../models/Scholarships");
 const { CourseCategory, Course } = require("../models/Courses");
-const { MentorFaculty, Mentors } = require("../models/Mentors");
+const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
 const { CommunityCategory, CommunityCenter } = require("../models/CommunityCenter");
+
 
 const Admin = require("../models/Admin");
 const Institutions = require("../models/Institutions");
@@ -153,6 +154,18 @@ router.get("/users-list", auth2, async(req, res) => {
             return res.status(400).send({ message: "No Users Found" });
         }
         res.status(200).send({ users: users });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
+router.get("/schedules-list", auth2, async(req, res) => {
+    try { // check if scheuldes exists
+        let schedules = await User.find().sort({ createdAt: "desc" });
+        if (!schedules) {
+            return res.status(400).send({ message: "No Schedules Found" });
+        }
+        res.status(200).send({ schedules: schedules });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }

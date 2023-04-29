@@ -736,4 +736,27 @@ router.get('/community-center/:slug', async(req, res) => {
 });
 
 
+router.get('/related-cc-posts/:category/:id', async(req, res) => {
+    try {
+        const { category, id } = req.params;
+
+        const posts = await CommunityCenter.find({
+            category: category,
+            _id: {
+                $ne: id
+            }
+        }).limit(3).sort({ createdAt: "desc" });
+
+        if (!posts.length) {
+            return res.status(404).json({ error: 'Posts not found' });
+        }
+        res.json({ posts });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+
 module.exports = router;

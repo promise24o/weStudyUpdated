@@ -477,6 +477,43 @@ router.get('/user/:token', auth, async(req, res) => {
     }
 });
 
+// Route to get New Password for User
+router.post('/request-password', async(req, res) => {
+    try {
+        let user = await User.findOne({ email: req.body.email });
+        if (!user)
+            return res.status(404).send({ message: "A User with this Email does not Exists!" });
+
+
+
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?';
+        const randomPassword = Array.from({
+            length: 12
+        }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+        const salt = await bcrypt.genSalt(Number(process.env.SALT));
+        const hashPassword = await bcrypt.hash(randomPassword, salt);
+
+        // Update user's password
+        user.password = hashPassword;
+        await user.save();
+
+        // construct the file path using the path.join() method
+        const filePath = path.join(__dirname, "..", "emails", "reset_password.ejs");
+
+        // read the HTML content from a file
+        let template = fs.readFileSync(filePath, "utf8");
+
+        // compile the EJS template with the url variable
+        let html = ejs.render(template, { password: randomPassword });
+
+        await sendEmail(user.email, "Password Reset", html);
+
+        res.status(201).send({ message: "New Password Sent. Check  your Email" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
 
 const validate = (data) => {
     const schema = Joi.object({ email: Joi.string().email().required().label("Email"), password: Joi.string().required().label("Password") });

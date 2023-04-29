@@ -1580,7 +1580,7 @@ router.get("/user-activities", async(req, res) => {
 
 /**
  * @swagger
- * /users/gpa/add-gpa:
+ * /users/add-gpa:
  *   post:
  *     summary: Add or update user GPA
  *     tags: [User]
