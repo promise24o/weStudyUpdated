@@ -487,19 +487,19 @@ router.post("/change-password", async(req, res) => {
  */
 
 // Route to upload user avatar
-router.post("/upload-avatar", upload.single("file"), async(req, res) => {
+router.post("/upload-avatar/:userId", upload.single("file"), async(req, res) => {
+    const userId = req.params.userId;
     try {
         if (!req.file) {
             return res.status(400).json({ error: "No photo uploaded" });
         }
 
         // Update the user's photo in the database
-        const user = JSON.parse(req.body.user);
 
         const result = await cloudinary.uploader.upload(req.file.path);
 
         const updatedUser = await User.findOneAndUpdate({
-            _id: user._id
+            _id: userId
         }, {
             $set: {
                 profilePhoto: result.secure_url
