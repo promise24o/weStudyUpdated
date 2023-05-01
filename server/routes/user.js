@@ -439,26 +439,26 @@ router.post("/change-password", async(req, res) => {
 
 /**
  * @swagger
- * /users/upload-avatar:
+ * /upload-avatar/{userId}:
  *   post:
- *     tags:
- *       - User
- *     summary: Uploads user's avatar photo
- *     consumes:
- *       - multipart/form-data
+ *     summary: Upload user avatar
+ *     tags : [User]
+ *     description: Upload user's avatar photo and update the user's profile in the database
  *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user whose avatar photo is being uploaded
+ *         schema:
+ *           type: string
  *       - in: formData
  *         name: file
  *         type: file
- *         description: The file to upload. Only image files are allowed.
- *       - in: formData
- *         name: user
- *         type: string
  *         required: true
- *         description: The user object as a JSON string.
+ *         description: The image file to upload (JPEG, PNG or GIF)
  *     responses:
  *       200:
- *         description: User's profile photo uploaded successfully
+ *         description: The updated user object with a message indicating that the photo was uploaded successfully
  *         content:
  *           application/json:
  *             schema:
@@ -468,11 +468,17 @@ router.post("/change-password", async(req, res) => {
  *                   $ref: '#/components/schemas/User'
  *                 message:
  *                   type: string
- *                   description: A success message
  *       400:
- *         description: No photo uploaded or uploaded file is not an image
+ *         description: No photo uploaded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
  *       500:
- *         description: Internal server error
+ *         description: Internal Server Error
  *         content:
  *           application/json:
  *             schema:
@@ -480,10 +486,8 @@ router.post("/change-password", async(req, res) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   description: An error message
  *                 error:
- *                   type: object
- *                   description: The error object
+ *                   type: string
  */
 
 // Route to upload user avatar
