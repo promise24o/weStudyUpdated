@@ -439,7 +439,7 @@ router.post("/change-password", async(req, res) => {
 
 /**
  * @swagger
- * /upload-avatar/{userId}:
+ * /users/upload-avatar/{userId}:
  *   post:
  *     summary: Upload user avatar
  *     tags : [User]
