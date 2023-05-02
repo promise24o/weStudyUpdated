@@ -18,6 +18,8 @@ const Activity = require("../models/Activities");
 const Institutions = require("../models/Institutions");
 const gpaSchema = require("../models/Gpa");
 const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
+const Advert = require("../models/Adverts");
+
 
 const multer = require("multer");
 
@@ -2812,6 +2814,20 @@ router.get("/faculties", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
+// Get all Averts
+router.get("/adverts", async(req, res) => {
+    try {
+        let ads = await Advert.find().sort({ createdAt: "desc" });
+        if (!ads) {
+            return res.status(400).send({ message: "No Advert Found" });
+        }
+        res.status(200).send({ adverts: ads });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
 
 
 module.exports = router;

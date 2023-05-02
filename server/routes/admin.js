@@ -10,6 +10,7 @@ const { ScholarshipCategory, Scholarship } = require("../models/Scholarships");
 const { CourseCategory, Course } = require("../models/Courses");
 const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
 const { CommunityCategory, CommunityCenter } = require("../models/CommunityCenter");
+const Advert = require("../models/Adverts");
 
 
 const Admin = require("../models/Admin");
@@ -75,6 +76,18 @@ const storage5 = new CloudinaryStorage({
     }
 });
 
+// Configure Multer to use Cloudinary as the storage engine
+const storage6 = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "/adverts",
+        format: async(req, file) => "png",
+        public_id: (req, file) => `adverts-${
+            Date.now ()
+        }`
+    }
+});
+
 // Create a multer instance with the storage engine and limits (if necessary)
 const upload4 = multer({
     storage: storage4,
@@ -132,6 +145,20 @@ const upload3 = multer({
 // Create a multer instance with the storage engine and limits (if necessary)
 const upload5 = multer({
     storage: storage5,
+    limits: {
+        fileSize: 800 * 800 * 5,
+        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+    },
+    // Resize the uploaded image to 800x800
+    resize: {
+        width: 800,
+        height: 800
+    }
+});
+
+// Create a multer instance with the storage engine and limits (if necessary)
+const upload6 = multer({
+    storage: storage6,
     limits: {
         fileSize: 800 * 800 * 5,
         fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
@@ -459,6 +486,93 @@ router.post("/add-scholarship", upload.single("file"), async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error });
     }
 });
+
+router.post("/advert", upload6.single("file"), async(req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: "No photo uploaded" });
+    }
+
+    const data = JSON.parse(req.body.data);
+
+    // Upload the banner_image to cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path);
+
+    try { // Create a new scholarship
+        const advert = new Advert({ link: data.link, status: data.status, banner_image: result.url });
+
+        // Save the scholarship to the database
+        await advert.save();
+
+        const advertList = await Advert.find({}).sort({ createdAt: "desc" });
+
+        res.status(201).send({ adverts: advertList, message: "Advert Created Successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error });
+    }
+});
+
+router.get("/adverts", async(req, res) => {
+    try { // check if ads exists
+        let ads = await Advert.find().sort({ createdAt: "desc" });
+        if (!ads) {
+            return res.status(400).send({ message: "No Adverts Found" });
+        }
+        res.status(200).send({ adverts: ads });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
+router.put("/advert/:adsId", upload5.single("file"), async(req, res) => {
+    const { adsId } = req.params;
+    const data = JSON.parse(req.body.data);
+
+    try {
+        let updatedAdvert = {
+            link: data.link,
+            status: data.status,
+        };
+
+        // Check if a file was uploaded
+        if (req.file) {
+            const result = await cloudinary.uploader.upload(req.file.path);
+            updatedAdvert.banner_image = result.url;
+        }
+
+        // Update the Ads in the database
+        const filter = {
+            _id: adsId
+        };
+
+        const options = {
+            new: true
+        };
+        await Advert.findByIdAndUpdate(filter, updatedAdvert, options);
+        const advertList = await Advert.find({}).sort({ createdAt: "desc" });
+
+        res.status(200).send({ adverts: advertList, message: "Advert Updated Successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+
+});
+
+router.delete("/advert/:adsId", async(req, res) => {
+    const { adsId } = req.params;
+
+    try {
+        const ads = await Advert.findOneAndDelete({ _id: adsId });
+        if (!ads) {
+            return res.status(404).send({ message: "Advert not found" });
+        }
+        const advertList = await Advert.find();
+        res.send({ message: "Advert Deleted Successfully", adverts: advertList });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
+    }
+});
+
 
 router.post("/add-community-category", upload4.single("file"), async(req, res) => {
     if (!req.file) {
