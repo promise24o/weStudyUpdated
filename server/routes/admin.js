@@ -632,6 +632,23 @@ router.post("/add-course", upload3.single("file"), async(req, res) => {
     }
 });
 
+router.delete("/course/:courseId", async(req, res) => {
+    const { courseId } = req.params;
+
+    try {
+        const courses = await Course.findOneAndDelete({ _id: courseId });
+        if (!courses) {
+            return res.status(404).send({ message: "Course not found" });
+        }
+        const courseList = await Course.find().sort({ createdAt: "desc" });
+        res.send({ message: "Course Deleted Successfully", courses: courseList });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
+    }
+});
+
+
 
 router.post("/add-community-center-post", upload5.single("file"), async(req, res) => {
     if (!req.file) {
