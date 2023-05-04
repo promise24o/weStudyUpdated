@@ -213,6 +213,9 @@ router.get("/institutions", async(req, res) => {
  *               current_level:
  *                 type: string
  *                 description: Current level of education
+ *               faculty:
+ *                 type: string
+ *                 description: Faculty of study
  *               department:
  *                 type: string
  *                 description: Department of study
@@ -222,8 +225,17 @@ router.get("/institutions", async(req, res) => {
  *               study_mode:
  *                 type: string
  *                 description: Mode of study
- *               user:
- *                 $ref: '#/components/schemas/User'
+ *               userId:
+ *                 type: string
+ *                 description: User ID
+ *             required:
+ *               - type
+ *               - institution
+ *               - current_level
+ *               - department
+ *               - course_of_study
+ *               - study_mode
+ *               - userId
  *     responses:
  *       200:
  *         description: User education information updated successfully
@@ -2833,7 +2845,6 @@ router.get("/adverts", async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
-
 
 
 module.exports = router;
