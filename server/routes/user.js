@@ -292,7 +292,7 @@ router.post("/update-education-info", async(req, res) => {
 
 /**
  * @swagger
- * /api/users/update-personal-info:
+ * /users/update-personal-info:
  *   post:
  *     summary: Update personal information of a user
  *     tags:
