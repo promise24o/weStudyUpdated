@@ -252,18 +252,20 @@ router.post("/update-education-info", async(req, res) => {
             type,
             institution,
             current_level,
+            faculty,
             department,
             course_of_study,
             study_mode,
-            user
+            userId
         } = req.body;
         const updatedUser = await User.findOneAndUpdate({
-            _id: user._id
+            _id: userId
         }, {
             $set: {
                 "education.institution_type": type,
                 "education.institution": institution,
                 "education.current_level": current_level,
+                "education.faculty": faculty,
                 "education.department": department,
                 "education.course_of_study": course_of_study,
                 "education.study_mode": study_mode
@@ -278,7 +280,7 @@ router.post("/update-education-info", async(req, res) => {
 
 /**
  * @swagger
- * /users/update-personal-info:
+ * /api/users/update-personal-info:
  *   post:
  *     summary: Update personal information of a user
  *     tags:
@@ -298,10 +300,13 @@ router.post("/update-education-info", async(req, res) => {
  *                 type: string
  *               gender:
  *                 type: string
+ *               userId:
+ *                 type: string
  *             example:
  *               city: Lagos
  *               contact_address: 123 Main St, Ikeja
  *               gender: Male
+ *               userId: 1234567890abcdef
  *     responses:
  *       200:
  *         description: Personal information updated successfully
@@ -339,11 +344,12 @@ router.post("/update-education-info", async(req, res) => {
  *               error: <error message>
  */
 
+
 router.post("/update-personal-info", async(req, res) => {
     try {
-        const { city, contact_address, gender, user } = req.body;
+        const { city, contact_address, gender, userId } = req.body;
         const updatedUser = await User.findOneAndUpdate({
-            _id: user._id
+            _id: userId
         }, {
             $set: {
                 "personal.city": city,

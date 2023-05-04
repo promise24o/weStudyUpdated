@@ -45,6 +45,9 @@ const userSchema = new mongoose.Schema({
         current_level: {
             type: String
         },
+        faculty: {
+            type: String
+        },
         department: {
             type: String
         },
