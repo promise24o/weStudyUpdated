@@ -19,9 +19,10 @@ const Institutions = require("../models/Institutions");
 const gpaSchema = require("../models/Gpa");
 const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
 const Advert = require("../models/Adverts");
-
-
 const multer = require("multer");
+const Agenda = require('agenda');
+const PDFDocument = require('pdfkit');
+
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q" });
@@ -2846,5 +2847,61 @@ router.get("/adverts", async(req, res) => {
     }
 });
 
+// Set up Agenda job scheduler
+const agenda = new Agenda({
+    db: {
+        address: process.env.DATABASE_URL
+    }
+});
+
+// Set up Agenda job scheduler
+agenda.define('generate-result-pdf', async(job) => {
+    const { userId, level, semester } = job.attrs.data;
+    console.log(userId)
+        // Get user's data from the database
+    const user = await User.findById(userId);
+    // Generate PDF file using PDFKit
+    const doc = new PDFDocument();
+    const filePath = path.join(__dirname, "..", 'results', `results_${
+        user.firstname
+    }.pdf`);
+
+    doc.pipe(fs.createWriteStream(filePath));
+    doc.text(`Name: ${
+        user.firstname
+    }`);
+    doc.text(`Level: ${"200"}`);
+    doc.text(`Semester: ${"First Semester"}`);
+    doc.end();
+    // Add this line to properly close the stream
+    // Save PDF file to database
+    // const pdfData = fs.readFileSync(filePath);
+    // await User.findByIdAndUpdate(userId, {
+    //     $push: {
+    //         pdfFiles: {
+    //             data: pdfData,
+    //             name: filePath
+    //         }
+    //     }
+    // });
+});
+
+
+// Generating PDF Result
+router.post("/generate-pdf-result", async(req, res) => {
+    try {
+        const { userId, inputs } = req.body;
+        const level = inputs.level;
+        const semester = inputs.semester;
+        // Schedule job to generate PDF
+        await agenda.schedule('in 1 minute', 'generate-result-pdf', { userId, level, semester });
+        res.status(200).send({ message: 'PDF generation scheduled. Check back later to download the file.' });
+    } catch (error) {
+        console.log(error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
+agenda.start();
 
 module.exports = router;

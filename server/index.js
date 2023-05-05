@@ -10,6 +10,7 @@ const publicRoutes = require('./routes/public');
 var useragent = require('express-useragent');
 const swaggerUI = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc')
+const path = require('path');
 
 
 
@@ -65,6 +66,14 @@ app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(specs));
 
 app.get('/', function(req, res) {
     res.send(req.useragent);
+});
+
+app.set('views', __dirname + '/views');
+app.set('view engine', 'ejs');
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/result', (req, res) => {
+    res.render('result_mockup', { title: 'My Website' });
 });
 
 

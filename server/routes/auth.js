@@ -125,9 +125,6 @@ router.post("/login", async(req, res) => {
         if (error)
             return res.status(400).send({ message: error.details[0].message });
 
-
-
-        console.log(req.body);
         const user = await User.findOne({ email: req.body.email });
         const admin = await Admin.findOne({ email: req.body.email });
 
