@@ -10,6 +10,9 @@ const crypto = require("crypto");
 const ejs = require("ejs");
 const fs = require("fs");
 const path = require("path");
+const puppeteer = require('puppeteer');
+const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+
 
 // Models
 const { User, validate } = require("../models/Users");
@@ -21,7 +24,6 @@ const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
 const Advert = require("../models/Adverts");
 const multer = require("multer");
 const Agenda = require('agenda');
-const PDFDocument = require('pdfkit');
 
 
 // Configure Cloudinary credentials
@@ -40,6 +42,25 @@ const storage = new CloudinaryStorage({
 // Create a multer instance with the storage engine and limits (if necessary)
 const upload = multer({
     storage: storage,
+    limits: {
+        fileSize: 1024 * 1024 * 5,
+        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+    }
+});
+
+// Configure Multer to use Cloudinary as the storage engine
+const storage2 = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "/results",
+        format: async(req, file) => "png",
+        public_id: (req, file) => `user-${1}`
+    }
+});
+
+// Create a multer instance with the storage engine and limits (if necessary)
+const upload2 = multer({
+    storage: storage2,
     limits: {
         fileSize: 1024 * 1024 * 5,
         fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
@@ -2854,54 +2875,258 @@ const agenda = new Agenda({
     }
 });
 
-// Set up Agenda job scheduler
-agenda.define('generate-result-pdf', async(job) => {
-    const { userId, level, semester } = job.attrs.data;
-    console.log(userId)
-        // Get user's data from the database
-    const user = await User.findById(userId);
-    // Generate PDF file using PDFKit
-    const doc = new PDFDocument();
-    const filePath = path.join(__dirname, "..", 'results', `results_${
-        user.firstname
-    }.pdf`);
+// agenda.define('generate-result-pdf', async(job) => {
+//     const { userId, level, semester } = job.attrs.data;
+//     console.log(userId);
 
-    doc.pipe(fs.createWriteStream(filePath));
-    doc.text(`Name: ${
-        user.firstname
-    }`);
-    doc.text(`Level: ${"200"}`);
-    doc.text(`Semester: ${"First Semester"}`);
-    doc.end();
-    // Add this line to properly close the stream
-    // Save PDF file to database
-    // const pdfData = fs.readFileSync(filePath);
-    // await User.findByIdAndUpdate(userId, {
-    //     $push: {
-    //         pdfFiles: {
-    //             data: pdfData,
-    //             name: filePath
-    //         }
-    //     }
-    // });
+//     // Get user's data from the database
+//     const user = await User.findById(userId);
+
+//     // Compile EJS template with user's data
+//     const html = await ejs.renderFile(path.join(__dirname, '..', 'views', 'result_mockup.ejs'), {
+//         user,
+//         level,
+//         semester,
+//     });
+
+//     // Launch Puppeteer
+//     const browser = await puppeteer.launch();
+//     const page = await browser.newPage();
+
+//     // Set the HTML content of the page to the EJS-compiled HTML
+//     await page.setContent(html);
+
+
+//     // Generate PDF file using Puppeteer
+//     const filePath = path.join(__dirname, '..', 'results', `Result_${user.firstname}.pdf`);
+//     await page.pdf({
+//         path: filePath,
+//         format: 'A4',
+//         printBackground: true,
+//         pageOptions: {
+//             width: '1366px',
+//             height: '768px'
+//         },
+//         margin: {
+//             top: '1in',
+//             bottom: '1in'
+//         },
+//         displayHeaderFooter: true,
+//         preferCSSPageSize: true,
+//         scale: 1
+//     });
+
+//     // Save PDF file to database
+//     //   const pdfData = fs.readFileSync(filePath);
+//     //   await User.findByIdAndUpdate(userId, {
+//     //     $push: {
+//     //       pdfFiles: {
+//     //         data: pdfData,
+//     //         name: filePath
+//     //       }
+//     //     }
+//     //   });
+
+//     // Close the browser
+//     await browser.close();
+// });
+
+agenda.define('generate-result-pdf', async(job) => {
+    const {
+        firstname,
+        lastname,
+        education,
+        profilePhoto,
+        logo,
+        level,
+        semester,
+        gpa
+    } = job.attrs.data;
+
+    // Compile EJS template with user's data
+    const html = await ejs.renderFile(path.join(__dirname, '..', 'views', 'result_mockup.ejs'), {
+        firstname,
+        lastname,
+        education,
+        profilePhoto,
+        logo,
+        level,
+        semester,
+        gpa
+    });
+
+    // Launch Puppeteer
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
+    // Set the HTML content of the page to the EJS-compiled HTML
+    await page.setContent(html);
+
+    const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+
+    // Generate an image of the page using Puppeteer
+    const screenshotPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+
+    // Convert the image to a PDF
+    const pdfPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
+    const pngImageBytes = fs.readFileSync(screenshotPath);
+    const pdfDoc = await PDFDocument.create();
+    const pdfPage = pdfDoc.addPage();
+    const pngImage = await pdfDoc.embedPng(pngImageBytes);
+    const { width, height } = pngImage.scale(1);
+    pdfPage.setSize(width, height);
+    pdfPage.drawImage(pngImage, {
+        x: 0,
+        y: 0,
+        width,
+        height
+    });
+    const pdfBytes = await pdfDoc.save();
+    fs.writeFileSync(pdfPath, pdfBytes);
+
+    // Close the browser
+    await browser.close();
 });
 
 
 // Generating PDF Result
+// router.post("/generate-pdf-result", async(req, res) => {
+//     try {
+//         const { userId, inputs } = req.body;
+//         const level = inputs.level;
+//         const semester = inputs.semester;
+//         let gpa;
+
+//         if (semester === "all") {
+//             gpa = await gpaSchema.find({ level, userId: userId });
+//         } else {
+//             gpa = await gpaSchema.find({ semester, level, userId: userId });
+//         }
+
+
+//         if (!gpa || gpa.length === 0) {
+//             return res.status(404).send({ message: "You do not have a Result for this Level and Semester" });
+//         }
+
+//         const { education, firstname, lastname, profilePhoto } = await User.findById(userId);
+
+//         const { logo } = await Institutions.findOne({
+//             institution: education.institution
+//         }, { logo: 1 });
+
+//         // Schedule job to generate PDF
+//         // await agenda.schedule('in 1 minute', 'generate-result-pdf', { userId, level, semester });
+
+//         await agenda.now('generate-result-pdf', {
+//             firstname,
+//             lastname,
+//             education,
+//             profilePhoto,
+//             logo,
+//             level,
+//             semester,
+//             gpa
+//         });
+
+
+//         res.status(200).send({ message: 'Result Generated Successfully. Click the Link to Download the Result' });
+
+//     } catch (error) {
+//         console.log(error);
+//         res.status(500).send({ message: 'Internal Server Error' });
+//     }
+// });
+
+
 router.post("/generate-pdf-result", async(req, res) => {
     try {
         const { userId, inputs } = req.body;
         const level = inputs.level;
         const semester = inputs.semester;
-        // Schedule job to generate PDF
-        await agenda.schedule('in 1 minute', 'generate-result-pdf', { userId, level, semester });
-        res.status(200).send({ message: 'PDF generation scheduled. Check back later to download the file.' });
+        let gpa;
+
+        if (semester === "all") {
+            gpa = await gpaSchema.find({ level, userId: userId });
+        } else {
+            gpa = await gpaSchema.find({ semester, level, userId: userId });
+        }
+
+        if (!gpa || gpa.length === 0) {
+            return res.status(404).send({ message: "You do not have a Result for this Level and Semester" });
+        }
+
+        const { education, firstname, lastname, profilePhoto } = await User.findById(userId);
+
+        const { logo } = await Institutions.findOne({
+            institution: education.institution
+        }, { logo: 1 });
+
+        const html = await ejs.renderFile(path.join(__dirname, '..', 'views', 'result_mockup.ejs'), {
+            firstname,
+            lastname,
+            education,
+            profilePhoto,
+            logo,
+            level,
+            semester,
+            gpa
+        });
+
+        // Launch Puppeteer
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+
+        // Set the HTML content of the page to the EJS-compiled HTML
+        await page.setContent(html);
+
+        // const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+
+        // Generate an image of the page using Puppeteer
+        const screenshotPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.jpg`);
+        await page.setViewport({
+            width: 1200, // increase the width
+            height: 1600, // increase the height
+            deviceScaleFactor: 2 // Increase pixel density
+        });
+        await page.screenshot({ path: screenshotPath, fullPage: true, type: 'jpeg', quality: 100 });
+
+        // Convert the image to a PDF
+        // const pdfPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
+        // const pngImageBytes = fs.readFileSync(screenshotPath);
+        // const pdfDoc = await PDFDocument.create();
+        // const pdfPage = pdfDoc.addPage();
+        // const pngImage = await pdfDoc.embedPng(pngImageBytes);
+        // const { width, height } = pngImage.scale(1);
+        // pdfPage.setSize(width, height);
+        // pdfPage.drawImage(pngImage, {
+        //     x: 0,
+        //     y: 0,
+        //     width,
+        //     height
+        // });
+        // const pdfBytes = await pdfDoc.save();
+        // fs.writeFileSync(pdfPath, pdfBytes);
+
+        // // Close the browser
+        // await browser.close();
+
+        const folderName = 'results';
+        const uploadResult = await cloudinary.uploader.upload(screenshotPath, { folder: folderName });
+
+        const imageUrl = uploadResult.secure_url;
+
+        const fileName = `Result_${firstname}_Level_${level}_Semester_${semester}.jpeg`
+
+        res.status(200).send({ url: imageUrl, filename: fileName, message: 'Result Generated Successfully. Click the Link to Download the Result' });
+
     } catch (error) {
         console.log(error);
         res.status(500).send({ message: 'Internal Server Error' });
     }
 });
 
-agenda.start();
+
+// agenda.start();
 
 module.exports = router;
