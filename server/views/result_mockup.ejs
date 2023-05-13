@@ -141,7 +141,8 @@
                         <div class="col-lg-6">
                             <div class="card-container">
                                 <span class="pro">ACTIVE</span>
-                                <img src="<%= profilePhoto %>" alt="user" />
+                                <img src="<%= profilePhoto ? profilePhoto : 'https://res.cloudinary.com/dbb2dkawt/image/upload/v1683819056/user_avatar_e02nii.png' %>" alt="Profile Photo">
+
                                 <h3 class="text-dark fw-bolder">
                                     <%= firstname + ' ' + lastname %>
                                 </h3>

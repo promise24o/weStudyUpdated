@@ -2341,7 +2341,7 @@ router.get("/faculty/:id", async(req, res) => {
 router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
     try {
         const { mentorId, userId } = req.params;
-        const { review, rating } = req.body;
+        const { review, rating, profilePhoto, name } = req.body;
 
         // Check if mentor exists
         const mentor = await Mentors.findById(mentorId);
@@ -2350,7 +2350,7 @@ router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
         }
 
         // Check if user has already rated this mentor
-        const userRatingIndex = mentor.rating.findIndex((rating) => rating.user.toString() === userId);
+        const userRatingIndex = mentor.rating.findIndex((rating) => rating.user.userId === userId);
 
         if (userRatingIndex !== -1) { // Update existing rating
             mentor.rating[userRatingIndex].review = review;
@@ -2360,7 +2360,11 @@ router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
             const ratingObj = {
                 review,
                 rating,
-                user: userId,
+                user: {
+                    userId,
+                    fullname: name,
+                    avatar: profilePhoto || ""
+                },
                 createdAt: Date.now()
             };
 
@@ -2369,15 +2373,13 @@ router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
         }
 
         // Save mentor document
-        await mentor.save();
-
-        res.status(200).json({ message: "Rating submitted successfully" });
+        const updatedMentor = await mentor.save();
+        res.status(200).json({ mentor: updatedMentor, message: "Rating submitted successfully" });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server Error" });
     }
 });
-
 
 /**
  * @swagger
@@ -3123,6 +3125,26 @@ router.post("/generate-pdf-result", async(req, res) => {
     } catch (error) {
         console.log(error);
         res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
+router.get("/mentors/:mentorId/ratings", async(req, res) => {
+    try {
+        const { mentorId } = req.params;
+
+        // Check if mentor exists
+        const mentor = await Mentors.findById(mentorId);
+        if (!mentor) {
+            return res.status(404).json({ message: "Mentor not found" });
+        }
+
+        // Get all ratings for the mentor
+        const ratings = mentor.rating;
+
+        res.status(200).json({ ratings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
