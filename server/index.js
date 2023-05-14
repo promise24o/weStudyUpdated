@@ -7,6 +7,7 @@ const userRoutes = require('./routes/user');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
+const AIRoutes = require('./routes/acadabooai');
 var useragent = require('express-useragent');
 const swaggerUI = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc')
@@ -36,6 +37,7 @@ app.use("/api/auth/admin-logout", authRoutes);
 app.use("/api/auth/admin", authRoutes);
 app.use("/api/admin/", adminRoutes);
 app.use("/api/public/", publicRoutes);
+app.use("/api/ai/", AIRoutes);
 
 
 //Swagger Defintion 

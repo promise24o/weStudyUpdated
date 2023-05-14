@@ -2294,19 +2294,31 @@ router.get("/faculty/:id", async(req, res) => {
  *           type: string
  *         required: true
  *         description: The ID of the user submitting the rating.
- *       - in: body
- *         name: rating
- *         description: The rating and review submitted by the user.
- *         required: true
- *         schema:
- *           type: object
- *           properties:
- *             review:
- *               type: string
- *             rating:
- *               type: number
- *               minimum: 1
- *               maximum: 5
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               review:
+ *                 type: string
+ *               rating:
+ *                 type: number
+ *                 minimum: 1
+ *                 maximum: 5
+ *               profilePhoto:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *             required:
+ *               - review
+ *               - rating
+ *           example:
+ *             review: "Great mentor, helped me achieve my goals."
+ *             rating: 5
+ *             profilePhoto: "https://example.com/profile-photo.jpg"
+ *             name: "John Doe"
  *     responses:
  *       200:
  *         description: Rating submitted successfully
@@ -2336,6 +2348,8 @@ router.get("/faculty/:id", async(req, res) => {
  *                 message:
  *                   type: string
  */
+
+
 
 // User Submit Mentor trading
 router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
