@@ -20,6 +20,7 @@ const Admin = require("../models/Admin");
 const Activity = require("../models/Activities");
 const Institutions = require("../models/Institutions");
 const gpaSchema = require("../models/Gpa");
+const Story = require("../models/Story");
 const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
 const Advert = require("../models/Adverts");
 const multer = require("multer");
@@ -61,6 +62,25 @@ const storage2 = new CloudinaryStorage({
 // Create a multer instance with the storage engine and limits (if necessary)
 const upload2 = multer({
     storage: storage2,
+    limits: {
+        fileSize: 1024 * 1024 * 5,
+        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+    }
+});
+
+// Configure Multer to use Cloudinary as the storage engine
+const storage3 = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "/stories",
+        format: async(req, file) => "png",
+        public_id: (req, file) => `user-${1}`
+    }
+});
+
+// Create a multer instance with the storage engine and limits (if necessary)
+const upload3 = multer({
+    storage: storage3,
     limits: {
         fileSize: 1024 * 1024 * 5,
         fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
@@ -2350,7 +2370,6 @@ router.get("/faculty/:id", async(req, res) => {
  */
 
 
-
 // User Submit Mentor trading
 router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
     try {
@@ -3163,6 +3182,82 @@ router.get("/mentors/:mentorId/ratings", async(req, res) => {
 });
 
 
-// agenda.start();
+router.post("/stories/:userId", upload3.single("file"), async(req, res) => {
+
+    let story = null;
+
+    try {
+        const {
+            id,
+            name,
+            avatar,
+            link,
+            linkText,
+            fileType
+        } = JSON.parse(req.body.data);
+
+        story = await Story.findOne({ id: id });
+
+        const folderName = 'stories';
+        const uploadStory = await cloudinary.uploader.upload(req.file.path, { folder: folderName });
+
+        if (story) {
+            const lastItem = story.items[story.items.length - 1];
+            const lastItemId = parseInt(lastItem.id.split('-')[1]);
+            const newItemId = `${id}-${
+                lastItemId + 1
+            }`;
+            await Story.updateOne({
+                id: id
+            }, {
+                $push: {
+                    items: {
+                        id: newItemId,
+                        type: fileType,
+                        src: uploadStory.secure_url,
+                        preview: uploadStory.secure_url,
+                        link,
+                        linkText,
+                    }
+                }
+            })
+            const stories = await Story.find();
+            res.status(200).send({ stories: stories, message: "Story Posted Successfully!" });
+        } else {
+            story = await Story.create({
+                id: id,
+                photo: avatar,
+                name: name,
+                items: [{
+                    id: `${id}-1`,
+                    type: fileType,
+                    src: uploadStory.secure_url,
+                    preview: uploadStory.secure_url,
+                    link: link,
+                    linkText: linkText,
+                }]
+            });
+            const stories = await Story.find();
+            res.status(200).send({ stories: stories, message: "Story Posted Successfully!" });
+        }
+        const stories = await Story.find();
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.get('/stories', async(req, res) => {
+    try { // Retrieve all stories from the database
+        const stories = await Story.find();
+
+        // Send the stories as the response
+        res.status(200).json(stories);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 
 module.exports = router;
