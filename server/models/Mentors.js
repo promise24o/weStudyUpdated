@@ -17,83 +17,86 @@ const mentorFacultySchema = new mongoose.Schema({
 });
 
 const mentorsSchema = new mongoose.Schema({
-    fullname: {
+  fullname: {
+    type: String,
+    required: true,
+  },
+  avatar: {
+    type: String,
+  },
+  bio: {
+    type: String,
+  },
+  faculty: {
+    type: mongoose.ObjectId,
+    required: true,
+    ref: "MentorFaculty",
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  phone: {
+    type: String,
+    required: true,
+  },
+  institution: {
+    type: String,
+    required: true,
+  },
+  city: {
+    type: String,
+    required: true,
+  },
+  country: {
+    type: String,
+    required: true,
+  },
+  linkedin: {
+    type: String,
+  },
+  twitter: {
+    type: String,
+  },
+  facebook: {
+    type: String,
+  },
+  skills: {
+    type: String,
+  },
+  calendly: {
+    type: String,
+    required: true,
+  },
+  rating: [
+    {
+      review: {
         type: String,
-        required: true
-    },
-    avatar: {
-        type: String
-    },
-    bio: {
-        type: String
-    },
-    faculty: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    phone: {
-        type: String,
-        required: true
-    },
-    institution: {
-        type: String,
-        required: true
-    },
-    city: {
-        type: String,
-        required: true
-    },
-    country: {
-        type: String,
-        required: true
-    },
-    linkedin: {
-        type: String
-    },
-    twitter: {
-        type: String
-    },
-    facebook: {
-        type: String
-    },
-    skills: {
-        type: String
-    },
-    calendly: {
-        type: String,
-        required: true
-    },
-    rating: [{
-        review: {
-            type: String
+      },
+      rating: {
+        type: Number,
+      },
+      user: {
+        userId: {
+          type: String,
+          required: true,
         },
-        rating: {
-            type: Number
+        fullname: {
+          type: String,
+          required: true,
         },
-        user: {
-            userId: {
-                type: String,
-                required: true
-            },
-            fullname: {
-                type: String,
-                required: true
-            },
-            avatar: {
-                type: String,
-                required: true
-            },
+        avatar: {
+          type: String,
+          required: true,
         },
-        createdAt: {
-            type: Date,
-            default: Date.now
-        }
-    }]
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 });
 
 mentorsSchema.set('timestamps', true);

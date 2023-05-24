@@ -14,8 +14,8 @@ const storySchema = new mongoose.Schema({
         required: true
     },
     time: {
-        type: Date,
-        default: Date.now,
+        type: Number, // Store as a number (timestamp)
+        default: () => Math.floor(Date.now() / 1000), // Generate the timestamp
         required: true,
         expires: '12h'
     },
@@ -37,16 +37,14 @@ const storySchema = new mongoose.Schema({
             required: true
         },
         link: {
-            type: String,
-            required: true
+            type: String
         },
         linkText: {
-            type: String,
-            required: true
+            type: String
         },
         time: {
-            type: Date,
-            default: Date.now,
+            type: Number, // Store as a number (timestamp)
+            default: () => Math.floor(Date.now() / 1000), // Generate the timestamp
             required: true
         }
     }]

@@ -260,7 +260,7 @@ router.get("/community-categories", auth2, async(req, res) => {
 
 router.get("/scholarships", auth2, async(req, res) => {
     try { // check if user exists
-        let scholarships = await Scholarship.find().sort({ createdAt: "desc" });
+        let scholarships = await Scholarship.find().populate('category').sort({ createdAt: "desc" });
         if (!scholarships) {
             return res.status(400).send({ message: "No Scholarship Found" });
         }
@@ -270,13 +270,40 @@ router.get("/scholarships", auth2, async(req, res) => {
     }
 });
 
+router.get("/scholarship/:id",  async(req, res) => {
+    const scholarshipId = req.params.id;
+    try { // check if user exists
+        let scholarship = await Scholarship.findOne({ _id: scholarshipId });
+        if (!scholarship) {
+            return res.status(400).send({ message: "No Scholarship Found" });
+        }
+       res.status(200).json({ scholarship });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
 router.get("/courses", auth2, async(req, res) => {
     try { // check if user exists
-        let courses = await Course.find().sort({ createdAt: "desc" });
+        let courses = await Course.find().populate('category').sort({ createdAt: "desc" });
         if (!courses) {
             return res.status(400).send({ message: "No Courses Found" });
         }
         res.status(200).send({ courses: courses });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
+
+router.get("/course/:id",  async(req, res) => {
+    const courseId = req.params.id;
+    try { // check if user exists
+        let course = await Course.findOne({ _id: courseId });
+        if (!course) {
+            return res.status(400).send({ message: "No Course Found" });
+        }
+       res.status(200).json({ course });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
@@ -356,16 +383,20 @@ router.get("/faculties", auth2, async(req, res) => {
     }
 });
 
-router.get("/mentors", auth2, async(req, res) => {
-    try { // check if user exists
-        let mentors = await Mentors.find().sort({ createdAt: "desc" });
-        if (!mentors) {
-            return res.status(400).send({ message: "No Mentor Found" });
-        }
-        res.status(200).send({ mentors: mentors });
-    } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+router.get("/mentors", auth2, async (req, res) => {
+  try {
+    let mentors = await Mentors.find()
+      .populate("faculty") // Populate the faculty field
+      .sort({ createdAt: "desc" });
+
+    if (mentors.length === 0) {
+      return res.status(400).send({ message: "No Mentor Found" });
     }
+
+    res.status(200).send({ mentors: mentors });
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error", error: error });
+  }
 });
 
 router.put("/update-institution/:id", async(req, res) => {
@@ -484,6 +515,46 @@ router.post("/add-scholarship", upload.single("file"), async(req, res) => {
         res.status(201).send({ scholarship: scholarship, message: "Scholarship Created Successfully" });
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error });
+    }
+});
+
+router.put("/update-scholarship/:id", upload.single("file"), async(req, res) => {
+    try {
+      const scholarshipId = req.params.id;
+      const updatedScholarship = ({
+        title,
+        banner_image,
+        category,
+        brief,
+        editorContent,
+        read_time,
+        slug,
+      } = JSON.parse(req.body.data));
+
+      if (req.file) {
+        const result = await cloudinary.uploader.upload(req.file.path);
+        updatedMentor = {
+          ...updatedMentor,
+          avatar: result.avatar,
+        };
+      }
+
+      const filter = {
+        _id: scholarshipId,
+      };
+      const options = {
+        new: true,
+      }; // return the updated document
+
+      const updated = await Scholarship.findByIdAndUpdate(
+        filter,
+        updatedScholarship,
+        options
+      );
+
+      res.status(201).send({ message: "Scholarship Details Updated Successfully" });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
     }
 });
 
@@ -631,6 +702,34 @@ router.post("/add-course", upload3.single("file"), async(req, res) => {
         res.status(500).send({ message: "Internal Server Error", error });
     }
 });
+
+
+router.put("/update-course/:id", upload3.single("file"), async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const updatedCourse = JSON.parse(req.body.data);
+    let updatedCourseWithImage = { ...updatedCourse };
+
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path);
+      updatedCourseWithImage.banner_image = result.url;
+    }
+
+    const filter = {
+      _id: courseId,
+    };
+    const options = {
+      new: true,
+    }; // return the updated document
+
+    const updated = await Course.findByIdAndUpdate(filter, updatedCourseWithImage, options);
+
+    res.status(201).send({ message: "Course Details Updated Successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 router.delete("/course/:courseId", async(req, res) => {
     const { courseId } = req.params;
@@ -837,14 +936,14 @@ router.get("/faculty/:id", async(req, res) => {
     }
 });
 
-router.get("/mentor/:id", async(req, res) => {
-    try {
-        const mentorId = req.params.id;
-        const mentor = await Mentors.findOne({ _id: mentorId });
-        res.status(200).json({ mentor });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+router.get("/mentor/:id", async (req, res) => {
+  try {
+    const mentorId = req.params.id;
+    const mentor = await Mentors.findOne({ _id: mentorId }).populate("faculty");
+    res.status(200).json({ mentor });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 router.get("/cc-post/:id", async(req, res) => {
@@ -889,6 +988,18 @@ router.delete("/remove-mentor/:mentorId", async(req, res) => {
         console.error(error);
         res.status(500).send({ message: "Server error" });
     }
+});
+
+
+router.delete('/courses/category', async (req, res) => {
+  try {
+   
+    await Course.updateMany({}, { $unset: { category: 1 } });
+    res.status(200).json({ message: 'All category for Courses have been deleted.' });
+
+  } catch (error) {
+    res.status(500).json({ error: 'An error occurred while deleting category for Courses.' });
+  }
 });
 
 module.exports = router;

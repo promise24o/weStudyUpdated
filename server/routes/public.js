@@ -92,7 +92,7 @@ router.get('/', function(req, res) {
 
 router.get('/scholarships', async(req, res) => {
     try { // check if user exists
-        let scholarships = await Scholarship.find().sort({ createdAt: 'desc' });
+        let scholarships = await Scholarship.find().populate('category').sort({ createdAt: 'desc' });
         if (!scholarships) {
             return res.status(400).send({ message: 'No Scholarship Found' });
         }
@@ -137,7 +137,7 @@ router.get('/scholarships', async(req, res) => {
 
 router.get('/scholarship/:slug', async(req, res) => {
     try {
-        const scholarship = await Scholarship.findOne({ slug: req.params.slug });
+        const scholarship = await Scholarship.findOne({ slug: req.params.slug }).populate('category');
         if (!scholarship) {
             return res.status(404).json({ error: 'Scholarship not found' });
         }
@@ -300,7 +300,7 @@ router.get('/related-scholarships/:category/:id', async(req, res) => {
 
 router.get('/courses', async(req, res) => {
     try { // check if user exists
-        let courses = await Course.find().sort({ createdAt: 'desc' });
+        let courses = await Course.find().populate('category').sort({ createdAt: 'desc' });
         if (!courses) {
             return res.status(400).send({ message: 'No Courses Found' });
         }
@@ -339,7 +339,7 @@ router.get('/courses', async(req, res) => {
 
 router.get('/course/:slug', async(req, res) => {
     try {
-        const course = await Course.findOne({ slug: req.params.slug });
+        const course = await Course.findOne({ slug: req.params.slug }).populate('category');
         if (!course) {
             return res.status(404).json({ error: 'Course not found' });
         }

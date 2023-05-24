@@ -481,8 +481,6 @@ router.post('/request-password', async(req, res) => {
         if (!user)
             return res.status(404).send({ message: "A User with this Email does not Exists!" });
 
-
-
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?';
         const randomPassword = Array.from({
             length: 12
