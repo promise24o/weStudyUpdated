@@ -2239,7 +2239,10 @@ router.get("/mentor/:id", async(req, res) => {
     try {
         const mentorId = req.params.id;
         const mentor = await Mentors.findOne({ _id: mentorId }).populate('faculty')
-         
+        .populate({
+            path: 'rating.user',
+            select: 'firstname lastname profilePhoto'
+        });
         res.status(200).json({ mentor });
     } catch (err) {
         res.status(500).json({ message: err.message });
