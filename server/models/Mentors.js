@@ -78,18 +78,9 @@ const mentorsSchema = new mongoose.Schema({
         type: Number,
       },
       user: {
-        userId: {
-          type: String,
-          required: true,
-        },
-        fullname: {
-          type: String,
-          required: true,
-        },
-        avatar: {
-          type: String,
-          required: true,
-        },
+        type: mongoose.ObjectId,
+        required: true,
+        ref: "users",
       },
       createdAt: {
         type: Date,

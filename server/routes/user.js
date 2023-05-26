@@ -2171,7 +2171,7 @@ router.delete("/remove-course/:courseId", async(req, res) => {
 // Get all Mentors
 router.get("/mentors", async(req, res) => {
     try { // check if user exists
-        let mentors = await Mentors.find().sort({ createdAt: "desc" });
+        let mentors = await Mentors.find().populate('faculty').sort({ createdAt: "desc" });
         if (!mentors) {
             return res.status(400).send({ message: "No Mentor Found" });
         }
@@ -2238,7 +2238,8 @@ router.get("/mentors", async(req, res) => {
 router.get("/mentor/:id", async(req, res) => {
     try {
         const mentorId = req.params.id;
-        const mentor = await Mentors.findOne({ _id: mentorId });
+        const mentor = await Mentors.findOne({ _id: mentorId }).populate('faculty')
+         
         res.status(200).json({ mentor });
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -2374,7 +2375,7 @@ router.get("/faculty/:id", async(req, res) => {
 router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
     try {
         const { mentorId, userId } = req.params;
-        const { review, rating, profilePhoto, name } = req.body;
+        const { review, rating} = req.body;
 
         // Check if mentor exists
         const mentor = await Mentors.findById(mentorId);
@@ -2383,7 +2384,7 @@ router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
         }
 
         // Check if user has already rated this mentor
-        const userRatingIndex = mentor.rating.findIndex((rating) => rating.user.userId === userId);
+        const userRatingIndex = mentor.rating.findIndex((rating) => rating.user === userId);
 
         if (userRatingIndex !== -1) { // Update existing rating
             mentor.rating[userRatingIndex].review = review;
@@ -2393,11 +2394,7 @@ router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
             const ratingObj = {
                 review,
                 rating,
-                user: {
-                    userId,
-                    fullname: name,
-                    avatar: profilePhoto || ""
-                },
+                user : userId,
                 createdAt: Date.now()
             };
 
