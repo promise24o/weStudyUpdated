@@ -80,7 +80,7 @@ const mentorsSchema = new mongoose.Schema({
       user: {
         type: mongoose.ObjectId,
         required: true,
-        ref: "users",
+        ref: "user",
       },
       createdAt: {
         type: Date,
@@ -94,13 +94,13 @@ mentorsSchema.set('timestamps', true);
 
 
 const scheduleSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'users',
-        required: true
-    },
+    user: {
+        type: mongoose.ObjectId,
+        required: true,
+        ref: "user", 
+      },
     mentorId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.ObjectId,
         ref: 'mentors',
         required: true
     },

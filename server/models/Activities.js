@@ -4,7 +4,7 @@ const activitiesSchema = new mongoose.Schema({
     userId: {
         type: mongoose.ObjectId,
         required: true,
-        ref: "users",
+        ref: "user",
     },
     browser: {
         type: String,
