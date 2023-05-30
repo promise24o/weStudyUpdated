@@ -55,7 +55,7 @@ const storage2 = new CloudinaryStorage({
     params: {
         folder: "/results",
         format: async(req, file) => "png",
-        public_id: (req, file) => `user-${1}`
+        public_id: (req, file) => `result-${1}`
     }
 });
 
@@ -68,24 +68,50 @@ const upload2 = multer({
     }
 });
 
-// Configure Multer to use Cloudinary as the storage engine
-const storage3 = new CloudinaryStorage({
+const storage3 = new CloudinaryStorage ({
     cloudinary: cloudinary,
-    params: {
-        folder: "/stories",
-        format: async(req, file) => "png",
-        public_id: (req, file) => `user-${1}`
+    params: (req, file) => {
+        let format;
+        let resourceType;
+
+        if (file.mimetype.includes ("image")) {
+            format = "png";
+            resourceType = "image";
+        } else if (file.mimetype.includes ("video")) {
+            format = "mp4";
+            resourceType = "video";
+        } else {
+            throw new Error ("Invalid file type");
+        }
+
+        const randomDigit = Math.floor (Math.random () * 10); // Generate a random digit (0-9)
+
+        const params = {
+            folder: "/stories",
+            format: format,
+            public_id: `story-${randomDigit}`,
+            resource_type: resourceType
+        };
+
+        if (format === "mp4") {
+            params.transformation = [{
+                    duration: 25
+                }]; // Set the maximum duration to 25 seconds for videos
+            params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
+        }
+        return params;
     }
 });
 
-// Create a multer instance with the storage engine and limits (if necessary)
-const upload3 = multer({
+const upload3 = multer ({
     storage: storage3,
     limits: {
-        fileSize: 1024 * 1024 * 5,
-        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+        fileSize: 10 * 1024 * 1024, // 10MB file size limit
+        fieldSize: 12 * 1024 * 1024, // 10MB field size limit (adjust as needed)
     }
 });
+
+
 
 router.get('/', function(req, res) {
     res.send("User API");
@@ -3183,10 +3209,8 @@ router.get("/mentors/:mentorId/ratings", async(req, res) => {
 });
 
 
-router.post("/stories/:userId", upload3.single("file"), async(req, res) => {
-
+router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
     let story = null;
-
     try {
         const {
             id,
@@ -3195,58 +3219,64 @@ router.post("/stories/:userId", upload3.single("file"), async(req, res) => {
             link,
             linkText,
             fileType
-        } = JSON.parse(req.body.data);
+        } = JSON.parse (req.body.data);
 
-        story = await Story.findOne({ id: id });
+        story = await Story.findOne ({id: id});
 
-        const folderName = 'stories';
-        const uploadStory = await cloudinary.uploader.upload(req.file.path, { folder: folderName });
+        const folderName = "stories";
+        // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
+        
 
         if (story) {
             const lastItem = story.items[story.items.length - 1];
-            const lastItemId = parseInt(lastItem.id.split('-')[1]);
+            const lastItemId = parseInt (lastItem.id.split ("-")[1]);
             const newItemId = `${id}-${
                 lastItemId + 1
             }`;
-            await Story.updateOne({
+
+            await Story.updateOne ({
                 id: id
             }, {
                 $push: {
                     items: {
                         id: newItemId,
                         type: fileType,
-                        src: uploadStory.secure_url,
-                        preview: uploadStory.secure_url,
+                        src: req.file.path,
+                        preview: req.file.path,
                         link,
-                        linkText,
+                        linkText
                     }
                 }
-            })
-            const stories = await Story.find();
-            res.status(200).send({ stories: stories, message: "Story Posted Successfully!" });
+            });
+
+            const stories = await Story.find ();
+            res.status (200).send ({stories: stories, message: "Story Posted Successfully!"});
         } else {
-            story = await Story.create({
+            story = await Story.create ({
                 id: id,
                 photo: avatar,
                 name: name,
-                items: [{
-                    id: `${id}-1`,
-                    type: fileType,
-                    src: uploadStory.secure_url,
-                    preview: uploadStory.secure_url,
-                    link: link,
-                    linkText: linkText,
-                }]
+                items: [
+                    {
+                        id: `${id}-1`,
+                        type: fileType,
+                        src: req.file.path,
+                        preview: req.file.path,
+                        link: link,
+                        linkText: linkText
+                    },
+                ]
             });
-            const stories = await Story.find();
-            res.status(200).send({ stories: stories, message: "Story Posted Successfully!" });
+
+            const stories = await Story.find ();
+            res.status (200).send ({stories: stories, message: "Story Posted Successfully!"});
         }
-        const stories = await Story.find();
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error ("Error", error);
+        res.status (500).json ({error: "Internal Server Error"});
     }
 });
+
 
 router.get('/stories', async(req, res) => {
     try { // Retrieve all stories from the database
