@@ -1,47 +1,48 @@
-const cloudinary = require("cloudinary").v2;
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const router = require("express").Router();
-const bcrypt = require("bcrypt");
+const cloudinary = require ("cloudinary").v2;
+const {CloudinaryStorage} = require ("multer-storage-cloudinary");
+const router = require ("express").Router ();
+const bcrypt = require ("bcrypt");
 
-const Token = require("../models/Token");
-const sendEmail = require("../utils/sendEmail");
-const crypto = require("crypto");
+const Token = require ("../models/Token");
+const sendEmail = require ("../utils/sendEmail");
+const crypto = require ("crypto");
 
-const ejs = require("ejs");
-const fs = require("fs");
-const path = require("path");
-const puppeteer = require('puppeteer');
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const ejs = require ("ejs");
+const fs = require ("fs");
+const path = require ("path");
+const puppeteer = require ('puppeteer');
+const {PDFDocument, StandardFonts, rgb} = require ('pdf-lib');
 
 
 // Models
-const { User, validate } = require("../models/Users");
-const Admin = require("../models/Admin");
-const Activity = require("../models/Activities");
-const Institutions = require("../models/Institutions");
-const gpaSchema = require("../models/Gpa");
-const Story = require("../models/Story");
-const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
-const Advert = require("../models/Adverts");
-const multer = require("multer");
-const Agenda = require('agenda');
+const {User, validate} = require ("../models/Users");
+const Admin = require ("../models/Admin");
+const Post = require ("../models/Post");
+const Activity = require ("../models/Activities");
+const Institutions = require ("../models/Institutions");
+const gpaSchema = require ("../models/Gpa");
+const Story = require ("../models/Story");
+const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
+const Advert = require ("../models/Adverts");
+const multer = require ("multer");
+const Agenda = require ('agenda');
 
 
 // Configure Cloudinary credentials
-cloudinary.config({ cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q" });
+cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage = new CloudinaryStorage({
+const storage = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/users",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `user-${1}`
     }
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload = multer({
+const upload = multer ({
     storage: storage,
     limits: {
         fileSize: 1024 * 1024 * 5,
@@ -50,17 +51,17 @@ const upload = multer({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage2 = new CloudinaryStorage({
+const storage2 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/results",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `result-${1}`
     }
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload2 = multer({
+const upload2 = multer ({
     storage: storage2,
     limits: {
         fileSize: 1024 * 1024 * 5,
@@ -111,10 +112,49 @@ const upload3 = multer ({
     }
 });
 
+const storage4 = new CloudinaryStorage ({
+    cloudinary: cloudinary,
+    params: (req, file) => {
+        let format;
+        let resourceType;
+
+        if (file.mimetype.includes ("image")) {
+            format = "png";
+            resourceType = "image";
+        } else if (file.mimetype.includes ("video")) {
+            format = "mp4";
+            resourceType = "video";
+        } else {
+            throw new Error ("Invalid file type");
+        }
+
+        const randomDigit = Math.floor (Math.random () * 10); // Generate a random digit (0-9)
+
+        const params = {
+            folder: "/post",
+            format: format,
+            public_id: `post-${randomDigit}`,
+            resource_type: resourceType
+        };
+
+        if (format === "mp4") {
+            params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
+        }
+        return params;
+    }
+});
+
+const upload4 = multer ({
+    storage: storage4,
+    limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB file size limit
+        fieldSize: 12 * 1024 * 1024, // 10MB field size limit (adjust as needed)
+    }
+});
 
 
-router.get('/', function(req, res) {
-    res.send("User API");
+router.get ('/', function (req, res) {
+    res.send ("User API");
 });
 
 
@@ -136,55 +176,55 @@ router.get('/', function(req, res) {
 // });
 
 
-router.get("/:id/verify/:token", async(req, res) => {
+router.get ("/:id/verify/:token", async (req, res) => {
     try {
-        const user = await User.findOne({ _id: req.params.id });
-        if (!user) {
-            return res.status(404).send({ message: "This User Does not Exists" });
+        const user = await User.findOne ({_id: req.params.id});
+        if (! user) {
+            return res.status (404).send ({message: "This User Does not Exists"});
         }
 
-        const token = await Token.findOne({ userId: user._id, token: req.params.token });
-        if (!token) {
-            return res.status(404).send({ message: "Error: Invalid Link" });
+        const token = await Token.findOne ({userId: user._id, token: req.params.token});
+        if (! token) {
+            return res.status (404).send ({message: "Error: Invalid Link"});
         }
 
-        await User.updateOne({
+        await User.updateOne ({
             _id: user._id
-        }, { verified: true });
-        await token.deleteOne();
+        }, {verified: true});
+        await token.deleteOne ();
 
-        const updatedUser = await User.findOne({ _id: user._id });
+        const updatedUser = await User.findOne ({_id: user._id});
 
-        res.status(200).send({ user: updatedUser, message: "Email Verified Successfully" });
+        res.status (200).send ({user: updatedUser, message: "Email Verified Successfully"});
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(400).send({ message: "You have already verified your email" });
+            return res.status (400).send ({message: "You have already verified your email"});
         }
 
-        console.error(error);
-        res.status(500).send({ message: "Internal Server Error" });
+        console.error (error);
+        res.status (500).send ({message: "Internal Server Error"});
     }
 });
 
-router.post("/resend-verify-email-link", async(req, res) => {
+router.post ("/resend-verify-email-link", async (req, res) => {
     try {
-        let user = await User.findOne({ email: req.body.email });
+        let user = await User.findOne ({email: req.body.email});
 
-        const token = await Token.findOneAndUpdate({
+        const token = await Token.findOneAndUpdate ({
             userId: user._id
         }, {
-            token: crypto.randomBytes(32).toString("hex"),
-            createdAt: Date.now()
+            token: crypto.randomBytes (32).toString ("hex"),
+            createdAt: Date.now ()
         }, {
             upsert: true,
             new: true
         });
 
         // construct the file path using the path.join() method
-        const filePath = path.join(__dirname, "..", "emails", "verify_email.ejs");
+        const filePath = path.join (__dirname, "..", "emails", "verify_email.ejs");
 
         // read the HTML content from a file
-        let template = fs.readFileSync(filePath, "utf8");
+        let template = fs.readFileSync (filePath, "utf8");
 
         const urlLink = `${
             process.env.CLIENT_BASE_URL
@@ -195,13 +235,13 @@ router.post("/resend-verify-email-link", async(req, res) => {
         }`;
 
         // compile the EJS template with the url variable
-        let html = ejs.render(template, { url: urlLink });
+        let html = ejs.render (template, {url: urlLink});
 
-        await sendEmail(user.email, "Verify Email", html);
+        await sendEmail (user.email, "Verify Email", html);
 
-        res.status(201).send({ message: "Verification Email Sent Successfully" });
+        res.status (201).send ({message: "Verification Email Sent Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -248,12 +288,12 @@ router.post("/resend-verify-email-link", async(req, res) => {
  *               error: <error message>
  */
 
-router.get("/institutions", async(req, res) => {
+router.get ("/institutions", async (req, res) => {
     try {
-        let institutions = await Institutions.find({ type: req.query.type });
-        res.status(201).send({ institutions: institutions });
+        let institutions = await Institutions.find ({type: req.query.type});
+        res.status (201).send ({institutions: institutions});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -326,7 +366,7 @@ router.get("/institutions", async(req, res) => {
  *               error: <error message>
  */
 
-router.post("/update-education-info", async(req, res) => {
+router.post ("/update-education-info", async (req, res) => {
     try {
         const {
             type,
@@ -338,7 +378,7 @@ router.post("/update-education-info", async(req, res) => {
             study_mode,
             userId
         } = req.body;
-        const updatedUser = await User.findOneAndUpdate({
+        const updatedUser = await User.findOneAndUpdate ({
             _id: userId
         }, {
             $set: {
@@ -350,11 +390,11 @@ router.post("/update-education-info", async(req, res) => {
                 "education.course_of_study": course_of_study,
                 "education.study_mode": study_mode
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "Updated Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "Updated Successfully!"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -425,10 +465,10 @@ router.post("/update-education-info", async(req, res) => {
  */
 
 
-router.post("/update-personal-info", async(req, res) => {
+router.post ("/update-personal-info", async (req, res) => {
     try {
-        const { city, contact_address, gender, userId } = req.body;
-        const updatedUser = await User.findOneAndUpdate({
+        const {city, contact_address, gender, userId} = req.body;
+        const updatedUser = await User.findOneAndUpdate ({
             _id: userId
         }, {
             $set: {
@@ -436,11 +476,11 @@ router.post("/update-personal-info", async(req, res) => {
                 "personal.contact_address": contact_address,
                 "personal.gender": gender
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "Updated Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "Updated Successfully!"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -500,28 +540,28 @@ router.post("/update-personal-info", async(req, res) => {
  *       - bearerAuth: []
  */
 
-router.post("/change-password", async(req, res) => {
+router.post ("/change-password", async (req, res) => {
     try {
-        const user = await User.findOne({ _id: req.body.user._id });
-        const isPasswordCorrect = await bcrypt.compare(req.body.password, user.password);
+        const user = await User.findOne ({_id: req.body.user._id});
+        const isPasswordCorrect = await bcrypt.compare (req.body.password, user.password);
 
         // Compare Passwords
-        if (!isPasswordCorrect) {
-            return res.status(400).send({ message: "Current password is incorrect" });
+        if (! isPasswordCorrect) {
+            return res.status (400).send ({message: "Current password is incorrect"});
         }
 
         // Check Confirm Password
         if (req.body.newPassword !== req.body.confirmPassword) {
-            return res.status(400).send({ message: "New password and confirm password do not match" });
+            return res.status (400).send ({message: "New password and confirm password do not match"});
         }
 
-        const salt = await bcrypt.genSalt(Number(process.env.SALT));
-        user.password = await bcrypt.hash(req.body.newPassword, salt);
-        await user.save();
+        const salt = await bcrypt.genSalt (Number (process.env.SALT));
+        user.password = await bcrypt.hash (req.body.newPassword, salt);
+        await user.save ();
 
-        res.status(200).send({ message: "Password Change Successfully!" });
+        res.status (200).send ({message: "Password Change Successfully!"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -579,28 +619,28 @@ router.post("/change-password", async(req, res) => {
  */
 
 // Route to upload user avatar
-router.post("/upload-avatar/:userId", upload.single("file"), async(req, res) => {
+router.post ("/upload-avatar/:userId", upload.single ("file"), async (req, res) => {
     const userId = req.params.userId;
     try {
         if (!req.file) {
-            return res.status(400).json({ error: "No photo uploaded" });
+            return res.status (400).json ({error: "No photo uploaded"});
         }
 
         // Update the user's photo in the database
 
-        const result = await cloudinary.uploader.upload(req.file.path);
+        const result = await cloudinary.uploader.upload (req.file.path);
 
-        const updatedUser = await User.findOneAndUpdate({
+        const updatedUser = await User.findOneAndUpdate ({
             _id: userId
         }, {
             $set: {
                 profilePhoto: result.secure_url
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "Photo Uploaded Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "Photo Uploaded Successfully!"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -706,27 +746,27 @@ router.post("/upload-avatar/:userId", upload.single("file"), async(req, res) => 
  *                       description: Error stack trace
  */
 
-router.post("/enable-twofa", async(req, res) => {
+router.post ("/enable-twofa", async (req, res) => {
     try {
-        const user = await User.findOne({ _id: req.body.user._id });
+        const user = await User.findOne ({_id: req.body.user._id});
 
-        const isPasswordCorrect = await bcrypt.compare(req.body.password, user.password);
+        const isPasswordCorrect = await bcrypt.compare (req.body.password, user.password);
 
         // Compare Passwords
-        if (!isPasswordCorrect) {
-            return res.status(400).send({ message: "Current password is incorrect" });
+        if (! isPasswordCorrect) {
+            return res.status (400).send ({message: "Current password is incorrect"});
         }
-        const updatedUser = await User.findOneAndUpdate({
+        const updatedUser = await User.findOneAndUpdate ({
             _id: user._id
         }, {
             $set: {
                 twofa: true
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "2FA Enabled Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "2FA Enabled Successfully!"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -796,20 +836,20 @@ router.post("/enable-twofa", async(req, res) => {
  *                       description: Error stack trace
  */
 
-router.post("/disable-twofa", async(req, res) => {
+router.post ("/disable-twofa", async (req, res) => {
     try {
-        const user = await User.findOne({ _id: req.body.user._id });
-        const updatedUser = await User.findOneAndUpdate({
+        const user = await User.findOne ({_id: req.body.user._id});
+        const updatedUser = await User.findOneAndUpdate ({
             _id: user._id
         }, {
             $set: {
                 twofa: false
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "2FA Disabled Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "2FA Disabled Successfully!"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -876,22 +916,22 @@ router.post("/disable-twofa", async(req, res) => {
  *                       description: Error stack trace
  */
 
-router.post("/update-preset-parameter", async(req, res) => {
+router.post ("/update-preset-parameter", async (req, res) => {
     try {
-        const { preset_para } = req.body;
+        const {preset_para} = req.body;
 
-        const user = await User.findOne({ _id: req.body.user });
-        const updatedUser = await User.findOneAndUpdate({
+        const user = await User.findOne ({_id: req.body.user});
+        const updatedUser = await User.findOneAndUpdate ({
             _id: user._id
         }, {
             $set: {
                 "preset_param.status": preset_para
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "Preset Parameter Updated Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "Preset Parameter Updated Successfully!"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -976,24 +1016,24 @@ router.post("/update-preset-parameter", async(req, res) => {
  */
 
 // Update user preset_param status
-router.patch("/:userId/presetParam", async(req, res) => {
+router.patch ("/:userId/presetParam", async (req, res) => {
     try {
         const userId = req.params.userId;
         const status = req.body.preset_param.status;
 
-        const user = await User.findOne({ _id: userId });
-        const updatedUser = await User.findOneAndUpdate({
+        const user = await User.findOne ({_id: userId});
+        const updatedUser = await User.findOneAndUpdate ({
             _id: user._id
         }, {
             $set: {
                 "preset_param.status": status
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "Preset Parameter Updated Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "Preset Parameter Updated Successfully!"});
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server error");
+        console.error (err.message);
+        res.status (500).send ("Server error");
     }
 });
 
@@ -1082,24 +1122,24 @@ router.patch("/:userId/presetParam", async(req, res) => {
  */
 
 // Update user preset_param scale
-router.patch("/:userId/preset-scale", async(req, res) => {
+router.patch ("/:userId/preset-scale", async (req, res) => {
     try {
         const userId = req.params.userId;
         const scale = req.body.preset_param.scale;
 
-        const user = await User.findOne({ _id: userId });
-        const updatedUser = await User.findOneAndUpdate({
+        const user = await User.findOne ({_id: userId});
+        const updatedUser = await User.findOneAndUpdate ({
             _id: user._id
         }, {
             $set: {
                 "preset_param.scale": scale
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "Grading Scale Updated Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "Grading Scale Updated Successfully!"});
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server error");
+        console.error (err.message);
+        res.status (500).send ("Server error");
     }
 });
 
@@ -1178,24 +1218,24 @@ router.patch("/:userId/preset-scale", async(req, res) => {
  */
 
 // Update user Target GPA
-router.patch("/:userId/target-cgpa", async(req, res) => {
+router.patch ("/:userId/target-cgpa", async (req, res) => {
     try {
         const userId = req.params.userId;
         const target = req.body.data.target;
 
-        const user = await User.findOne({ _id: userId });
-        const updatedUser = await User.findOneAndUpdate({
+        const user = await User.findOne ({_id: userId});
+        const updatedUser = await User.findOneAndUpdate ({
             _id: user._id
         }, {
             $set: {
                 targetCGPA: target
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: updatedUser, message: "Target CGPA  Updated Successfully!" });
+        res.status (200).send ({user: updatedUser, message: "Target CGPA  Updated Successfully!"});
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Server error");
+        console.error (err.message);
+        res.status (500).send ("Server error");
     }
 });
 
@@ -1252,21 +1292,21 @@ router.patch("/:userId/target-cgpa", async(req, res) => {
  */
 
 // User Delete scale
-router.delete("/:userId/preset_param/scale", async(req, res) => {
+router.delete ("/:userId/preset_param/scale", async (req, res) => {
     try {
         const userId = req.params.userId;
-        const user = await User.findById(userId).select("-password -token");
+        const user = await User.findById (userId).select ("-password -token");
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
+        if (! user) {
+            return res.status (404).json ({message: "User not found"});
         }
         user.preset_param.scale = undefined;
-        await user.save();
+        await user.save ();
 
-        res.status(200).send({ user: user, message: "Grading Scale Deleted Successfully!" });
+        res.status (200).send ({user: user, message: "Grading Scale Deleted Successfully!"});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
+        console.error (err);
+        res.status (500).json ({message: "Server Error"});
     }
 });
 
@@ -1328,17 +1368,17 @@ router.delete("/:userId/preset_param/scale", async(req, res) => {
  */
 
 // Delete User Result
-router.delete("/:userId/remove-result/:resultId", async(req, res) => {
-    const { userId, resultId } = req.params;
+router.delete ("/:userId/remove-result/:resultId", async (req, res) => {
+    const {userId, resultId} = req.params;
     try {
-        const gpa = await gpaSchema.findOneAndDelete({ userId: userId, _id: resultId });
-        if (!gpa) {
-            return res.status(404).send({ message: "GPA not found" });
+        const gpa = await gpaSchema.findOneAndDelete ({userId: userId, _id: resultId});
+        if (! gpa) {
+            return res.status (404).send ({message: "GPA not found"});
         }
-        res.send({ message: "Result Deleted successfully" });
+        res.send ({message: "Result Deleted successfully"});
     } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error" });
+        console.error (error);
+        res.status (500).send ({message: "Server error"});
     }
 });
 
@@ -1402,10 +1442,10 @@ router.delete("/:userId/remove-result/:resultId", async(req, res) => {
  */
 
 // Delete User Grades
-router.delete("/:userId/remove-grade/:gradeId", async(req, res) => {
+router.delete ("/:userId/remove-grade/:gradeId", async (req, res) => {
     try {
-        const { gradeId, userId } = req.params;
-        const user = await User.findOneAndUpdate({
+        const {gradeId, userId} = req.params;
+        const user = await User.findOneAndUpdate ({
             _id: userId
         }, {
             $pull: {
@@ -1413,16 +1453,16 @@ router.delete("/:userId/remove-grade/:gradeId", async(req, res) => {
                     _id: gradeId
                 }
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
+        if (! user) {
+            return res.status (404).json ({message: "User not found"});
         }
 
-        res.status(200).send({ user: user, message: "Grade Deleted Successfully!" });
+        res.status (200).send ({user: user, message: "Grade Deleted Successfully!"});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
+        console.error (err);
+        res.status (500).json ({message: "Server Error"});
     }
 });
 
@@ -1497,24 +1537,24 @@ router.delete("/:userId/remove-grade/:gradeId", async(req, res) => {
  */
 
 // Post user custom grade
-router.post("/:userId/add-custom-grade", async(req, res) => {
+router.post ("/:userId/add-custom-grade", async (req, res) => {
     try {
         const userId = req.params.userId;
-        const { grade_symbol, grade_value } = req.body;
+        const {grade_symbol, grade_value} = req.body;
 
-        const user = await User.findByIdAndUpdate(userId, {
+        const user = await User.findByIdAndUpdate (userId, {
             $push: {
                 "preset_param.grading": {
                     grade_symbol,
                     grade_value
                 }
             }
-        }, { new: true }).select("-password -token");
+        }, {new: true}).select ("-password -token");
 
-        res.status(200).send({ user: user, message: "Grade Added Successfully!" });
+        res.status (200).send ({user: user, message: "Grade Added Successfully!"});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
+        console.error (err);
+        res.status (500).json ({message: "Server Error"});
     }
 });
 
@@ -1580,14 +1620,14 @@ router.post("/:userId/add-custom-grade", async(req, res) => {
  */
 
 // Get all Grades for a user
-router.get("/:id/grades", async(req, res) => {
+router.get ("/:id/grades", async (req, res) => {
     try {
-        const user = await User.findById(req.params.id);
+        const user = await User.findById (req.params.id);
         const grading = user.preset_param.grading;
-        res.json(grading);
+        res.json (grading);
     } catch (err) {
-        console.error(err);
-        res.status(500).send("Internal Server Error");
+        console.error (err);
+        res.status (500).send ("Internal Server Error");
     }
 });
 
@@ -1657,15 +1697,15 @@ router.get("/:id/grades", async(req, res) => {
 
 
 // Get all User Login Activities
-router.get("/user-activities", async(req, res) => {
+router.get ("/user-activities", async (req, res) => {
     try {
-        let activities = await Activity.find({ userId: req.query.user_id }).sort({ createdAt: "desc" }).limit(10);
-        if (!activities) {
-            return res.status(400).send({ message: "No Activities Found" });
+        let activities = await Activity.find ({userId: req.query.user_id}).sort ({createdAt: "desc"}).limit (10);
+        if (! activities) {
+            return res.status (400).send ({message: "No Activities Found"});
         }
-        res.status(200).send({ activities: activities });
+        res.status (200).send ({activities: activities});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -1749,7 +1789,7 @@ router.get("/user-activities", async(req, res) => {
  */
 
 // Add User GPA
-router.post("/add-gpa", async(req, res) => {
+router.post ("/add-gpa", async (req, res) => {
     let gpa = null;
 
     try {
@@ -1766,10 +1806,10 @@ router.post("/add-gpa", async(req, res) => {
         } = req.body;
 
         // Search for a document that matches the semester, level, and userId
-        gpa = await gpaSchema.findOne({ semester, level, userId: user });
+        gpa = await gpaSchema.findOne ({semester, level, userId: user});
 
         if (gpa) { // If a document is found, update the courses array
-            await gpaSchema.updateOne({
+            await gpaSchema.updateOne ({
                 _id: gpa._id
             }, {
                 $push: {
@@ -1782,26 +1822,28 @@ router.post("/add-gpa", async(req, res) => {
                     }
                 }
             });
-            gpa = await gpaSchema.findOne({ semester, level, userId: user }).sort({ createdAt: "desc" });
-            res.status(200).send({ gpa: gpa, message: "Course Updated Successfully!" });
+            gpa = await gpaSchema.findOne ({semester, level, userId: user}).sort ({createdAt: "desc"});
+            res.status (200).send ({gpa: gpa, message: "Course Updated Successfully!"});
         } else { // If a document is not found, create a new document with all information
-            gpa = await gpaSchema.create({
+            gpa = await gpaSchema.create ({
                 userId: user,
                 level,
                 semester,
                 institution,
-                courses: [{
-                    code,
-                    title,
-                    symbol,
-                    unit: creditUnit,
-                    grade
-                }, ]
+                courses: [
+                    {
+                        code,
+                        title,
+                        symbol,
+                        unit: creditUnit,
+                        grade
+                    },
+                ]
             });
-            res.status(200).send({ gpa: gpa, message: "Course Added Successfully!" });
+            res.status (200).send ({gpa: gpa, message: "Course Added Successfully!"});
         }
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error" });
+        res.status (500).send ({message: "Internal Server Error"});
     }
 });
 
@@ -1886,15 +1928,15 @@ router.post("/add-gpa", async(req, res) => {
  */
 
 // Get User GPA
-router.get("/user-gpa", async(req, res) => {
+router.get ("/user-gpa", async (req, res) => {
     try {
-        let gpa = await gpaSchema.findOne({ userId: req.query.user_id, level: req.query.level, semester: req.query.semester });
-        if (!gpa) {
-            return res.status(400).send({ message: "No GPA Found" });
+        let gpa = await gpaSchema.findOne ({userId: req.query.user_id, level: req.query.level, semester: req.query.semester});
+        if (! gpa) {
+            return res.status (400).send ({message: "No GPA Found"});
         }
-        res.status(200).send({ gpa: gpa });
+        res.status (200).send ({gpa: gpa});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -1936,15 +1978,15 @@ router.get("/user-gpa", async(req, res) => {
 
 
 // Get User Result
-router.get("/:userId/get-result/:resultId", async(req, res) => {
+router.get ("/:userId/get-result/:resultId", async (req, res) => {
     try {
-        let gpa = await gpaSchema.findOne({ userId: req.params.userId, _id: req.params.resultId });
-        if (!gpa) {
-            return res.status(400).send({ message: "No GPA Found" });
+        let gpa = await gpaSchema.findOne ({userId: req.params.userId, _id: req.params.resultId});
+        if (! gpa) {
+            return res.status (400).send ({message: "No GPA Found"});
         }
-        res.status(200).send({ gpa: gpa });
+        res.status (200).send ({gpa: gpa});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -2046,16 +2088,16 @@ router.get("/:userId/get-result/:resultId", async(req, res) => {
  */
 
 // Get User Results Based on Selected Institution
-router.get("/get-user-gpa/:userId/:institutionType", async(req, res) => {
+router.get ("/get-user-gpa/:userId/:institutionType", async (req, res) => {
     const institution = req.params.institutionType;
     try {
-        let gpa = await gpaSchema.find({ userId: req.params.userId, institution: institution });
-        if (!gpa) {
-            return res.status(400).send({ message: "No GPA Found" });
+        let gpa = await gpaSchema.find ({userId: req.params.userId, institution: institution});
+        if (! gpa) {
+            return res.status (400).send ({message: "No GPA Found"});
         }
-        res.status(200).send({ gpa: gpa });
+        res.status (200).send ({gpa: gpa});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -2092,12 +2134,12 @@ router.get("/get-user-gpa/:userId/:institutionType", async(req, res) => {
  */
 
 // Get User Institution Logo
-router.get("/user-institution", async(req, res) => {
+router.get ("/user-institution", async (req, res) => {
     try {
-        let institution = await Institutions.findOne({ institution: req.query.institution });
-        res.status(201).send({ logo: institution.logo });
+        let institution = await Institutions.findOne ({institution: req.query.institution});
+        res.status (201).send ({logo: institution.logo});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -2167,43 +2209,43 @@ router.get("/user-institution", async(req, res) => {
 
 
 // Remove Course Based on the Course ID
-router.delete("/remove-course/:courseId", async(req, res) => {
+router.delete ("/remove-course/:courseId", async (req, res) => {
     try {
-        const { courseId } = req.params;
-        const { user, formData } = req.body;
-        const gpa = await gpaSchema.findOne({ userId: user._id, level: formData.current_level, semester: formData.semester });
+        const {courseId} = req.params;
+        const {user, formData} = req.body;
+        const gpa = await gpaSchema.findOne ({userId: user._id, level: formData.current_level, semester: formData.semester});
 
-        const courseIndex = gpa.courses.findIndex((course) => String(course._id) === courseId);
+        const courseIndex = gpa.courses.findIndex ( (course) => String (course._id) === courseId);
 
         if (courseIndex === -1) { // Course not found
-            return res.status(404).json({ error: "Course not found" });
+            return res.status (404).json ({error: "Course not found"});
         }
 
         // Remove the course from the courses array
-        gpa.courses.splice(courseIndex, 1);
+        gpa.courses.splice (courseIndex, 1);
 
         // Save the updated GPA document
-        await gpa.save();
+        await gpa.save ();
 
-        const selectedGPAs = await gpaSchema.findOne({ userId: user._id, level: formData.current_level, semester: formData.semester });
+        const selectedGPAs = await gpaSchema.findOne ({userId: user._id, level: formData.current_level, semester: formData.semester});
 
         // const selectedGPAs = selectedCourses.map(course => course.gpa);
-        res.status(200).send({ gpa: selectedGPAs, message: "Course Deleted Successfully" });
+        res.status (200).send ({gpa: selectedGPAs, message: "Course Deleted Successfully"});
     } catch (err) {
-        res.status(500).json({ error: "Server error" });
+        res.status (500).json ({error: "Server error"});
     }
 });
 
 // Get all Mentors
-router.get("/mentors", async(req, res) => {
+router.get ("/mentors", async (req, res) => {
     try { // check if user exists
-        let mentors = await Mentors.find().populate('faculty').sort({ createdAt: "desc" });
-        if (!mentors) {
-            return res.status(400).send({ message: "No Mentor Found" });
+        let mentors = await Mentors.find ().populate ('faculty').sort ({createdAt: "desc"});
+        if (! mentors) {
+            return res.status (400).send ({message: "No Mentor Found"});
         }
-        res.status(200).send({ mentors: mentors });
+        res.status (200).send ({mentors: mentors});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
@@ -2261,18 +2303,13 @@ router.get("/mentors", async(req, res) => {
  */
 
 // Get a Mentor based on ID
-router.get("/mentor/:id", async(req, res) => {
+router.get ("/mentor/:id", async (req, res) => {
     try {
         const mentorId = req.params.id;
-        const mentor = await Mentors.findOne({ _id: mentorId })
-        .populate('faculty')
-        .populate({
-            path: "rating.user",
-            select: 'firstname lastname profilePhoto',
-        });
-        res.status(200).json({ mentor });
+        const mentor = await Mentors.findOne ({_id: mentorId}).populate ('faculty').populate ({path: "rating.user", select: 'firstname lastname profilePhoto'});
+        res.status (200).json ({mentor});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
@@ -2314,14 +2351,14 @@ router.get("/mentor/:id", async(req, res) => {
  */
 
 // Get a Facult Name
-router.get("/faculty/:id", async(req, res) => {
+router.get ("/faculty/:id", async (req, res) => {
     try {
         const facultyId = req.params.id;
-        const faculty = await MentorFaculty.findOne({ _id: facultyId });
+        const faculty = await MentorFaculty.findOne ({_id: facultyId});
         const facultyName = faculty ? faculty.title : null;
-        res.status(200).json({ facultyName });
+        res.status (200).json ({facultyName});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
@@ -2402,42 +2439,42 @@ router.get("/faculty/:id", async(req, res) => {
 
 
 // User Submit Mentor trading
-router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
+router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
     try {
-        const { mentorId, userId } = req.params;
-        const { review, rating} = req.body;
+        const {mentorId, userId} = req.params;
+        const {review, rating} = req.body;
 
         // Check if mentor exists
-        const mentor = await Mentors.findById(mentorId);
-        if (!mentor) {
-            return res.status(404).json({ message: "Mentor not found" });
+        const mentor = await Mentors.findById (mentorId);
+        if (! mentor) {
+            return res.status (404).json ({message: "Mentor not found"});
         }
 
         // Check if user has already rated this mentor
-        const userRatingIndex = mentor.rating.findIndex((rating) => rating.user === userId);
+        const userRatingIndex = mentor.rating.findIndex ( (rating) => rating.user === userId);
 
         if (userRatingIndex !== -1) { // Update existing rating
             mentor.rating[userRatingIndex].review = review;
             mentor.rating[userRatingIndex].rating = rating;
-            mentor.rating[userRatingIndex].createdAt = Date.now();
+            mentor.rating[userRatingIndex].createdAt = Date.now ();
         } else { // Create new rating object
             const ratingObj = {
                 review,
                 rating,
-                user : userId,
-                createdAt: Date.now()
+                user: userId,
+                createdAt: Date.now ()
             };
 
             // Add rating to mentor's ratings array
-            mentor.rating.push(ratingObj);
+            mentor.rating.push (ratingObj);
         }
 
         // Save mentor document
-        const updatedMentor = await mentor.save();
-        res.status(200).json({ mentor: updatedMentor, message: "Rating submitted successfully" });
+        const updatedMentor = await mentor.save ();
+        res.status (200).json ({mentor: updatedMentor, message: "Rating submitted successfully"});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
+        console.error (err);
+        res.status (500).json ({message: "Server Error"});
     }
 });
 
@@ -2526,9 +2563,9 @@ router.post("/submit-rating/:mentorId/:userId", async(req, res) => {
  */
 
 // Confirm Meeting Schedule
-router.post("/confirm-schedule/:mentorId/:userId", async(req, res) => {
+router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
     try {
-        const { mentorId, userId } = req.params;
+        const {mentorId, userId} = req.params;
         const {
             event_type,
             location,
@@ -2540,7 +2577,7 @@ router.post("/confirm-schedule/:mentorId/:userId", async(req, res) => {
             updated_at
         } = req.body;
 
-        const schedule = new Schedule({
+        const schedule = new Schedule ({
             userId: userId,
             mentorId: mentorId,
             eventType: event_type,
@@ -2557,12 +2594,12 @@ router.post("/confirm-schedule/:mentorId/:userId", async(req, res) => {
             status: status
         });
 
-        await schedule.save();
+        await schedule.save ();
 
-        res.status(200).json({ message: "Meeting Schedule Confirmed!" });
+        res.status (200).json ({message: "Meeting Schedule Confirmed!"});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
+        console.error (err);
+        res.status (500).json ({message: "Server Error"});
     }
 });
 
@@ -2645,14 +2682,14 @@ router.post("/confirm-schedule/:mentorId/:userId", async(req, res) => {
  */
 
 // Get Meeting Schedule Confirmed based on Mentor
-router.get('/schedules/:mentorId/:userId', async(req, res) => {
+router.get ('/schedules/:mentorId/:userId', async (req, res) => {
     try {
-        const { userId, mentorId } = req.params;
-        const schedules = await Schedule.find({ userId, mentorId });
-        res.json({ schedules });
+        const {userId, mentorId} = req.params;
+        const schedules = await Schedule.find ({userId, mentorId});
+        res.json ({schedules});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
+        console.error (err);
+        res.status (500).json ({message: "Server Error"});
     }
 });
 
@@ -2738,31 +2775,31 @@ router.get('/schedules/:mentorId/:userId', async(req, res) => {
  */
 
 // Add Mentor as Favorite Mentors
-router.post('/favorite-mentor/:mentorId/:userId', async(req, res) => {
-    const { mentorId, userId } = req.params;
+router.post ('/favorite-mentor/:mentorId/:userId', async (req, res) => {
+    const {mentorId, userId} = req.params;
 
     try {
-        const user = await User.findById(userId);
+        const user = await User.findById (userId);
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        if (! user) {
+            return res.status (404).json ({message: 'User not found'});
         }
 
         const favoriteMentor = {
             mentor: mentorId,
-            dateAdded: Date.now()
+            dateAdded: Date.now ()
         };
 
-        user.favoriteMentors.push(favoriteMentor);
-        const updatedUser = await user.save();
+        user.favoriteMentors.push (favoriteMentor);
+        const updatedUser = await user.save ();
 
-        const userWithoutPasswordAndToken = await User.findById(updatedUser._id).select('-password -token');
+        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ('-password -token');
 
-        return res.status(200).json({ user: userWithoutPasswordAndToken, message: "Mentor Added to Favorites" });
+        return res.status (200).json ({user: userWithoutPasswordAndToken, message: "Mentor Added to Favorites"});
 
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server error' });
+        console.error (error);
+        return res.status (500).json ({message: 'Server error'});
     }
 });
 
@@ -2826,31 +2863,31 @@ router.post('/favorite-mentor/:mentorId/:userId', async(req, res) => {
  */
 
 // Remove Mentor as Favorite Mentor
-router.delete('/favorite-mentor/:mentorId/:userId', async(req, res) => {
-    const { mentorId, userId } = req.params;
+router.delete ('/favorite-mentor/:mentorId/:userId', async (req, res) => {
+    const {mentorId, userId} = req.params;
 
     try {
-        const user = await User.findById(userId);
+        const user = await User.findById (userId);
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        if (! user) {
+            return res.status (404).json ({message: 'User not found'});
         }
 
-        const favoriteMentorIndex = user.favoriteMentors.findIndex((item) => item.mentor.toString() === mentorId);
+        const favoriteMentorIndex = user.favoriteMentors.findIndex ( (item) => item.mentor.toString () === mentorId);
 
         if (favoriteMentorIndex === -1) {
-            return res.status(404).json({ message: 'Mentor not found in favorites' });
+            return res.status (404).json ({message: 'Mentor not found in favorites'});
         }
 
-        user.favoriteMentors.splice(favoriteMentorIndex, 1);
-        const updatedUser = await user.save();
+        user.favoriteMentors.splice (favoriteMentorIndex, 1);
+        const updatedUser = await user.save ();
 
-        const userWithoutPasswordAndToken = await User.findById(updatedUser._id).select('-password -token');
+        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ('-password -token');
 
-        return res.status(200).json({ user: userWithoutPasswordAndToken, message: 'Mentor Removed from Favorites' });
+        return res.status (200).json ({user: userWithoutPasswordAndToken, message: 'Mentor Removed from Favorites'});
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: 'Server error' });
+        console.error (error);
+        return res.status (500).json ({message: 'Server error'});
     }
 });
 
@@ -2905,33 +2942,33 @@ router.delete('/favorite-mentor/:mentorId/:userId', async(req, res) => {
  *         - updatedAt
  */
 // Get all Faculties
-router.get("/faculties", async(req, res) => {
+router.get ("/faculties", async (req, res) => {
     try {
-        let faculties = await MentorFaculty.find().sort({ createdAt: "desc" });
-        if (!faculties) {
-            return res.status(400).send({ message: "No Faculty Found" });
+        let faculties = await MentorFaculty.find ().sort ({createdAt: "desc"});
+        if (! faculties) {
+            return res.status (400).send ({message: "No Faculty Found"});
         }
-        res.status(200).send({ faculties: faculties });
+        res.status (200).send ({faculties: faculties});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
 // Get all Averts
-router.get("/adverts", async(req, res) => {
+router.get ("/adverts", async (req, res) => {
     try {
-        let ads = await Advert.find().sort({ createdAt: "desc" });
-        if (!ads) {
-            return res.status(400).send({ message: "No Advert Found" });
+        let ads = await Advert.find ().sort ({createdAt: "desc"});
+        if (! ads) {
+            return res.status (400).send ({message: "No Advert Found"});
         }
-        res.status(200).send({ adverts: ads });
+        res.status (200).send ({adverts: ads});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
 // Set up Agenda job scheduler
-const agenda = new Agenda({
+const agenda = new Agenda ({
     db: {
         address: process.env.DATABASE_URL
     }
@@ -2993,7 +3030,7 @@ const agenda = new Agenda({
 //     await browser.close();
 // });
 
-agenda.define('generate-result-pdf', async(job) => {
+agenda.define ('generate-result-pdf', async (job) => {
     const {
         firstname,
         lastname,
@@ -3006,7 +3043,7 @@ agenda.define('generate-result-pdf', async(job) => {
     } = job.attrs.data;
 
     // Compile EJS template with user's data
-    const html = await ejs.renderFile(path.join(__dirname, '..', 'views', 'result_mockup.ejs'), {
+    const html = await ejs.renderFile (path.join (__dirname, '..', 'views', 'result_mockup.ejs'), {
         firstname,
         lastname,
         education,
@@ -3018,37 +3055,37 @@ agenda.define('generate-result-pdf', async(job) => {
     });
 
     // Launch Puppeteer
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
+    const browser = await puppeteer.launch ();
+    const page = await browser.newPage ();
 
     // Set the HTML content of the page to the EJS-compiled HTML
-    await page.setContent(html);
+    await page.setContent (html);
 
-    const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+    const {PDFDocument, StandardFonts, rgb} = require ('pdf-lib');
 
     // Generate an image of the page using Puppeteer
-    const screenshotPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    const screenshotPath = path.join (__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
+    await page.screenshot ({path: screenshotPath, fullPage: true});
 
     // Convert the image to a PDF
-    const pdfPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
-    const pngImageBytes = fs.readFileSync(screenshotPath);
-    const pdfDoc = await PDFDocument.create();
-    const pdfPage = pdfDoc.addPage();
-    const pngImage = await pdfDoc.embedPng(pngImageBytes);
-    const { width, height } = pngImage.scale(1);
-    pdfPage.setSize(width, height);
-    pdfPage.drawImage(pngImage, {
+    const pdfPath = path.join (__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
+    const pngImageBytes = fs.readFileSync (screenshotPath);
+    const pdfDoc = await PDFDocument.create ();
+    const pdfPage = pdfDoc.addPage ();
+    const pngImage = await pdfDoc.embedPng (pngImageBytes);
+    const {width, height} = pngImage.scale (1);
+    pdfPage.setSize (width, height);
+    pdfPage.drawImage (pngImage, {
         x: 0,
         y: 0,
         width,
         height
     });
-    const pdfBytes = await pdfDoc.save();
-    fs.writeFileSync(pdfPath, pdfBytes);
+    const pdfBytes = await pdfDoc.save ();
+    fs.writeFileSync (pdfPath, pdfBytes);
 
     // Close the browser
-    await browser.close();
+    await browser.close ();
 });
 
 
@@ -3101,30 +3138,30 @@ agenda.define('generate-result-pdf', async(job) => {
 // });
 
 
-router.post("/generate-pdf-result", async(req, res) => {
+router.post ("/generate-pdf-result", async (req, res) => {
     try {
-        const { userId, inputs } = req.body;
+        const {userId, inputs} = req.body;
         const level = inputs.level;
         const semester = inputs.semester;
         let gpa;
 
         if (semester === "all") {
-            gpa = await gpaSchema.find({ level, userId: userId });
+            gpa = await gpaSchema.find ({level, userId: userId});
         } else {
-            gpa = await gpaSchema.find({ semester, level, userId: userId });
+            gpa = await gpaSchema.find ({semester, level, userId: userId});
         }
 
-        if (!gpa || gpa.length === 0) {
-            return res.status(404).send({ message: "You do not have a Result for this Level and Semester" });
+        if (! gpa || gpa.length === 0) {
+            return res.status (404).send ({message: "You do not have a Result for this Level and Semester"});
         }
 
-        const { education, firstname, lastname, profilePhoto } = await User.findById(userId);
+        const {education, firstname, lastname, profilePhoto} = await User.findById (userId);
 
-        const { logo } = await Institutions.findOne({
+        const {logo} = await Institutions.findOne ({
             institution: education.institution
-        }, { logo: 1 });
+        }, {logo: 1});
 
-        const html = await ejs.renderFile(path.join(__dirname, '..', 'views', 'result_mockup.ejs'), {
+        const html = await ejs.renderFile (path.join (__dirname, '..', 'views', 'result_mockup.ejs'), {
             firstname,
             lastname,
             education,
@@ -3136,22 +3173,22 @@ router.post("/generate-pdf-result", async(req, res) => {
         });
 
         // Launch Puppeteer
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
+        const browser = await puppeteer.launch ();
+        const page = await browser.newPage ();
 
         // Set the HTML content of the page to the EJS-compiled HTML
-        await page.setContent(html);
+        await page.setContent (html);
 
         // const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
         // Generate an image of the page using Puppeteer
-        const screenshotPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.jpg`);
-        await page.setViewport({
+        const screenshotPath = path.join (__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.jpg`);
+        await page.setViewport ({
             width: 1200, // increase the width
             height: 1600, // increase the height
             deviceScaleFactor: 2 // Increase pixel density
         });
-        await page.screenshot({ path: screenshotPath, fullPage: true, type: 'jpeg', quality: 100 });
+        await page.screenshot ({path: screenshotPath, fullPage: true, type: 'jpeg', quality: 100});
 
         // Convert the image to a PDF
         // const pdfPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
@@ -3174,37 +3211,37 @@ router.post("/generate-pdf-result", async(req, res) => {
         // await browser.close();
 
         const folderName = 'results';
-        const uploadResult = await cloudinary.uploader.upload(screenshotPath, { folder: folderName });
+        const uploadResult = await cloudinary.uploader.upload (screenshotPath, {folder: folderName});
 
         const imageUrl = uploadResult.secure_url;
 
         const fileName = `Result_${firstname}_Level_${level}_Semester_${semester}.jpeg`
 
-        res.status(200).send({ url: imageUrl, filename: fileName, message: 'Result Generated Successfully. Click the Link to Download the Result' });
+        res.status (200).send ({url: imageUrl, filename: fileName, message: 'Result Generated Successfully. Click the Link to Download the Result'});
 
     } catch (error) {
-        console.log(error);
-        res.status(500).send({ message: 'Internal Server Error' });
+        console.log (error);
+        res.status (500).send ({message: 'Internal Server Error'});
     }
 });
 
-router.get("/mentors/:mentorId/ratings", async(req, res) => {
+router.get ("/mentors/:mentorId/ratings", async (req, res) => {
     try {
-        const { mentorId } = req.params;
+        const {mentorId} = req.params;
 
         // Check if mentor exists
-        const mentor = await Mentors.findById(mentorId);
-        if (!mentor) {
-            return res.status(404).json({ message: "Mentor not found" });
+        const mentor = await Mentors.findById (mentorId);
+        if (! mentor) {
+            return res.status (404).json ({message: "Mentor not found"});
         }
 
         // Get all ratings for the mentor
         const ratings = mentor.rating;
 
-        res.status(200).json({ ratings });
+        res.status (200).json ({ratings});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server Error" });
+        console.error (err);
+        res.status (500).json ({message: "Server Error"});
     }
 });
 
@@ -3225,7 +3262,7 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
 
         const folderName = "stories";
         // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
-        
+
 
         if (story) {
             const lastItem = story.items[story.items.length - 1];
@@ -3278,17 +3315,60 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
 });
 
 
-router.get('/stories', async(req, res) => {
+router.get ('/stories', async (req, res) => {
     try { // Retrieve all stories from the database
-        const stories = await Story.find();
+        const stories = await Story.find ();
 
         // Send the stories as the response
-        res.status(200).json(stories);
+        res.status (200).json (stories);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error (error);
+        res.status (500).json ({error: 'Internal Server Error'});
     }
 });
+
+
+// POST route to save a new post
+router.post ('/share-post', upload4.array ('file', 10), async (req, res) => {
+    try {
+        const {userId, content} = req.body;
+        const files = req.files;
+
+        // Create an array of media objects with the URLs and types from Cloudinary
+        const media = files.map ( (file) => ({
+            url: file.path,
+            type: file.mimetype.includes ('image') ? 'image' : 'video'
+        }));
+
+        // Create a new post instance
+        const newPost = new Post ({userId, content, media});
+
+        // Save the post to the database
+        const savedPost = await newPost.save ();
+
+        res.status (200).send ({message: 'Post shared successfully'});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Server error'});
+    }
+});
+
+
+// GET route to fetch all posts sorted by the latest
+router.get('/posts', async (req, res) => {
+  try {
+    // Retrieve all posts from the database, sort by 'createdAt' field in descending order, and populate the 'userId' field
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .populate('userId', 'firstname lastname profilePhoto');
+
+    res.status(200).json(posts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 
 module.exports = router;
