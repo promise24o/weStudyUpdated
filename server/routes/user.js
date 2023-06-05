@@ -10,9 +10,8 @@ const crypto = require ("crypto");
 const ejs = require ("ejs");
 const fs = require ("fs");
 const path = require ("path");
-const puppeteer = require ('puppeteer');
-const {PDFDocument, StandardFonts, rgb} = require ('pdf-lib');
-
+const puppeteer = require ("puppeteer");
+const {PDFDocument, StandardFonts, rgb} = require ("pdf-lib");
 
 // Models
 const {User, validate} = require ("../models/Users");
@@ -25,8 +24,7 @@ const Story = require ("../models/Story");
 const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
 const Advert = require ("../models/Adverts");
 const multer = require ("multer");
-const Agenda = require ('agenda');
-
+const Agenda = require ("agenda");
 
 // Configure Cloudinary credentials
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
@@ -97,7 +95,7 @@ const storage3 = new CloudinaryStorage ({
         if (format === "mp4") {
             params.transformation = [{
                     duration: 25
-                }]; // Set the maximum duration to 25 seconds for videos
+                },]; // Set the maximum duration to 25 seconds for videos
             params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
         }
         return params;
@@ -152,11 +150,9 @@ const upload4 = multer ({
     }
 });
 
-
-router.get ('/', function (req, res) {
+router.get ("/", function (req, res) {
     res.send ("User API");
 });
-
 
 // router.post("/admin", async(req, res) => {
 //     console.log(req.body);
@@ -174,7 +170,6 @@ router.get ('/', function (req, res) {
 //         res.status(500).send({ message: "Internal Server Error", error: error })
 //     }
 // });
-
 
 router.get ("/:id/verify/:token", async (req, res) => {
     try {
@@ -463,7 +458,6 @@ router.post ("/update-education-info", async (req, res) => {
  *               message: Internal Server Error
  *               error: <error message>
  */
-
 
 router.post ("/update-personal-info", async (req, res) => {
     try {
@@ -853,7 +847,6 @@ router.post ("/disable-twofa", async (req, res) => {
     }
 });
 
-
 /**
  * @swagger
  * /users/update-preset-parameter:
@@ -934,7 +927,6 @@ router.post ("/update-preset-parameter", async (req, res) => {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
-
 
 /**
  * @swagger
@@ -1148,7 +1140,7 @@ router.patch ("/:userId/preset-scale", async (req, res) => {
  * /users/{userId}/target-cgpa:
  *   patch:
  *     summary: Update target CGPA of a user.
- *     tags: 
+ *     tags:
  *       - User
  *     parameters:
  *       - in: path
@@ -1244,7 +1236,7 @@ router.patch ("/:userId/target-cgpa", async (req, res) => {
  * /users/{userId}/preset_param/scale:
  *   delete:
  *     summary: Deletes the preset_param scale of the specified user.
- *     tags: 
+ *     tags:
  *       - User
  *     parameters:
  *       - in: path
@@ -1387,7 +1379,7 @@ router.delete ("/:userId/remove-result/:resultId", async (req, res) => {
  * /{userId}/remove-grade/{gradeId}:
  *   delete:
  *     summary: Delete a specific grade from the user's preset grading scale.
- *     tags: 
+ *     tags:
  *       - User
  *     parameters:
  *       - in: path
@@ -1558,7 +1550,6 @@ router.post ("/:userId/add-custom-grade", async (req, res) => {
     }
 });
 
-
 /**
  * @swagger
  * /users/{id}/grades:
@@ -1695,7 +1686,6 @@ router.get ("/:id/grades", async (req, res) => {
  *                   description: Error details
  */
 
-
 // Get all User Login Activities
 router.get ("/user-activities", async (req, res) => {
     try {
@@ -1708,7 +1698,6 @@ router.get ("/user-activities", async (req, res) => {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
-
 
 /**
  * @swagger
@@ -1976,7 +1965,6 @@ router.get ("/user-gpa", async (req, res) => {
  *         description: Internal server error occurred
  */
 
-
 // Get User Result
 router.get ("/:userId/get-result/:resultId", async (req, res) => {
     try {
@@ -1994,7 +1982,7 @@ router.get ("/:userId/get-result/:resultId", async (req, res) => {
  * @swagger
  * /users/get-user-gpa/{userId}/{institutionType}:
  *   get:
- *     summary: Get all GPAs for a user at a specific type of institution   
+ *     summary: Get all GPAs for a user at a specific type of institution
  *     tags : [User]
  *     parameters:
  *       - in: path
@@ -2044,7 +2032,7 @@ router.get ("/:userId/get-result/:resultId", async (req, res) => {
  *                 error:
  *                   type: string
  *                   description: The error message from the server
- * 
+ *
  * components:
  *   schemas:
  *     GPA:
@@ -2101,13 +2089,12 @@ router.get ("/get-user-gpa/:userId/:institutionType", async (req, res) => {
     }
 });
 
-
 /**
  * @swagger
  * /users/user-institution:
  *   get:
  *     summary: Get user institution logo
- *     tags: 
+ *     tags:
  *       - User
  *     parameters:
  *       - in: query
@@ -2207,7 +2194,6 @@ router.get ("/user-institution", async (req, res) => {
  *                   type: string
  */
 
-
 // Remove Course Based on the Course ID
 router.delete ("/remove-course/:courseId", async (req, res) => {
     try {
@@ -2239,7 +2225,7 @@ router.delete ("/remove-course/:courseId", async (req, res) => {
 // Get all Mentors
 router.get ("/mentors", async (req, res) => {
     try { // check if user exists
-        let mentors = await Mentors.find ().populate ('faculty').sort ({createdAt: "desc"});
+        let mentors = await Mentors.find ().populate ("faculty").sort ({createdAt: "desc"});
         if (! mentors) {
             return res.status (400).send ({message: "No Mentor Found"});
         }
@@ -2248,7 +2234,6 @@ router.get ("/mentors", async (req, res) => {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
-
 
 /**
  * @swagger
@@ -2306,7 +2291,7 @@ router.get ("/mentors", async (req, res) => {
 router.get ("/mentor/:id", async (req, res) => {
     try {
         const mentorId = req.params.id;
-        const mentor = await Mentors.findOne ({_id: mentorId}).populate ('faculty').populate ({path: "rating.user", select: 'firstname lastname profilePhoto'});
+        const mentor = await Mentors.findOne ({_id: mentorId}).populate ("faculty").populate ({path: "rating.user", select: "firstname lastname profilePhoto"});
         res.status (200).json ({mentor});
     } catch (err) {
         res.status (500).json ({message: err.message});
@@ -2436,7 +2421,6 @@ router.get ("/faculty/:id", async (req, res) => {
  *                 message:
  *                   type: string
  */
-
 
 // User Submit Mentor trading
 router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
@@ -2603,7 +2587,6 @@ router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
     }
 });
 
-
 /**
  * @swagger
  * /users/schedules/{mentorId}/{userId}:
@@ -2682,7 +2665,7 @@ router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
  */
 
 // Get Meeting Schedule Confirmed based on Mentor
-router.get ('/schedules/:mentorId/:userId', async (req, res) => {
+router.get ("/schedules/:mentorId/:userId", async (req, res) => {
     try {
         const {userId, mentorId} = req.params;
         const schedules = await Schedule.find ({userId, mentorId});
@@ -2692,7 +2675,6 @@ router.get ('/schedules/:mentorId/:userId', async (req, res) => {
         res.status (500).json ({message: "Server Error"});
     }
 });
-
 
 /**
  * @swagger
@@ -2775,14 +2757,14 @@ router.get ('/schedules/:mentorId/:userId', async (req, res) => {
  */
 
 // Add Mentor as Favorite Mentors
-router.post ('/favorite-mentor/:mentorId/:userId', async (req, res) => {
+router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
     const {mentorId, userId} = req.params;
 
     try {
         const user = await User.findById (userId);
 
         if (! user) {
-            return res.status (404).json ({message: 'User not found'});
+            return res.status (404).json ({message: "User not found"});
         }
 
         const favoriteMentor = {
@@ -2793,16 +2775,14 @@ router.post ('/favorite-mentor/:mentorId/:userId', async (req, res) => {
         user.favoriteMentors.push (favoriteMentor);
         const updatedUser = await user.save ();
 
-        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ('-password -token');
+        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
 
         return res.status (200).json ({user: userWithoutPasswordAndToken, message: "Mentor Added to Favorites"});
-
     } catch (error) {
         console.error (error);
-        return res.status (500).json ({message: 'Server error'});
+        return res.status (500).json ({message: "Server error"});
     }
 });
-
 
 /**
  * @swagger
@@ -2863,31 +2843,31 @@ router.post ('/favorite-mentor/:mentorId/:userId', async (req, res) => {
  */
 
 // Remove Mentor as Favorite Mentor
-router.delete ('/favorite-mentor/:mentorId/:userId', async (req, res) => {
+router.delete ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
     const {mentorId, userId} = req.params;
 
     try {
         const user = await User.findById (userId);
 
         if (! user) {
-            return res.status (404).json ({message: 'User not found'});
+            return res.status (404).json ({message: "User not found"});
         }
 
         const favoriteMentorIndex = user.favoriteMentors.findIndex ( (item) => item.mentor.toString () === mentorId);
 
         if (favoriteMentorIndex === -1) {
-            return res.status (404).json ({message: 'Mentor not found in favorites'});
+            return res.status (404).json ({message: "Mentor not found in favorites"});
         }
 
         user.favoriteMentors.splice (favoriteMentorIndex, 1);
         const updatedUser = await user.save ();
 
-        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ('-password -token');
+        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
 
-        return res.status (200).json ({user: userWithoutPasswordAndToken, message: 'Mentor Removed from Favorites'});
+        return res.status (200).json ({user: userWithoutPasswordAndToken, message: "Mentor Removed from Favorites"});
     } catch (error) {
         console.error (error);
-        return res.status (500).json ({message: 'Server error'});
+        return res.status (500).json ({message: "Server error"});
     }
 });
 
@@ -2995,7 +2975,6 @@ const agenda = new Agenda ({
 //     // Set the HTML content of the page to the EJS-compiled HTML
 //     await page.setContent(html);
 
-
 //     // Generate PDF file using Puppeteer
 //     const filePath = path.join(__dirname, '..', 'results', `Result_${user.firstname}.pdf`);
 //     await page.pdf({
@@ -3030,7 +3009,7 @@ const agenda = new Agenda ({
 //     await browser.close();
 // });
 
-agenda.define ('generate-result-pdf', async (job) => {
+agenda.define ("generate-result-pdf", async (job) => {
     const {
         firstname,
         lastname,
@@ -3043,7 +3022,7 @@ agenda.define ('generate-result-pdf', async (job) => {
     } = job.attrs.data;
 
     // Compile EJS template with user's data
-    const html = await ejs.renderFile (path.join (__dirname, '..', 'views', 'result_mockup.ejs'), {
+    const html = await ejs.renderFile (path.join (__dirname, "..", "views", "result_mockup.ejs"), {
         firstname,
         lastname,
         education,
@@ -3061,14 +3040,14 @@ agenda.define ('generate-result-pdf', async (job) => {
     // Set the HTML content of the page to the EJS-compiled HTML
     await page.setContent (html);
 
-    const {PDFDocument, StandardFonts, rgb} = require ('pdf-lib');
+    const {PDFDocument, StandardFonts, rgb} = require ("pdf-lib");
 
     // Generate an image of the page using Puppeteer
-    const screenshotPath = path.join (__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
+    const screenshotPath = path.join (__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
     await page.screenshot ({path: screenshotPath, fullPage: true});
 
     // Convert the image to a PDF
-    const pdfPath = path.join (__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
+    const pdfPath = path.join (__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
     const pngImageBytes = fs.readFileSync (screenshotPath);
     const pdfDoc = await PDFDocument.create ();
     const pdfPage = pdfDoc.addPage ();
@@ -3088,7 +3067,6 @@ agenda.define ('generate-result-pdf', async (job) => {
     await browser.close ();
 });
 
-
 // Generating PDF Result
 // router.post("/generate-pdf-result", async(req, res) => {
 //     try {
@@ -3102,7 +3080,6 @@ agenda.define ('generate-result-pdf', async (job) => {
 //         } else {
 //             gpa = await gpaSchema.find({ semester, level, userId: userId });
 //         }
-
 
 //         if (!gpa || gpa.length === 0) {
 //             return res.status(404).send({ message: "You do not have a Result for this Level and Semester" });
@@ -3128,7 +3105,6 @@ agenda.define ('generate-result-pdf', async (job) => {
 //             gpa
 //         });
 
-
 //         res.status(200).send({ message: 'Result Generated Successfully. Click the Link to Download the Result' });
 
 //     } catch (error) {
@@ -3136,7 +3112,6 @@ agenda.define ('generate-result-pdf', async (job) => {
 //         res.status(500).send({ message: 'Internal Server Error' });
 //     }
 // });
-
 
 router.post ("/generate-pdf-result", async (req, res) => {
     try {
@@ -3161,7 +3136,7 @@ router.post ("/generate-pdf-result", async (req, res) => {
             institution: education.institution
         }, {logo: 1});
 
-        const html = await ejs.renderFile (path.join (__dirname, '..', 'views', 'result_mockup.ejs'), {
+        const html = await ejs.renderFile (path.join (__dirname, "..", "views", "result_mockup.ejs"), {
             firstname,
             lastname,
             education,
@@ -3182,13 +3157,13 @@ router.post ("/generate-pdf-result", async (req, res) => {
         // const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
         // Generate an image of the page using Puppeteer
-        const screenshotPath = path.join (__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.jpg`);
+        const screenshotPath = path.join (__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.jpg`);
         await page.setViewport ({
             width: 1200, // increase the width
             height: 1600, // increase the height
-            deviceScaleFactor: 2 // Increase pixel density
+            deviceScaleFactor: 2, // Increase pixel density
         });
-        await page.screenshot ({path: screenshotPath, fullPage: true, type: 'jpeg', quality: 100});
+        await page.screenshot ({path: screenshotPath, fullPage: true, type: "jpeg", quality: 100});
 
         // Convert the image to a PDF
         // const pdfPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
@@ -3210,18 +3185,17 @@ router.post ("/generate-pdf-result", async (req, res) => {
         // // Close the browser
         // await browser.close();
 
-        const folderName = 'results';
+        const folderName = "results";
         const uploadResult = await cloudinary.uploader.upload (screenshotPath, {folder: folderName});
 
         const imageUrl = uploadResult.secure_url;
 
-        const fileName = `Result_${firstname}_Level_${level}_Semester_${semester}.jpeg`
+        const fileName = `Result_${firstname}_Level_${level}_Semester_${semester}.jpeg`;
 
-        res.status (200).send ({url: imageUrl, filename: fileName, message: 'Result Generated Successfully. Click the Link to Download the Result'});
-
+        res.status (200).send ({url: imageUrl, filename: fileName, message: "Result Generated Successfully. Click the Link to Download the Result"});
     } catch (error) {
         console.log (error);
-        res.status (500).send ({message: 'Internal Server Error'});
+        res.status (500).send ({message: "Internal Server Error"});
     }
 });
 
@@ -3245,7 +3219,6 @@ router.get ("/mentors/:mentorId/ratings", async (req, res) => {
     }
 });
 
-
 router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
     let story = null;
     try {
@@ -3262,7 +3235,6 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
 
         const folderName = "stories";
         // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
-
 
         if (story) {
             const lastItem = story.items[story.items.length - 1];
@@ -3314,8 +3286,7 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
     }
 });
 
-
-router.get ('/stories', async (req, res) => {
+router.get ("/stories", async (req, res) => {
     try { // Retrieve all stories from the database
         const stories = await Story.find ();
 
@@ -3323,13 +3294,64 @@ router.get ('/stories', async (req, res) => {
         res.status (200).json (stories);
     } catch (error) {
         console.error (error);
-        res.status (500).json ({error: 'Internal Server Error'});
+        res.status (500).json ({error: "Internal Server Error"});
     }
 });
 
 
+router.get ('/stories/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Find the user's stories by their ID
+        const stories = await Story.find ({id: userId});
+
+        if (stories.length === 0) {
+            return res.status (404).json ({message: 'No stories found for the user'});
+        }
+
+        res.status (200).json ({stories});
+    } catch (error) {
+        res.status (500).json ({message: 'Internal Server Error', error});
+    }
+});
+
+// DELETE /users/stories/:userId/:itemId
+router.delete ('/stories/:userId/:itemId', async (req, res) => {
+    const userId = req.params.userId;
+    const itemId = req.params.itemId;
+
+    try { // Find the story with the given user ID
+        const story = await Story.findOne ({id: userId});
+
+        if (! story) {
+            return res.status (404).json ({message: 'Story not found'});
+        }
+
+        // Find the index of the item with the given ID
+        const itemIndex = story.items.findIndex ( (item) => item.id === itemId);
+
+        if (itemIndex === -1) {
+            return res.status (404).json ({message: 'Item not found in story'});
+        }
+
+        // Remove the item from the story's items array
+        story.items.splice (itemIndex, 1);
+
+        // Save the updated story
+        await story.save ();
+
+        return res.status (200).json ({message: 'Story item deleted successfully'});
+    } catch (error) {
+        console.error ('Error deleting story item:', error);
+        return res.status (500).json ({message: 'Internal Server Error', error: error.message});
+    }
+});
+
+
+
 // POST route to save a new post
-router.post ('/share-post', upload4.array ('file', 10), async (req, res) => {
+router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
     try {
         const {userId, content} = req.body;
         const files = req.files;
@@ -3337,7 +3359,7 @@ router.post ('/share-post', upload4.array ('file', 10), async (req, res) => {
         // Create an array of media objects with the URLs and types from Cloudinary
         const media = files.map ( (file) => ({
             url: file.path,
-            type: file.mimetype.includes ('image') ? 'image' : 'video'
+            type: file.mimetype.includes ("image") ? "image" : "video"
         }));
 
         // Create a new post instance
@@ -3346,29 +3368,157 @@ router.post ('/share-post', upload4.array ('file', 10), async (req, res) => {
         // Save the post to the database
         const savedPost = await newPost.save ();
 
-        res.status (200).send ({message: 'Post shared successfully'});
+        res.status (200).send ({message: "Post shared successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "Server error"});
+    }
+});
+
+// GET route to fetch all posts sorted by the latest
+router.get ("/posts", async (req, res) => {
+    try { // Retrieve all posts from the database, sort by 'createdAt' field in descending order, and populate the 'userId' field
+        const posts = await Post.find ().sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto");
+
+        res.status (200).json (posts);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "Server error"});
+    }
+});
+
+// Delete Post based on ID
+router.delete ("/posts/:id", async (req, res) => {
+    const {id} = req.params;
+    try { // Find the post by ID
+        const post = await Post.findById (id);
+
+        // Check if the post exists
+        if (! post) {
+            return res.status (404).json ({message: "Post not found"});
+        }
+        // Delete the post
+        await post.deleteOne ();
+        res.json ({message: "Post deleted successfully"});
+    } catch (error) {
+        console.error ("Error deleting post:", error);
+        res.status (500).json ({message: "Internal server error"});
+    }
+});
+
+router.post ("/posts/:postId/like", async (req, res) => {
+    const {postId} = req.params;
+    const {userId} = req.body;
+
+    try {
+        const post = await Post.findById (postId);
+
+        // Check if the post exists
+        if (! post) {
+            return res.status (404).json ({message: "Post not found"});
+        }
+
+        // Check if the post already has the user's like
+        const isLiked = post.likes.some ( (like) => like.user.toString () === userId);
+
+        if (isLiked) { // Unlike the post
+            post.likes = post.likes.filter ( (like) => like.user.toString () !== userId);
+        } else { // Like the post
+            post.likes.push ({user: userId});
+        }
+
+        await post.save ();
+
+        res.status (200).json ({message: "Post liked/unliked successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: "Internal server error"});
+    }
+});
+
+// Route to handle posting a comment
+router.post ("/posts/:postId/comments", async (req, res) => {
+    try { // Find the post based on the provided postId
+        const post = await Post.findById (req.params.postId);
+
+        // Create a new comment object with the user and text
+        const newComment = {
+            user: req.body.user,
+            text: req.body.text
+        };
+
+        // Add the new comment to the post's comments array
+        post.comments.push (newComment);
+
+        // Save the updated post
+        await post.save ();
+
+        res.status (200).json ({message: "Comment posted successfully"});
+    } catch (error) { // Handle any errors that occurred during the request
+        console.error (error);
+        res.status (500).json ({message: "Internal server error"});
+    }
+});
+
+router.get ("/posts/:postId", async (req, res) => {
+    try {
+        let post = await Post.findById (req.params.postId).populate ("userId", "firstname lastname profilePhoto").populate ({
+            path: "comments",
+            populate: {
+                path: "user",
+                select: "firstname lastname profilePhoto"
+            }
+        }).populate ({path: "comments.replies.user", select: "firstname lastname profilePhoto"});
+
+        if (! post) {
+            return res.status (400).send ({message: "No Post Found"});
+        }
+        res.status (200).send ({post: post});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+    }
+});
+
+
+
+// POST /posts/:postId/comments/:commentId/replies
+router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
+    try {
+        const {postId, commentId} = req.params;
+        const {user, text} = req.body;
+
+        // Find the post by postId
+        const post = await Post.findById (postId);
+
+        if (! post) {
+            return res.status (404).json ({error: 'Post not found'});
+        }
+
+        // Find the comment within the post by commentId
+        const comment = post.comments.find ( (c) => c._id.toString () === commentId);
+
+        if (! comment) {
+            return res.status (404).json ({error: 'Comment not found'});
+        }
+
+        // Create the reply comment
+        const replyComment = {
+            user,
+            text
+        };
+
+        // Add the reply comment to the comment's replies array
+        comment.replies.push (replyComment);
+
+        // Save the post
+        await post.save ();
+
+        res.status (201).json ({message: 'Reply comment created successfully'});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'Server error'});
     }
 });
-
-
-// GET route to fetch all posts sorted by the latest
-router.get('/posts', async (req, res) => {
-  try {
-    // Retrieve all posts from the database, sort by 'createdAt' field in descending order, and populate the 'userId' field
-    const posts = await Post.find()
-      .sort({ createdAt: -1 })
-      .populate('userId', 'firstname lastname profilePhoto');
-
-    res.status(200).json(posts);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
 
 
 module.exports = router;

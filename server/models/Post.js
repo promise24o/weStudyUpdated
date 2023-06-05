@@ -2,7 +2,7 @@ const mongoose = require ('mongoose');
 
 const commentSchema = new mongoose.Schema ({
     user: {
-        type: mongoose.Schema.Types.ObjectId,
+        type:mongoose.ObjectId,
         ref: 'user'
     },
     text: {
@@ -16,7 +16,7 @@ const commentSchema = new mongoose.Schema ({
     replies: [
         {
             user: {
-                type: mongoose.Schema.Types.ObjectId,
+                type:mongoose.ObjectId,
                 ref: 'user'
             },
             text: {
@@ -38,25 +38,27 @@ const postSchema = new mongoose.Schema ({
         required: true
     },
     content: {
-        type: String,
+        type: String
     },
     media: [
         {
             url: {
                 type: String,
                 required: true
-            }, 
+            },
             type: {
                 type: String,
                 required: true
-            }, 
+            }
         },
     ],
     likes: [
         {
-            type: mongoose.ObjectId,
-            ref: 'User'
-        },
+            user: {
+                type: mongoose.ObjectId,
+                ref: 'user'
+            }
+        }
     ],
     comments: [commentSchema],
     createdAt: {
