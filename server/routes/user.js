@@ -3219,6 +3219,75 @@ router.get ("/mentors/:mentorId/ratings", async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/stories/{userId}:
+ *   post:
+ *     summary: Create or add a story for a user
+ *     tags:
+ *       - User
+ *     description: Create a new story or add a story item to an existing story for the specified user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user to create or update the story for.
+ *         schema:
+ *           type: string
+ *       - in: formData
+ *         name: file
+ *         required: true
+ *         description: The file to upload for the story item.
+ *         schema:
+ *           type: file
+ *       - in: formData
+ *         name: data
+ *         required: true
+ *         description: JSON string containing additional data for the story item.
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               data:
+ *                 type: string
+ *                 description: JSON string containing additional data for the story item.
+ *                 example: '{"id": "123", "name": "Story Name", "avatar": "avatar.jpg", "link": "https://example.com", "linkText": "Read More", "fileType": "image"}'
+ *     responses:
+ *       200:
+ *         description: The updated list of stories and a success message.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stories:
+ *                   type: array
+ *                   description: List of stories.
+ *                   items:
+ *                     $ref: '#/components/schemas/Story'
+ *                 message:
+ *                   type: string
+ *                   description: A message confirming the successful creation or update of the story.
+ *                   example: Story Posted Successfully!
+ *       500:
+ *         description: An error occurred while processing the request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred.
+ *                   example: Internal Server Error
+ */
+
+
 router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
     let story = null;
     try {
@@ -3286,6 +3355,36 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/stories:
+ *   get:
+ *     summary: Get all stories
+ *     tags:
+ *       - User
+ *     description: Retrieves all stories from the database.
+ *     responses:
+ *       200:
+ *         description: The list of stories.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Story'
+ *       500:
+ *         description: An error occurred while processing the request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred.
+ *                   example: Internal Server Error
+ */
+
 router.get ("/stories", async (req, res) => {
     try { // Retrieve all stories from the database
         const stories = await Story.find ();
@@ -3298,6 +3397,57 @@ router.get ("/stories", async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/stories/{userId}:
+ *   get:
+ *     summary: Get user's stories
+ *     tags:
+ *       - User
+ *     description: Retrieves the stories for the user with the specified ID.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user whose stories should be retrieved.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The user's stories.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stories:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Story'
+ *       404:
+ *         description: No stories found for the specified user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that no stories were found.
+ *                   example: No stories found for the user
+ *       500:
+ *         description: An error occurred while processing the request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred.
+ *                   example: Internal Server Error
+ */
 
 router.get ('/stories/:userId', async (req, res) => {
     try {
@@ -3316,6 +3466,64 @@ router.get ('/stories/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/stories/{userId}/{itemId}:
+ *   delete:
+ *     summary: Delete item from story
+ *     tags:
+ *       - User
+ *     description: Deletes an item from the story of a user with the specified ID.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user whose story contains the item.
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         description: The ID of the item to be deleted from the story.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The item was deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A success message indicating that the item was deleted.
+ *                   example: Story item deleted successfully
+ *       404:
+ *         description: The story or item was not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the story or item was not found.
+ *                   example: Story not found or Item not found in story
+ *       500:
+ *         description: An error occurred while processing the request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred.
+ *                   example: Internal Server Error
+ */
+
+
 // DELETE /users/stories/:userId/:itemId
 router.delete ('/stories/:userId/:itemId', async (req, res) => {
     const userId = req.params.userId;
@@ -3328,8 +3536,8 @@ router.delete ('/stories/:userId/:itemId', async (req, res) => {
             return res.status (404).json ({message: 'Story not found'});
         }
 
-        // Find the index of the item with the given ID
-        const itemIndex = story.items.findIndex ( (item) => item.id === itemId);
+        // Find the item with the given ID
+        const itemIndex = story.items.findIndex ( (item) => item._id.toString () === itemId);
 
         if (itemIndex === -1) {
             return res.status (404).json ({message: 'Item not found in story'});
@@ -3347,7 +3555,6 @@ router.delete ('/stories/:userId/:itemId', async (req, res) => {
         return res.status (500).json ({message: 'Internal Server Error', error: error.message});
     }
 });
-
 
 
 // POST route to save a new post
