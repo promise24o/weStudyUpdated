@@ -3556,6 +3556,60 @@ router.delete ('/stories/:userId/:itemId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/share-post:
+ *   post:
+ *     summary: Share a post to live feed
+ *     tags:
+ *       - User
+ *     description: Create and share a post with media files.
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: formData
+ *         name: userId
+ *         required: true
+ *         type: string
+ *         description: The ID of the user sharing the post.
+ *       - in: formData
+ *         name: content
+ *         required: true
+ *         type: string
+ *         description: The content of the post.
+ *       - in: formData
+ *         name: file
+ *         required: false
+ *         type: file
+ *         description: Media file(s) to be included in the post. Multiple files can be uploaded.
+ *     responses:
+ *       200:
+ *         description: Post shared successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating successful post sharing.
+ *                   example: Post shared successfully.
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Post'
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error.
+ *                   example: Server error.
+ */
 
 // POST route to save a new post
 router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
@@ -3573,14 +3627,49 @@ router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
         const newPost = new Post ({userId, content, media});
 
         // Save the post to the database
-        const savedPost = await newPost.save ();
+        await newPost.save ();
 
-        res.status (200).send ({message: "Post shared successfully"});
+        // Retrieve all the posts
+        const allPosts = await Post.find ();
+
+        res.status (200).json ({message: "Post shared successfully", posts: allPosts});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: "Server error"});
     }
 });
+
+
+/**
+ * @swagger
+ * /users/posts:
+ *   get:
+ *     summary: Get all posts
+ *     tags:
+ *       - User
+ *     description: Retrieve all posts from the database, sorted by 'createdAt' field in descending order, and populated with user details.
+ *     responses:
+ *       200:
+ *         description: Successful operation. Returns all posts.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Post'
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error.
+ *                   example: Server error.
+ */
+
 
 // GET route to fetch all posts sorted by the latest
 router.get ("/posts", async (req, res) => {
@@ -3593,6 +3682,57 @@ router.get ("/posts", async (req, res) => {
         res.status (500).json ({error: "Server error"});
     }
 });
+
+/**
+ * @swagger
+ * /users/posts/{id}:
+ *   delete:
+ *     summary: Delete a post
+ *     tags:
+ *       - User
+ *     description: Deletes a post based on the provided ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The ID of the post to be deleted.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Post deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the post was deleted successfully.
+ *                   example: Post deleted successfully.
+ *       404:
+ *         description: Post not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the post was not found.
+ *                   example: Post not found.
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating an internal server error.
+ *                   example: Internal server error.
+ */
 
 // Delete Post based on ID
 router.delete ("/posts/:id", async (req, res) => {
@@ -3612,6 +3752,66 @@ router.delete ("/posts/:id", async (req, res) => {
         res.status (500).json ({message: "Internal server error"});
     }
 });
+
+/**
+ * @swagger
+ * /users/posts/{postId}/like:
+ *   post:
+ *     summary: Like or unlike a post
+ *     tags:
+ *       - User
+ *     description: Likes or unlikes a post based on the provided post ID and user ID.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         description: The ID of the post to be liked or unliked.
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user performing the like or unlike action.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             userId:
+ *               type: string
+ *     responses:
+ *       200:
+ *         description: Post liked/unliked successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the post was liked or unliked successfully.
+ *                   example: Post liked/unliked successfully.
+ *       404:
+ *         description: Post not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the post was not found.
+ *                   example: Post not found.
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating an internal server error.
+ *                   example: Internal server error.
+ */
 
 router.post ("/posts/:postId/like", async (req, res) => {
     const {postId} = req.params;
@@ -3643,6 +3843,59 @@ router.post ("/posts/:postId/like", async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /posts/{postId}/comments:
+ *   post:
+ *     summary: Add a comment to a post
+ *     tags:
+ *       - User
+ *     description: Adds a comment to the specified post based on the provided post ID.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         description: The ID of the post to add a comment to.
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: Comment
+ *         required: true
+ *         description: The comment to be added.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             user:
+ *               type: string
+ *               description: The user who posted the comment.
+ *             text:
+ *               type: string
+ *               description: The content of the comment.
+ *     responses:
+ *       200:
+ *         description: Comment posted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the comment was posted successfully.
+ *                   example: Comment posted successfully.
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating an internal server error.
+ *                   example: Internal server error.
+ */
+
 // Route to handle posting a comment
 router.post ("/posts/:postId/comments", async (req, res) => {
     try { // Find the post based on the provided postId
@@ -3667,6 +3920,56 @@ router.post ("/posts/:postId/comments", async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /posts/{postId}:
+ *   get:
+ *     summary: Get a specific post
+ *     tags:
+ *       - User
+ *     description: Retrieves a specific post based on the provided post ID.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         description: The ID of the post to retrieve.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The requested post.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 post:
+ *                   $ref: '#/components/schemas/Post'
+ *       400:
+ *         description: No post found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that no post was found.
+ *                   example: No Post Found
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating an internal server error.
+ *                   example: Internal Server Error
+ */
+
 router.get ("/posts/:postId", async (req, res) => {
     try {
         let post = await Post.findById (req.params.postId).populate ("userId", "firstname lastname profilePhoto").populate ({
@@ -3686,6 +3989,77 @@ router.get ("/posts/:postId", async (req, res) => {
     }
 });
 
+
+
+/**
+ * @swagger
+ * /posts/{postId}/comments/{commentId}/replies:
+ *   post:
+ *     summary: Create a reply comment
+ *     tags:
+ *       - User
+ *     description: Creates a reply comment for a specific post and comment.
+ *     parameters:
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         description: The ID of the post.
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         description: The ID of the comment.
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: replyComment
+ *         required: true
+ *         description: The reply comment object.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             user:
+ *               type: string
+ *               description: The ID of the user creating the reply comment.
+ *             text:
+ *               type: string
+ *               description: The text content of the reply comment.
+ *     responses:
+ *       201:
+ *         description: Reply comment created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the successful creation of the reply comment.
+ *                   example: Reply comment created successfully
+ *       404:
+ *         description: Post or comment not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that the post or comment was not found.
+ *                   example: Post not found
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ *                   example: Server error
+ */
 
 
 // POST /posts/:postId/comments/:commentId/replies
