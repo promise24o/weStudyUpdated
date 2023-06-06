@@ -1,30 +1,31 @@
-const router = require("express").Router();
-const { auth2 } = require("../middleware/auth");
-const cloudinary = require("cloudinary").v2;
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const multer = require("multer");
+const router = require ("express").Router ();
+const {auth2} = require ("../middleware/auth");
+const cloudinary = require ("cloudinary").v2;
+const {CloudinaryStorage} = require ("multer-storage-cloudinary");
+const multer = require ("multer");
 
 // Models
-const { User, validate } = require("../models/Users");
-const { ScholarshipCategory, Scholarship } = require("../models/Scholarships");
-const { CourseCategory, Course } = require("../models/Courses");
-const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
-const { CommunityCategory, CommunityCenter } = require("../models/CommunityCenter");
-const Advert = require("../models/Adverts");
+const {User, validate} = require ("../models/Users");
+const {ScholarshipCategory, Scholarship} = require ("../models/Scholarships");
+const {CourseCategory, Course} = require ("../models/Courses");
+const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
+const {CommunityCategory, CommunityCenter} = require ("../models/CommunityCenter");
+const Advert = require ("../models/Adverts");
 
 
-const Admin = require("../models/Admin");
-const Institutions = require("../models/Institutions");
+const Admin = require ("../models/Admin");
+const Institutions = require ("../models/Institutions");
+const MentorApplication = require ("../models/MentorApplication");
 
 // Configure Cloudinary credentials
-cloudinary.config({ cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q" });
+cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage = new CloudinaryStorage({
+const storage = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/scholarships",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `scholarship-${
             Date.now ()
         }`
@@ -32,7 +33,7 @@ const storage = new CloudinaryStorage({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload = multer({
+const upload = multer ({
     storage: storage,
     limits: {
         fileSize: 1024 * 1024 * 5,
@@ -41,11 +42,11 @@ const upload = multer({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage2 = new CloudinaryStorage({
+const storage2 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/mentors",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `mentors-${
             Date.now ()
         }`
@@ -53,11 +54,11 @@ const storage2 = new CloudinaryStorage({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage4 = new CloudinaryStorage({
+const storage4 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/community-categories",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `categories-${
             Date.now ()
         }`
@@ -65,11 +66,11 @@ const storage4 = new CloudinaryStorage({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage5 = new CloudinaryStorage({
+const storage5 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/community-center",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `community-${
             Date.now ()
         }`
@@ -77,11 +78,11 @@ const storage5 = new CloudinaryStorage({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage6 = new CloudinaryStorage({
+const storage6 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/adverts",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `adverts-${
             Date.now ()
         }`
@@ -89,7 +90,7 @@ const storage6 = new CloudinaryStorage({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload4 = multer({
+const upload4 = multer ({
     storage: storage4,
     limits: {
         fileSize: 800 * 800 * 5,
@@ -103,7 +104,7 @@ const upload4 = multer({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload2 = multer({
+const upload2 = multer ({
     storage: storage2,
     limits: {
         fileSize: 800 * 800 * 5,
@@ -117,11 +118,11 @@ const upload2 = multer({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage3 = new CloudinaryStorage({
+const storage3 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/courses",
-        format: async(req, file) => "png",
+        format: async (req, file) => "png",
         public_id: (req, file) => `courses-${
             Date.now ()
         }`
@@ -129,7 +130,7 @@ const storage3 = new CloudinaryStorage({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload3 = multer({
+const upload3 = multer ({
     storage: storage3,
     limits: {
         fileSize: 800 * 800 * 5,
@@ -143,7 +144,7 @@ const upload3 = multer({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload5 = multer({
+const upload5 = multer ({
     storage: storage5,
     limits: {
         fileSize: 800 * 800 * 5,
@@ -157,7 +158,7 @@ const upload5 = multer({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload6 = multer({
+const upload6 = multer ({
     storage: storage6,
     limits: {
         fileSize: 800 * 800 * 5,
@@ -170,271 +171,269 @@ const upload6 = multer({
     }
 });
 
-router.get("/", function(req, res) {
-    res.send("Admin Routes");
+router.get ("/", function (req, res) {
+    res.send ("Admin Routes");
 });
 
-router.get("/users-list", auth2, async(req, res) => {
+router.get ("/users-list", auth2, async (req, res) => {
     try { // check if user exists
-        let users = await User.find().sort({ createdAt: "desc" });
-        if (!users) {
-            return res.status(400).send({ message: "No Users Found" });
+        let users = await User.find ().sort ({createdAt: "desc"});
+        if (! users) {
+            return res.status (400).send ({message: "No Users Found"});
         }
-        res.status(200).send({ users: users });
+        res.status (200).send ({users: users});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/schedules-list", auth2, async(req, res) => {
+router.get ("/schedules-list", auth2, async (req, res) => {
     try { // check if scheuldes exists
-        let schedules = await User.find().sort({ createdAt: "desc" });
-        if (!schedules) {
-            return res.status(400).send({ message: "No Schedules Found" });
+        let schedules = await User.find ().sort ({createdAt: "desc"});
+        if (! schedules) {
+            return res.status (400).send ({message: "No Schedules Found"});
         }
-        res.status(200).send({ schedules: schedules });
+        res.status (200).send ({schedules: schedules});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/institutions-list", auth2, async(req, res) => {
+router.get ("/institutions-list", auth2, async (req, res) => {
     try { // check if user exists
-        let institutions = await Institutions.find().sort({ createdAt: "desc" });
-        if (!institutions) {
-            return res.status(400).send({ message: "No Institution Found" });
+        let institutions = await Institutions.find ().sort ({createdAt: "desc"});
+        if (! institutions) {
+            return res.status (400).send ({message: "No Institution Found"});
         }
-        res.status(200).send({ institutions: institutions });
+        res.status (200).send ({institutions: institutions});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/users-list", auth2, async(req, res) => {
+router.get ("/users-list", auth2, async (req, res) => {
     try { // check if user exists
-        let users = await User.find().sort({ createdAt: "desc" });
-        if (!users) {
-            return res.status(400).send({ message: "No Users Found" });
+        let users = await User.find ().sort ({createdAt: "desc"});
+        if (! users) {
+            return res.status (400).send ({message: "No Users Found"});
         }
-        res.status(200).send({ users: users });
+        res.status (200).send ({users: users});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/scholarship-categories", auth2, async(req, res) => {
+router.get ("/scholarship-categories", auth2, async (req, res) => {
     try { // check if user exists
-        let scholarshipCategories = await ScholarshipCategory.find().sort({ createdAt: "desc" });
-        if (!scholarshipCategories) {
-            return res.status(400).send({ message: "No Scholarship Categories Found" });
+        let scholarshipCategories = await ScholarshipCategory.find ().sort ({createdAt: "desc"});
+        if (! scholarshipCategories) {
+            return res.status (400).send ({message: "No Scholarship Categories Found"});
         }
-        res.status(200).send({ categories: scholarshipCategories });
+        res.status (200).send ({categories: scholarshipCategories});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/course-categories", auth2, async(req, res) => {
+router.get ("/course-categories", auth2, async (req, res) => {
     try { // check if user exists
-        let courseCategories = await CourseCategory.find().sort({ createdAt: "desc" });
-        if (!courseCategories) {
-            return res.status(400).send({ message: "No Course Categories Found" });
+        let courseCategories = await CourseCategory.find ().sort ({createdAt: "desc"});
+        if (! courseCategories) {
+            return res.status (400).send ({message: "No Course Categories Found"});
         }
-        res.status(200).send({ categories: courseCategories });
+        res.status (200).send ({categories: courseCategories});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/community-categories", auth2, async(req, res) => {
+router.get ("/community-categories", auth2, async (req, res) => {
     try { // check if user exists
-        let communityCategories = await CommunityCategory.find().sort({ createdAt: "desc" });
-        if (!communityCategories) {
-            return res.status(400).send({ message: "No Categories Found" });
+        let communityCategories = await CommunityCategory.find ().sort ({createdAt: "desc"});
+        if (! communityCategories) {
+            return res.status (400).send ({message: "No Categories Found"});
         }
-        res.status(200).send({ categories: communityCategories });
+        res.status (200).send ({categories: communityCategories});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/scholarships", auth2, async(req, res) => {
+router.get ("/scholarships", auth2, async (req, res) => {
     try { // check if user exists
-        let scholarships = await Scholarship.find().populate('category').sort({ createdAt: "desc" });
-        if (!scholarships) {
-            return res.status(400).send({ message: "No Scholarship Found" });
+        let scholarships = await Scholarship.find ().populate ('category').sort ({createdAt: "desc"});
+        if (! scholarships) {
+            return res.status (400).send ({message: "No Scholarship Found"});
         }
-        res.status(200).send({ scholarships: scholarships });
+        res.status (200).send ({scholarships: scholarships});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/scholarship/:id",  async(req, res) => {
+router.get ("/scholarship/:id", async (req, res) => {
     const scholarshipId = req.params.id;
     try { // check if user exists
-        let scholarship = await Scholarship.findOne({ _id: scholarshipId });
-        if (!scholarship) {
-            return res.status(400).send({ message: "No Scholarship Found" });
+        let scholarship = await Scholarship.findOne ({_id: scholarshipId});
+        if (! scholarship) {
+            return res.status (400).send ({message: "No Scholarship Found"});
         }
-       res.status(200).json({ scholarship });
+        res.status (200).json ({scholarship});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/courses", auth2, async(req, res) => {
+router.get ("/courses", auth2, async (req, res) => {
     try { // check if user exists
-        let courses = await Course.find().populate('category').sort({ createdAt: "desc" });
-        if (!courses) {
-            return res.status(400).send({ message: "No Courses Found" });
+        let courses = await Course.find ().populate ('category').sort ({createdAt: "desc"});
+        if (! courses) {
+            return res.status (400).send ({message: "No Courses Found"});
         }
-        res.status(200).send({ courses: courses });
+        res.status (200).send ({courses: courses});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
 
-router.get("/course/:id",  async(req, res) => {
+router.get ("/course/:id", async (req, res) => {
     const courseId = req.params.id;
     try { // check if user exists
-        let course = await Course.findOne({ _id: courseId });
-        if (!course) {
-            return res.status(400).send({ message: "No Course Found" });
+        let course = await Course.findOne ({_id: courseId});
+        if (! course) {
+            return res.status (400).send ({message: "No Course Found"});
         }
-       res.status(200).json({ course });
+        res.status (200).json ({course});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/cc-posts", auth2, async(req, res) => {
+router.get ("/cc-posts", auth2, async (req, res) => {
     try { // check if user exists
-        let posts = await CommunityCenter.find().sort({ createdAt: "desc" });
-        if (!posts) {
-            return res.status(400).send({ message: "No Posts Found" });
+        let posts = await CommunityCenter.find ().sort ({createdAt: "desc"});
+        if (! posts) {
+            return res.status (400).send ({message: "No Posts Found"});
         }
-        res.status(200).send({ posts: posts });
+        res.status (200).send ({posts: posts});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/get-admin", auth2, async(req, res) => {
-    const { id } = req.query;
+router.get ("/get-admin", auth2, async (req, res) => {
+    const {id} = req.query;
     try { // check if admin exists
-        let admin = await Admin.findById(id);
-        if (!admin) {
-            return res.status(400).send({ message: "No Admin Found" });
+        let admin = await Admin.findById (id);
+        if (! admin) {
+            return res.status (400).send ({message: "No Admin Found"});
         }
-        res.status(200).send({ admin: admin });
+        res.status (200).send ({admin: admin});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.post("/add-scholarship-category", auth2, async(req, res) => {
-    const { title, adminId } = req.body;
+router.post ("/add-scholarship-category", auth2, async (req, res) => {
+    const {title, adminId} = req.body;
     try {
-        await new ScholarshipCategory({ title, createdBy: adminId }).save();
+        await new ScholarshipCategory ({title, createdBy: adminId}).save ();
 
-        const categories = await ScholarshipCategory.find({});
+        const categories = await ScholarshipCategory.find ({});
 
-        res.status(201).send({ categories, message: "Category Added Successfully" });
+        res.status (201).send ({categories, message: "Category Added Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.post("/add-course-category", auth2, async(req, res) => {
-    const { title, adminId } = req.body;
+router.post ("/add-course-category", auth2, async (req, res) => {
+    const {title, adminId} = req.body;
     try {
-        await new CourseCategory({ title, createdBy: adminId }).save();
-        const categories = await CourseCategory.find({});
-        res.status(201).send({ categories, message: "Category Added Successfully" });
+        await new CourseCategory ({title, createdBy: adminId}).save ();
+        const categories = await CourseCategory.find ({});
+        res.status (201).send ({categories, message: "Category Added Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.post("/add-faculty", auth2, async(req, res) => {
-    const { title, adminId } = req.body;
+router.post ("/add-faculty", auth2, async (req, res) => {
+    const {title, adminId} = req.body;
     try {
-        await new MentorFaculty({ title, createdBy: adminId }).save();
+        await new MentorFaculty ({title, createdBy: adminId}).save ();
 
-        const faculties = await MentorFaculty.find({});
+        const faculties = await MentorFaculty.find ({});
 
-        res.status(201).send({ faculties, message: "Faculty Added Successfully" });
+        res.status (201).send ({faculties, message: "Faculty Added Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/faculties", auth2, async(req, res) => {
+router.get ("/faculties", auth2, async (req, res) => {
     try { // check if user exists
-        let faculties = await MentorFaculty.find().sort({ createdAt: "desc" });
-        if (!faculties) {
-            return res.status(400).send({ message: "No Faculty Found" });
+        let faculties = await MentorFaculty.find ().sort ({createdAt: "desc"});
+        if (! faculties) {
+            return res.status (400).send ({message: "No Faculty Found"});
         }
-        res.status(200).send({ faculties: faculties });
+        res.status (200).send ({faculties: faculties});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.get("/mentors", auth2, async (req, res) => {
-  try {
-    let mentors = await Mentors.find()
-      .populate("faculty") // Populate the faculty field
-      .sort({ createdAt: "desc" });
+router.get ("/mentors", auth2, async (req, res) => {
+    try {
+        let mentors = await Mentors.find ().populate ("faculty") // Populate the faculty field.sort ({createdAt: "desc"});
 
-    if (mentors.length === 0) {
-      return res.status(400).send({ message: "No Mentor Found" });
+        if (mentors.length === 0) {
+            return res.status (400).send ({message: "No Mentor Found"});
+        }
+
+        res.status (200).send ({mentors: mentors});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
-
-    res.status(200).send({ mentors: mentors });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-  }
 });
 
-router.put("/update-institution/:id", async(req, res) => {
+router.put ("/update-institution/:id", async (req, res) => {
     try {
         const institutionId = req.params.id;
         const institutionUpdates = req.body;
-        const updatedInstitution = await Institutions.findByIdAndUpdate(institutionId, institutionUpdates, { new: true });
-        res.status(201).send({ institutions: updatedInstitution, message: "Institution Updated Successfully" });
+        const updatedInstitution = await Institutions.findByIdAndUpdate (institutionId, institutionUpdates, {new: true});
+        res.status (201).send ({institutions: updatedInstitution, message: "Institution Updated Successfully"});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.put("/update-category/:id", async(req, res) => {
+router.put ("/update-category/:id", async (req, res) => {
     try {
         const categoryId = req.params.id;
         const categoryUpdates = req.body;
-        await ScholarshipCategory.findByIdAndUpdate(categoryId, categoryUpdates, { new: true });
-        const categories = await ScholarshipCategory.find().sort({ createdAt: -1 });
-        res.status(201).send({ categories: categories, message: "Institution Updated Successfully" });
+        await ScholarshipCategory.findByIdAndUpdate (categoryId, categoryUpdates, {new: true});
+        const categories = await ScholarshipCategory.find ().sort ({createdAt: -1});
+        res.status (201).send ({categories: categories, message: "Institution Updated Successfully"});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.put("/update-faculty/:id", async(req, res) => {
+router.put ("/update-faculty/:id", async (req, res) => {
     try {
         const facultyId = req.params.id;
         const facultyUpdates = req.body;
-        await MentorFaculty.findByIdAndUpdate(facultyId, facultyUpdates, { new: true });
-        const faculties = await MentorFaculty.find().sort({ createdAt: -1 });
-        res.status(201).send({ faculties: faculties, message: "Faculty Updated Successfully" });
+        await MentorFaculty.findByIdAndUpdate (facultyId, facultyUpdates, {new: true});
+        const faculties = await MentorFaculty.find ().sort ({createdAt: -1});
+        res.status (201).send ({faculties: faculties, message: "Faculty Updated Successfully"});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.put("/update-mentor/:id", upload2.single("file"), async(req, res) => {
+router.put ("/update-mentor/:id", upload2.single ("file"), async (req, res) => {
     try {
         const mentorId = req.params.id;
         const updatedMentor = ({
@@ -451,12 +450,12 @@ router.put("/update-mentor/:id", upload2.single("file"), async(req, res) => {
             facebook,
             calendly,
             skills
-        } = JSON.parse(req.body.data));
+        } = JSON.parse (req.body.data));
 
         if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path);
+            const result = await cloudinary.uploader.upload (req.file.path);
             updatedMentor = {
-                ...updatedMentor,
+                ... updatedMentor,
                 avatar: result.avatar
             };
         }
@@ -468,37 +467,37 @@ router.put("/update-mentor/:id", upload2.single("file"), async(req, res) => {
             new: true
         }; // return the updated document
 
-        const updated = await Mentors.findByIdAndUpdate(filter, updatedMentor, options);
+        const updated = await Mentors.findByIdAndUpdate (filter, updatedMentor, options);
 
-        res.status(201).send({ message: "Mentor Details Updated Successfully" });
+        res.status (201).send ({message: "Mentor Details Updated Successfully"});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.post("/institutions-list", async(req, res) => {
-    const { institution, logo, type } = req.body;
+router.post ("/institutions-list", async (req, res) => {
+    const {institution, logo, type} = req.body;
     try {
-        await new Institutions({ institution, logo, type }).save();
-        res.status(201).send({ message: "Institution Added Successfully" });
+        await new Institutions ({institution, logo, type}).save ();
+        res.status (201).send ({message: "Institution Added Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.post("/add-scholarship", upload.single("file"), async(req, res) => {
+router.post ("/add-scholarship", upload.single ("file"), async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ error: "No photo uploaded" });
+        return res.status (400).json ({error: "No photo uploaded"});
     }
 
     // Update the user's photo in the database
-    const data = JSON.parse(req.body.data);
+    const data = JSON.parse (req.body.data);
 
     // Upload the banner_image to cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path);
+    const result = await cloudinary.uploader.upload (req.file.path);
 
     try { // Create a new scholarship
-        const scholarship = new Scholarship({
+        const scholarship = new Scholarship ({
             title: data.title,
             banner_image: result.url,
             category: data.category,
@@ -509,104 +508,100 @@ router.post("/add-scholarship", upload.single("file"), async(req, res) => {
         });
 
         // Save the scholarship to the database
-        await scholarship.save();
+        await scholarship.save ();
 
         // Send a response with the saved scholarship
-        res.status(201).send({ scholarship: scholarship, message: "Scholarship Created Successfully" });
+        res.status (201).send ({scholarship: scholarship, message: "Scholarship Created Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error });
+        res.status (500).send ({message: "Internal Server Error", error});
     }
 });
 
-router.put("/update-scholarship/:id", upload.single("file"), async(req, res) => {
+router.put ("/update-scholarship/:id", upload.single ("file"), async (req, res) => {
     try {
-      const scholarshipId = req.params.id;
-      const updatedScholarship = ({
-        title,
-        banner_image,
-        category,
-        brief,
-        editorContent,
-        read_time,
-        slug,
-      } = JSON.parse(req.body.data));
+        const scholarshipId = req.params.id;
+        const updatedScholarship = ({
+            title,
+            banner_image,
+            category,
+            brief,
+            editorContent,
+            read_time,
+            slug
+        } = JSON.parse (req.body.data));
 
-      if (req.file) {
-        const result = await cloudinary.uploader.upload(req.file.path);
-        updatedMentor = {
-          ...updatedMentor,
-          avatar: result.avatar,
+        if (req.file) {
+            const result = await cloudinary.uploader.upload (req.file.path);
+            updatedMentor = {
+                ...updatedMentor,
+                avatar: result.avatar
+            };
+        }
+
+        const filter = {
+            _id: scholarshipId
         };
-      }
+        const options = {
+            new: true
+        }; // return the updated document
 
-      const filter = {
-        _id: scholarshipId,
-      };
-      const options = {
-        new: true,
-      }; // return the updated document
+        const updated = await Scholarship.findByIdAndUpdate (filter, updatedScholarship, options);
 
-      const updated = await Scholarship.findByIdAndUpdate(
-        filter,
-        updatedScholarship,
-        options
-      );
-
-      res.status(201).send({ message: "Scholarship Details Updated Successfully" });
+        res.status (201).send ({message: "Scholarship Details Updated Successfully"});
     } catch (err) {
-      res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.post("/advert", upload6.single("file"), async(req, res) => {
+router.post ("/advert", upload6.single ("file"), async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ error: "No photo uploaded" });
+        return res.status (400).json ({error: "No photo uploaded"});
     }
 
-    const data = JSON.parse(req.body.data);
+    const data = JSON.parse (req.body.data);
 
     // Upload the banner_image to cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path);
+    const result = await cloudinary.uploader.upload (req.file.path);
 
     try { // Create a new scholarship
-        const advert = new Advert({ link: data.link, status: data.status, banner_image: result.url });
+        const advert = new Advert ({link: data.link, status: data.status, banner_image: result.url});
 
         // Save the scholarship to the database
-        await advert.save();
+        await advert.save ();
 
-        const advertList = await Advert.find({}).sort({ createdAt: "desc" });
+        const advertList = await Advert.find ({}).sort ({createdAt: "desc"});
 
-        res.status(201).send({ adverts: advertList, message: "Advert Created Successfully" });
+        res.status (201).send ({adverts: advertList, message: "Advert Created Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error });
+        res.status (500).send ({message: "Internal Server Error", error});
     }
 });
 
-router.get("/adverts", async(req, res) => {
+router.get ("/adverts", async (req, res) => {
     try { // check if ads exists
-        let ads = await Advert.find().sort({ createdAt: "desc" });
-        if (!ads) {
-            return res.status(400).send({ message: "No Adverts Found" });
+        let ads = await Advert.find ().sort ({createdAt: "desc"});
+        if (! ads) {
+            return res.status (400).send ({message: "No Adverts Found"});
         }
-        res.status(200).send({ adverts: ads });
+        res.status (200).send ({adverts: ads});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 
-router.put("/advert/:adsId", upload5.single("file"), async(req, res) => {
-    const { adsId } = req.params;
-    const data = JSON.parse(req.body.data);
+router.put ("/advert/:adsId", upload5.single ("file"), async (req, res) => {
+    const {adsId} = req.params;
+    const data = JSON.parse (req.body.data);
 
     try {
         let updatedAdvert = {
             link: data.link,
-            status: data.status,
+            status: data.status
         };
 
         // Check if a file was uploaded
         if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path);
+            const result = await cloudinary.uploader.upload (req.file.path);
             updatedAdvert.banner_image = result.url;
         }
 
@@ -618,70 +613,70 @@ router.put("/advert/:adsId", upload5.single("file"), async(req, res) => {
         const options = {
             new: true
         };
-        await Advert.findByIdAndUpdate(filter, updatedAdvert, options);
-        const advertList = await Advert.find({}).sort({ createdAt: "desc" });
+        await Advert.findByIdAndUpdate (filter, updatedAdvert, options);
+        const advertList = await Advert.find ({}).sort ({createdAt: "desc"});
 
-        res.status(200).send({ adverts: advertList, message: "Advert Updated Successfully" });
+        res.status (200).send ({adverts: advertList, message: "Advert Updated Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error: error });
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 
 });
 
-router.delete("/advert/:adsId", async(req, res) => {
-    const { adsId } = req.params;
+router.delete ("/advert/:adsId", async (req, res) => {
+    const {adsId} = req.params;
 
     try {
-        const ads = await Advert.findOneAndDelete({ _id: adsId });
-        if (!ads) {
-            return res.status(404).send({ message: "Advert not found" });
+        const ads = await Advert.findOneAndDelete ({_id: adsId});
+        if (! ads) {
+            return res.status (404).send ({message: "Advert not found"});
         }
-        const advertList = await Advert.find();
-        res.send({ message: "Advert Deleted Successfully", adverts: advertList });
+        const advertList = await Advert.find ();
+        res.send ({message: "Advert Deleted Successfully", adverts: advertList});
     } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error" });
+        console.error (error);
+        res.status (500).send ({message: "Server error"});
     }
 });
 
 
-router.post("/add-community-category", upload4.single("file"), async(req, res) => {
+router.post ("/add-community-category", upload4.single ("file"), async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ error: "No photo uploaded" });
+        return res.status (400).json ({error: "No photo uploaded"});
     }
 
     // Update the user's photo in the database
-    const data = JSON.parse(req.body.data);
+    const data = JSON.parse (req.body.data);
 
     // Upload the banner_image to cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path);
-    console.log(result);
+    const result = await cloudinary.uploader.upload (req.file.path);
+    console.log (result);
     try { // Create a new category
-        const category = new CommunityCategory({ title: data.title, banner_image: result.url });
+        const category = new CommunityCategory ({title: data.title, banner_image: result.url});
         // Save the scholarship to the database
-        await category.save();
+        await category.save ();
         // Send a response with the saved category
-        const categories = await CommunityCategory.find({}).sort({ createdAt: "desc" });
-        res.status(201).send({ categories: categories, message: "Category Created Successfully" });
+        const categories = await CommunityCategory.find ({}).sort ({createdAt: "desc"});
+        res.status (201).send ({categories: categories, message: "Category Created Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error });
+        res.status (500).send ({message: "Internal Server Error", error});
     }
 });
 
 
-router.post("/add-course", upload3.single("file"), async(req, res) => {
+router.post ("/add-course", upload3.single ("file"), async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ error: "No photo uploaded" });
+        return res.status (400).json ({error: "No photo uploaded"});
     }
 
     // Update the user's photo in the database
-    const data = JSON.parse(req.body.data);
+    const data = JSON.parse (req.body.data);
 
     // Upload the banner_image to cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path);
+    const result = await cloudinary.uploader.upload (req.file.path);
 
     try { // Create a new Course
-        const course = new Course({
+        const course = new Course ({
             title: data.title,
             banner_image: result.url,
             category: data.category,
@@ -694,74 +689,75 @@ router.post("/add-course", upload3.single("file"), async(req, res) => {
         });
 
         // Save the Course to the database
-        await course.save();
+        await course.save ();
 
         // Send a response with the saved course
-        res.status(201).send({ course: course, message: "Course Created Successfully" });
+        res.status (201).send ({course: course, message: "Course Created Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error });
+        res.status (500).send ({message: "Internal Server Error", error});
     }
 });
 
 
-router.put("/update-course/:id", upload3.single("file"), async (req, res) => {
-  try {
-    const courseId = req.params.id;
-    const updatedCourse = JSON.parse(req.body.data);
-    let updatedCourseWithImage = { ...updatedCourse };
+router.put ("/update-course/:id", upload3.single ("file"), async (req, res) => {
+    try {
+        const courseId = req.params.id;
+        const updatedCourse = JSON.parse (req.body.data);
+        let updatedCourseWithImage = {
+            ... updatedCourse
+        };
 
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path);
-      updatedCourseWithImage.banner_image = result.url;
+        if (req.file) {
+            const result = await cloudinary.uploader.upload (req.file.path);
+            updatedCourseWithImage.banner_image = result.url;
+        }
+
+        const filter = {
+            _id: courseId
+        };
+        const options = {
+            new: true
+        }; // return the updated document
+
+        const updated = await Course.findByIdAndUpdate (filter, updatedCourseWithImage, options);
+
+        res.status (201).send ({message: "Course Details Updated Successfully"});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
     }
-
-    const filter = {
-      _id: courseId,
-    };
-    const options = {
-      new: true,
-    }; // return the updated document
-
-    const updated = await Course.findByIdAndUpdate(filter, updatedCourseWithImage, options);
-
-    res.status(201).send({ message: "Course Details Updated Successfully" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
 });
 
 
-router.delete("/course/:courseId", async(req, res) => {
-    const { courseId } = req.params;
+router.delete ("/course/:courseId", async (req, res) => {
+    const {courseId} = req.params;
 
     try {
-        const courses = await Course.findOneAndDelete({ _id: courseId });
-        if (!courses) {
-            return res.status(404).send({ message: "Course not found" });
+        const courses = await Course.findOneAndDelete ({_id: courseId});
+        if (! courses) {
+            return res.status (404).send ({message: "Course not found"});
         }
-        const courseList = await Course.find().sort({ createdAt: "desc" });
-        res.send({ message: "Course Deleted Successfully", courses: courseList });
+        const courseList = await Course.find ().sort ({createdAt: "desc"});
+        res.send ({message: "Course Deleted Successfully", courses: courseList});
     } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error" });
+        console.error (error);
+        res.status (500).send ({message: "Server error"});
     }
 });
 
 
-
-router.post("/add-community-center-post", upload5.single("file"), async(req, res) => {
+router.post ("/add-community-center-post", upload5.single ("file"), async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ message: "No photo uploaded" });
+        return res.status (400).json ({message: "No photo uploaded"});
     }
 
     // Update the user's photo in the database
-    const data = JSON.parse(req.body.data);
+    const data = JSON.parse (req.body.data);
 
     // Upload the banner_image to cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path);
+    const result = await cloudinary.uploader.upload (req.file.path);
 
     try { // Create a new Community Center Post
-        const post = new CommunityCenter({
+        const post = new CommunityCenter ({
             title: data.title,
             banner_image: result.url,
             category: data.category,
@@ -772,19 +768,19 @@ router.post("/add-community-center-post", upload5.single("file"), async(req, res
         });
 
         // Save the Post to the database
-        await post.save();
+        await post.save ();
 
         // Send a response with the saved course
-        res.status(201).send({ message: "Post Created Successfully" });
+        res.status (201).send ({message: "Post Created Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error });
+        res.status (500).send ({message: "Internal Server Error", error});
     }
 });
 
-router.put("/update-community-center-post/:id", upload5.single("file"), async(req, res) => {
+router.put ("/update-community-center-post/:id", upload5.single ("file"), async (req, res) => {
     try {
         const postId = req.params.id;
-        const data = JSON.parse(req.body.data);
+        const data = JSON.parse (req.body.data);
 
         let updatedPost = {
             title: data.title,
@@ -797,7 +793,7 @@ router.put("/update-community-center-post/:id", upload5.single("file"), async(re
 
         // Check if a file was uploaded
         if (req.file) {
-            const result = await cloudinary.uploader.upload(req.file.path);
+            const result = await cloudinary.uploader.upload (req.file.path);
             updatedPost.banner_image = result.url;
         }
 
@@ -808,18 +804,18 @@ router.put("/update-community-center-post/:id", upload5.single("file"), async(re
         const options = {
             new: true
         };
-        const updated = await CommunityCenter.findByIdAndUpdate(filter, updatedPost, options);
+        const updated = await CommunityCenter.findByIdAndUpdate (filter, updatedPost, options);
 
-        res.status(200).send({ message: "Post Updated Successfully" });
+        res.status (200).send ({message: "Post Updated Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error });
+        res.status (500).send ({message: "Internal Server Error", error});
     }
 });
 
 
-router.post("/add-mentor", upload2.single("file"), async(req, res) => {
+router.post ("/add-mentor", upload2.single ("file"), async (req, res) => {
     if (!req.file) {
-        return res.status(400).json({ error: "No photo uploaded" });
+        return res.status (400).json ({error: "No photo uploaded"});
     }
 
     // Update the user's photo in the database
@@ -837,13 +833,13 @@ router.post("/add-mentor", upload2.single("file"), async(req, res) => {
         facebook,
         calendly,
         skills
-    } = JSON.parse(req.body.data);
+    } = JSON.parse (req.body.data);
 
     // Upload the banner_image to cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path);
+    const result = await cloudinary.uploader.upload (req.file.path);
 
     try { // Create a new mentor
-        const mentor = new Mentors({
+        const mentor = new Mentors ({
             fullname,
             phone,
             email,
@@ -861,145 +857,172 @@ router.post("/add-mentor", upload2.single("file"), async(req, res) => {
         });
 
         // Save the scholarship to the database
-        await mentor.save();
+        await mentor.save ();
 
         // Send a response with the saved scholarship
-        res.status(201).send({ message: "Mentor Added Successfully" });
+        res.status (201).send ({message: "Mentor Added Successfully"});
     } catch (error) {
-        res.status(500).send({ message: "Internal Server Error", error });
+        res.status (500).send ({message: "Internal Server Error", error});
     }
 });
 
-router.get("/scholarship-count/:categoryId", async(req, res) => {
+router.get ("/scholarship-count/:categoryId", async (req, res) => {
     const categoryId = req.params.categoryId;
     try {
-        const count = await Scholarship.countDocuments({ category: categoryId });
-        res.status(200).json({ count });
+        const count = await Scholarship.countDocuments ({category: categoryId});
+        res.status (200).json ({count});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
+        console.error (err);
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.get("/course-count/:categoryId", async(req, res) => {
+router.get ("/course-count/:categoryId", async (req, res) => {
     const categoryId = req.params.categoryId;
     try {
-        const count = await Course.countDocuments({ category: categoryId });
-        res.status(200).json({ count });
+        const count = await Course.countDocuments ({category: categoryId});
+        res.status (200).json ({count});
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
+        console.error (err);
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.get("/category/:id", async(req, res) => {
+router.get ("/category/:id", async (req, res) => {
     try {
         const categoryId = req.params.id;
-        const category = await ScholarshipCategory.findOne({ _id: categoryId });
+        const category = await ScholarshipCategory.findOne ({_id: categoryId});
         const categoryName = category ? category.title : null;
-        res.status(200).json({ categoryName });
+        res.status (200).json ({categoryName});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.get("/course-category/:id", async(req, res) => {
+router.get ("/course-category/:id", async (req, res) => {
     try {
         const categoryId = req.params.id;
-        const category = await CourseCategory.findOne({ _id: categoryId });
+        const category = await CourseCategory.findOne ({_id: categoryId});
         const categoryName = category ? category.title : null;
-        res.status(200).json({ categoryName });
+        res.status (200).json ({categoryName});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.get("/cc-category/:id", async(req, res) => {
+router.get ("/cc-category/:id", async (req, res) => {
     try {
         const categoryId = req.params.id;
-        const category = await CommunityCategory.findOne({ _id: categoryId });
+        const category = await CommunityCategory.findOne ({_id: categoryId});
         const categoryName = category ? category.title : null;
-        res.status(200).json({ categoryName });
+        res.status (200).json ({categoryName});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.get("/faculty/:id", async(req, res) => {
+router.get ("/faculty/:id", async (req, res) => {
     try {
         const facultyId = req.params.id;
-        const faculty = await MentorFaculty.findOne({ _id: facultyId });
+        const faculty = await MentorFaculty.findOne ({_id: facultyId});
         const facultyName = faculty ? faculty.title : null;
-        res.status(200).json({ facultyName });
+        res.status (200).json ({facultyName});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
-router.get("/mentor/:id", async (req, res) => {
-  try {
-    const mentorId = req.params.id;
-    const mentor = await Mentors.findOne({ _id: mentorId }).populate("faculty");
-    res.status(200).json({ mentor });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+router.get ("/mentor/:id", async (req, res) => {
+    try {
+        const mentorId = req.params.id;
+        const mentor = await Mentors.findOne ({_id: mentorId}).populate ("faculty");
+        res.status (200).json ({mentor});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
 });
 
-router.get("/cc-post/:id", async(req, res) => {
+router.get ("/mentors-applications", async (req, res) => {
+    try {
+        const mentorApplications = await MentorApplication.find ().populate ("userId", "firstname lastname profilePhoto").populate ("faculty");
+
+        res.status (200).json ({mentors: mentorApplications});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
+});
+
+router.get ("/mentor-application/:id", async (req, res) => {
+    try {
+        const appplicationId = req.params.id;
+        console.log(appplicationId)
+        const mentorApplication = await MentorApplication.findOne({_id: appplicationId}).populate ("userId", "firstname lastname profilePhoto").populate ("faculty");
+
+        res.status (200).json ({mentor: mentorApplication});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
+});
+
+
+router.get ("/cc-post/:id", async (req, res) => {
     try {
         const postId = req.params.id;
-        const post = await CommunityCenter.findOne({ _id: postId });
-        res.status(200).json({ post });
+        const post = await CommunityCenter.findOne ({_id: postId});
+        res.status (200).json ({post});
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status (500).json ({message: err.message});
     }
 });
 
 // Admin Delete Community Center Post
-router.delete("/remove-cc-post/:postId", async(req, res) => {
-    const { postId } = req.params;
+router.delete ("/remove-cc-post/:postId", async (req, res) => {
+    const {postId} = req.params;
     try {
-        const post = await CommunityCenter.findOneAndDelete({ _id: postId });
-        if (!post) {
-            return res.status(404).send({ message: "Post not found" });
+        const post = await CommunityCenter.findOneAndDelete ({_id: postId});
+        if (! post) {
+            return res.status (404).send ({message: "Post not found"});
         }
         // Retrieve all the posts and send them as a response
-        const posts = await CommunityCenter.find();
-        res.send({ message: "Post deleted successfully", posts: posts });
+        const posts = await CommunityCenter.find ();
+        res.send ({message: "Post deleted successfully", posts: posts});
     } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error" });
+        console.error (error);
+        res.status (500).send ({message: "Server error"});
     }
 });
 
 // Admin Delete Community Center Post
-router.delete("/remove-mentor/:mentorId", async(req, res) => {
-    const { mentorId } = req.params;
+router.delete ("/remove-mentor/:mentorId", async (req, res) => {
+    const {mentorId} = req.params;
     try {
-        const mentor = await Mentors.findOneAndDelete({ _id: mentorId });
-        if (!mentor) {
-            return res.status(404).send({ message: "Mentor not found" });
+        const mentor = await Mentors.findOneAndDelete ({_id: mentorId});
+        if (! mentor) {
+            return res.status (404).send ({message: "Mentor not found"});
         }
         // Retrieve all the posts and send them as a response
-        const mentors = await Mentors.find();
-        res.send({ message: "Mentor Deleted Successfully", mentors: mentors });
+        const mentors = await Mentors.find ();
+        res.send ({message: "Mentor Deleted Successfully", mentors: mentors});
     } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error" });
+        console.error (error);
+        res.status (500).send ({message: "Server error"});
     }
 });
 
 
-router.delete('/courses/category', async (req, res) => {
-  try {
-   
-    await Course.updateMany({}, { $unset: { category: 1 } });
-    res.status(200).json({ message: 'All category for Courses have been deleted.' });
+router.delete ('/courses/category', async (req, res) => {
+    try {
 
-  } catch (error) {
-    res.status(500).json({ error: 'An error occurred while deleting category for Courses.' });
-  }
+        await Course.updateMany ({}, {
+            $unset: {
+                category: 1
+            }
+        });
+        res.status (200).json ({message: 'All category for Courses have been deleted.'});
+
+    } catch (error) {
+        res.status (500).json ({error: 'An error occurred while deleting category for Courses.'});
+    }
 });
 
 module.exports = router;

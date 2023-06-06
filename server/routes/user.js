@@ -25,6 +25,7 @@ const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
 const Advert = require ("../models/Adverts");
 const multer = require ("multer");
 const Agenda = require ("agenda");
+const MentorApplication = require("../models/MentorApplication");
 
 // Configure Cloudinary credentials
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
@@ -4101,5 +4102,55 @@ router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
     }
 });
 
+
+router.post ('/become-mentor/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    // Check if the user exists
+    User.findById (userId).then ( (user) => {
+        if (!user) {
+            return res.status (404).json ({error: 'User not found'});
+        }
+
+        // Extract the form values from the request body
+        const {
+            skills,
+            faculty,
+            briefDescription,
+            mentorshipReason,
+            linkedinProfile,
+            facebookUsername,
+            twitterHandle
+        } = req.body;
+
+        // Check if required fields are empty
+        if (!skills || !faculty || !briefDescription || !mentorshipReason) {
+            return res.status (400).json ({error: 'Please fill in all required fields.'});
+        }
+
+        // Create a new mentor application instance
+        const mentorApplication = new MentorApplication ({
+            userId,
+            skills,
+            faculty,
+            about: briefDescription,
+            reason: mentorshipReason,
+            linkedin: linkedinProfile,
+            facebook: facebookUsername,
+            twitterHandle
+        });
+
+        // Save the mentor application to the database
+        mentorApplication.save ().then ( (savedApplication) => {
+            res.json ({message: 'Mentor application submitted successfully'});
+        }).catch ( (error) => {
+            console.error (error);
+            res.status (500).json ({error: 'Failed to submit mentor application'});
+        });
+    }).catch ( (error) => {
+        console.error (error);
+        res.status (500).json ({error: 'Failed to check user existence'});
+    });
+});
 
 module.exports = router;

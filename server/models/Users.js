@@ -28,6 +28,14 @@ const userSchema = new mongoose.Schema({
     token: {
         type: String
     },
+    isMentor: {
+        type: Boolean,
+        default: false
+    },
+    isDonor: {
+        type: Boolean,
+        default: false
+    },
     verified: {
         type: Boolean,
         default: false
