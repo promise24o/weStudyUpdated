@@ -955,8 +955,8 @@ router.get ("/mentors-applications", async (req, res) => {
 router.get ("/mentor-application/:id", async (req, res) => {
     try {
         const appplicationId = req.params.id;
-        console.log(appplicationId)
-        const mentorApplication = await MentorApplication.findOne({_id: appplicationId}).populate ("userId", "firstname lastname profilePhoto").populate ("faculty");
+        console.log (appplicationId)
+        const mentorApplication = await MentorApplication.findOne ({_id: appplicationId}).populate ("userId", "firstname lastname profilePhoto education createdAt").populate ("faculty");
 
         res.status (200).json ({mentor: mentorApplication});
     } catch (err) {
