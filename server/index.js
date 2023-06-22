@@ -1,3 +1,5 @@
+require ('dotenv').config ();
+
 const io = require ('socket.io')(8801, {
     cors: {
         origin: process.env.CLIENT_BASE_URL
@@ -29,7 +31,6 @@ io.on ('connection', (socket) => {
 
 });
 
-require ('dotenv').config ();
 const express = require ('express');
 const app = express ();
 const cors = require ('cors');
