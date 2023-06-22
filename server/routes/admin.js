@@ -11,7 +11,8 @@ const {CourseCategory, Course} = require ("../models/Courses");
 const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
 const {CommunityCategory, CommunityCenter} = require ("../models/CommunityCenter");
 const Advert = require ("../models/Adverts");
-
+const gpaSchema = require ("../models/Gpa");
+const Notification = require ("../models/Notifications");
 
 const Admin = require ("../models/Admin");
 const Institutions = require ("../models/Institutions");
@@ -961,6 +962,63 @@ router.get ("/mentor-application/:id", async (req, res) => {
         res.status (200).json ({mentor: mentorApplication});
     } catch (err) {
         res.status (500).json ({message: err.message});
+    }
+});
+
+router.put ('/update-application-status/:id', async (req, res) => {
+    const id = req.params.id;
+    const {status, adminId} = req.body;
+
+    try {
+        const mentorApplication = await MentorApplication.findById (id);
+
+        if (! mentorApplication) {
+            return res.status (404).json ({error: 'Mentor application not found'});
+        }
+
+        mentorApplication.status = status;
+        mentorApplication.lastUpdated.push ({admin: adminId, action: `Status updated to ${status}`, dateUpdated: new Date ()});
+
+        const updatedMentorApplication = await mentorApplication.save ();
+
+        // Update isMentor property based on status
+        const user = await User.findOne ({_id: mentorApplication.userId});
+
+        if (! user) {
+            return res.status (404).json ({error: 'User not found'});
+        }
+
+        user.isMentor = status === 'Approved';
+
+        await user.save ();
+
+        const application = await MentorApplication.findOne ({_id: id}).populate ('userId', 'firstname lastname profilePhoto education createdAt').populate ('faculty');
+
+        // Send notification to the user
+        const notificationMessage = `The status of your mentor application has been changed to <strong>${status}</strong>`;
+
+        const notification = new Notification ({recipient: mentorApplication.userId, action: notificationMessage, isSystemNotification: true});
+
+        await notification.save ();
+
+        res.status (200).json ({message: `Status changed to ${status}`, mentor: application});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: error.message});
+    }
+});
+
+
+// Get User Results Based
+router.get ("/user-result/:userId/", async (req, res) => {
+    try {
+        let gpa = await gpaSchema.find ({userId: req.params.userId});
+        if (! gpa) {
+            return res.status (400).send ({message: "No GPA Found"});
+        }
+        res.status (200).send ({gpa: gpa});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
 

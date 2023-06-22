@@ -1,10 +1,10 @@
-const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
-const passwordComplexity = require('joi-password-complexity');
-const Joi = require('joi');
+const mongoose = require ('mongoose');
+const jwt = require ('jsonwebtoken');
+const passwordComplexity = require ('joi-password-complexity');
+const Joi = require ('joi');
 
 
-const userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema ({
     firstname: {
         type: String,
         required: true
@@ -64,6 +64,9 @@ const userSchema = new mongoose.Schema({
         }
     },
     personal: {
+        phone: {
+            type: String
+        },
         gender: {
             type: String
         },
@@ -93,61 +96,88 @@ const userSchema = new mongoose.Schema({
         scale: {
             type: Number
         },
-        grading: [{
-            _id: {
-                type: mongoose.Schema.Types.ObjectId,
-                auto: true
-            },
-            grade_symbol: {
-                type: String
-            },
-            grade_value: {
-                type: Number
-            },
-            createdAt: {
-                type: Date,
-                default: Date.now()
+        grading: [
+            {
+                _id: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    auto: true
+                },
+                grade_symbol: {
+                    type: String
+                },
+                grade_value: {
+                    type: Number
+                },
+                createdAt: {
+                    type: Date,
+                    default: Date.now ()
+                }
             }
-        }]
+        ]
     },
-    favoriteMentors: [{
-        mentor: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'mentors'
-        },
-        dateAdded: {
-            type: Date,
-            default: Date.now()
+    favoriteMentors: [
+        {
+            mentor: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'mentors'
+            },
+            dateAdded: {
+                type: Date,
+                default: Date.now ()
+            }
         }
-    }]
+    ],
+    liveFeedSettings: {
+        about: {
+            type: String,
+            default: ""
+        },
+        personal_details: {
+            type: Boolean,
+            default: true
+        },
+        edu_details: {
+            type: Boolean,
+            default: true
+        },
+        contact_details: {
+            type: Boolean,
+            default: true
+        },
+        friends_list: {
+            type: Boolean,
+            default: true
+        }
+    }
 });
 
 
+userSchema.set ('timestamps', true);
 
-userSchema.set('timestamps', true);
-
-userSchema.methods.generateAuthToken = async function() {
-    const token = jwt.sign({
+userSchema.methods.generateAuthToken = async function () {
+    const token = jwt.sign ({
         _id: this.id
-    }, process.env.JWT_SECRET_KEY, { expiresIn: "7d" })
+    }, process.env.JWT_SECRET_KEY, {expiresIn: "7d"})
     this.token = token;
-    await this.save();
+    await this.save ();
     return token;
 };
 
 
-const User = mongoose.model("user", userSchema);
+const User = mongoose.model ("user", userSchema);
 
 const validate = (data) => {
-    const schema = Joi.object({
-        firstname: Joi.string().required().label('First Name'),
-        lastname: Joi.string().required().label('Last Name'),
-        email: Joi.string().required().label('Email'),
-        password: passwordComplexity().required().label('Password'),
-        confirmPassword: Joi.string().valid(Joi.ref('password')).required().label('Confirm Password').messages({ 'any.only': 'Confirm Password does not match Password' })
+    const schema = Joi.object ({
+        firstname: Joi.string ().required ().label ('First Name'),
+        lastname: Joi.string ().required ().label ('Last Name'),
+        email: Joi.string ().required ().label ('Email'),
+        password: passwordComplexity ().required ().label ('Password'),
+        confirmPassword: Joi.string ().valid (Joi.ref ('password')).required ().label ('Confirm Password').messages (
+            {'any.only': 'Confirm Password does not match Password'}
+        )
     });
 
-    return schema.validate(data);
+    return schema.validate (data);
 }
 
 module.exports = {

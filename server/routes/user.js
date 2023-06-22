@@ -2,6 +2,7 @@ const cloudinary = require ("cloudinary").v2;
 const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const router = require ("express").Router ();
 const bcrypt = require ("bcrypt");
+const mongoose = require ('mongoose');
 
 const Token = require ("../models/Token");
 const sendEmail = require ("../utils/sendEmail");
@@ -25,7 +26,8 @@ const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
 const Advert = require ("../models/Adverts");
 const multer = require ("multer");
 const Agenda = require ("agenda");
-const MentorApplication = require("../models/MentorApplication");
+const MentorApplication = require ("../models/MentorApplication");
+const Notification = require ("../models/Notifications");
 
 // Configure Cloudinary credentials
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
@@ -118,7 +120,7 @@ const storage4 = new CloudinaryStorage ({
         let resourceType;
 
         if (file.mimetype.includes ("image")) {
-            format = "png";
+            format = "jpg";
             resourceType = "image";
         } else if (file.mimetype.includes ("video")) {
             format = "mp4";
@@ -127,18 +129,20 @@ const storage4 = new CloudinaryStorage ({
             throw new Error ("Invalid file type");
         }
 
-        const randomDigit = Math.floor (Math.random () * 10); // Generate a random digit (0-9)
+        const randomString = crypto.randomBytes (8).toString ('hex'); // Generate a random string (8 characters)
+        const fileName = `${randomString}`; // Combine the random string
 
         const params = {
             folder: "/post",
-            format: format,
-            public_id: `post-${randomDigit}`,
+            public_id: fileName, // Use the generated file name as the public_id
             resource_type: resourceType
         };
 
         if (format === "mp4") {
+            params.format = format;
             params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
         }
+
         return params;
     }
 });
@@ -150,6 +154,7 @@ const upload4 = multer ({
         fieldSize: 12 * 1024 * 1024, // 10MB field size limit (adjust as needed)
     }
 });
+
 
 router.get ("/", function (req, res) {
     res.send ("User API");
@@ -462,11 +467,18 @@ router.post ("/update-education-info", async (req, res) => {
 
 router.post ("/update-personal-info", async (req, res) => {
     try {
-        const {city, contact_address, gender, userId} = req.body;
+        const {
+            city,
+            contact_address,
+            gender,
+            phone,
+            userId
+        } = req.body;
         const updatedUser = await User.findOneAndUpdate ({
             _id: userId
         }, {
             $set: {
+                "personal.phone": phone,
                 "personal.city": city,
                 "personal.contact_address": contact_address,
                 "personal.gender": gender
@@ -3630,10 +3642,7 @@ router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
         // Save the post to the database
         await newPost.save ();
 
-        // Retrieve all the posts
-        const allPosts = await Post.find ();
-
-        res.status (200).json ({message: "Post shared successfully", posts: allPosts});
+        res.status (200).json ({message: "Post shared successfully", post: newPost});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: "Server error"});
@@ -3683,6 +3692,7 @@ router.get ("/posts", async (req, res) => {
         res.status (500).json ({error: "Server error"});
     }
 });
+
 
 /**
  * @swagger
@@ -3814,16 +3824,16 @@ router.delete ("/posts/:id", async (req, res) => {
  *                   example: Internal server error.
  */
 
-router.post ("/posts/:postId/like", async (req, res) => {
+router.post ('/posts/:postId/like', async (req, res) => {
     const {postId} = req.params;
     const {userId} = req.body;
 
     try {
-        const post = await Post.findById (postId);
+        const post = await Post.findById (postId).populate ("userId", "firstname lastname profilePhoto");
 
         // Check if the post exists
         if (! post) {
-            return res.status (404).json ({message: "Post not found"});
+            return res.status (404).json ({message: 'Post not found'});
         }
 
         // Check if the post already has the user's like
@@ -3831,18 +3841,51 @@ router.post ("/posts/:postId/like", async (req, res) => {
 
         if (isLiked) { // Unlike the post
             post.likes = post.likes.filter ( (like) => like.user.toString () !== userId);
+
+            // Delete the notification for the unliked post
+            await Notification.deleteOne ({
+                recipient: post.userId,
+                sender: userId,
+                action: {
+                    $regex: 'liked your post'
+                }
+            });
         } else { // Like the post
             post.likes.push ({user: userId});
+
+            // Check if the user is the owner of the post
+            if (post.userId.toString () !== userId) { // Create a notification for the post owner
+                const user = await User.findById (userId);
+                const fullName = user ? `${
+                    user.firstname
+                } ${
+                    user.lastname
+                }` : 'Unknown User';
+
+                const postText = post.content ? `"${
+                    post.content.substring (0, 100)
+                }..."` : '...';
+
+                const notification = new Notification ({
+                    recipient: post.userId, // Post owner's ID
+                    sender: userId, // Liked user's ID
+                    action: `<strong>${fullName}</strong> liked your post on the live feed ${postText}`,
+                    isSystemNotification: false
+                });
+
+                await notification.save ();
+            }
         }
 
-        await post.save ();
+        const updatedPost = await post.save ();
 
-        res.status (200).json ({message: "Post liked/unliked successfully"});
+        res.status (200).json ({message: 'Post liked/unliked successfully', post: updatedPost});
     } catch (error) {
         console.error (error);
-        res.status (500).json ({message: "Internal server error"});
+        res.status (500).json ({message: 'Internal server error'});
     }
 });
+
 
 /**
  * @swagger
@@ -3900,7 +3943,8 @@ router.post ("/posts/:postId/like", async (req, res) => {
 // Route to handle posting a comment
 router.post ("/posts/:postId/comments", async (req, res) => {
     try { // Find the post based on the provided postId
-        const post = await Post.findById (req.params.postId);
+        const post = await Post.findById (req.params.postId).populate ("userId", "firstname lastname profilePhoto");
+
 
         // Create a new comment object with the user and text
         const newComment = {
@@ -3912,9 +3956,26 @@ router.post ("/posts/:postId/comments", async (req, res) => {
         post.comments.push (newComment);
 
         // Save the updated post
-        await post.save ();
+        const updatedPost = await post.save ();
 
-        res.status (200).json ({message: "Comment posted successfully"});
+        // Check if the post belongs to the user commenting
+        if (post.userId.toString () !== req.body.user) { // Create a notification for the post owner
+            const user = await User.findById (req.body.user);
+            const fullName = user ? `${
+                user.firstname
+            } ${
+                user.lastname
+            }` : "Unknown User";
+            const postText = post.content ? `"${
+                post.content.substring (0, 100)
+            }..."` : "...";
+            const notification = new Notification ({recipient: post.userId, sender: req.body.user, action: `<strong>${fullName}</strong> commented on your post: ${postText}`, isSystemNotification: false});
+
+            // Save the notification
+            await notification.save ();
+        }
+
+        res.status (200).json ({message: "Comment posted successfully", post: updatedPost});
     } catch (error) { // Handle any errors that occurred during the request
         console.error (error);
         res.status (500).json ({message: "Internal server error"});
@@ -3990,6 +4051,21 @@ router.get ("/posts/:postId", async (req, res) => {
     }
 });
 
+router.get ("/user-posts/:userId", async (req, res) => {
+    const {userId} = req.params;
+
+    try {
+        // Retrieve posts of a particular user from the database,
+        // sort by 'createdAt' field in descending order,
+        // and populate the 'userId' field with 'firstname', 'lastname', and 'profilePhoto'
+        const posts = await Post.find ({userId}).sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto");
+
+        res.status (200).json (posts);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "Server error"});
+    }
+});
 
 
 /**
@@ -4102,6 +4178,164 @@ router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
     }
 });
 
+router.get ('/people-you-know/:userId', async (req, res) => {
+    try {
+        const {userId} = req.params;
+        const {
+            course_of_study,
+            current_level,
+            department,
+            institution,
+            study_mode,
+            institution_type,
+            faculty
+        } = req.query;
+
+        // Check if the user exists
+        const user = await User.findById (userId);
+        if (! user) {
+            return res.status (404).json ({error: 'User not found'});
+        }
+
+        const userIdObject = new mongoose.Types.ObjectId (userId);
+
+        // Optimize the aggregation pipeline
+        const pipeline = [
+            {
+                $match: {
+                    _id: {
+                        $ne: userIdObject
+                    }
+                }
+            }, { // Exclude the user with the given userId
+                $match: {
+                    $or: [
+                        {
+                            'education.course_of_study': course_of_study
+                        }, {
+                            'education.current_level': current_level
+                        }, {
+                            'education.department': department
+                        }, {
+                            'education.institution': institution
+                        }
+                    ]
+                }
+            }, {
+                $sample: {
+                    size: 4
+                }
+            }, { // Select 4 random documents
+                $project: {
+                    firstname: 1,
+                    lastname: 1,
+                    profilePhoto: 1,
+                    "education.institution": 1
+                }
+            }
+
+            // Select the desired fields
+        ];
+
+        const users = await User.aggregate (pipeline);
+
+        // If the number of matching documents is less than 4, adjust the number of results
+        const totalCount = await User.countDocuments ({
+            $or: [
+                {
+                    'education.course_of_study': course_of_study
+                }, {
+                    'education.current_level': current_level
+                }, {
+                    'education.department': department
+                }, {
+                    'education.institution': institution
+                }
+            ]
+        });
+        const adjustedSize = Math.min (users.length, totalCount);
+
+        res.json ({
+            people: users.slice (0, adjustedSize)
+        });
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Internal Server Error'});
+    }
+});
+
+
+router.post ("/update-livefeed-settings/:userId", async (req, res) => {
+    const userId = req.params.userId;
+    const {
+        about,
+        personal_details,
+        edu_details,
+        contact_details,
+        friends_list
+    } = req.body;
+
+    try {
+        const user = await User.findById (userId);
+        if (! user) {
+            return res.status (404).json ({error: "User not found"});
+        }
+
+        // Update the liveFeedSettings object
+        user.liveFeedSettings = {
+            about: about,
+            personal_details: personal_details,
+            edu_details: edu_details,
+            contact_details: contact_details,
+            friends_list: friends_list
+        };
+
+        // Save the updated user
+        await user.save ();
+
+        // Fetch the user again to exclude sensitive fields
+        const updatedUser = await User.findById (userId).select ("-token -password");
+
+        res.status (200).json ({user: updatedUser, message: "Live feed settings updated successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "Server error"});
+    }
+});
+
+router.get ('/author/:id', async (req, res) => {
+    const {id} = req.params;
+
+    try {
+        const author = await User.findById (id).select ('-token -password');
+
+        if (! author) {
+            return res.status (404).json ({error: 'Author not found'});
+        }
+
+        res.json ({author});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while fetching author details.'});
+    }
+});
+
+
+router.get ('/posts/media/:type/:userId', async (req, res) => {
+    const {type, userId} = req.params;
+
+    const userIdObject = new mongoose.Types.ObjectId (userId);
+    try {
+        const posts = await Post.find ({'media.type': type, userId: userIdObject});
+
+        const media = posts.flatMap ( (post) => post.media);
+        res.json (media);
+    } catch (error) {
+        console.error ('Error fetching post media:', error);
+        res.status (500).json ({error: 'Internal server error'});
+    }
+});
+
 
 router.post ('/become-mentor/:userId', (req, res) => {
     const userId = req.params.userId;
@@ -4152,5 +4386,18 @@ router.post ('/become-mentor/:userId', (req, res) => {
         res.status (500).json ({error: 'Failed to check user existence'});
     });
 });
+
+router.get ('/notifications/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        const notifications = await Notification.find ({recipient: userId}).populate ("sender", "firstname lastname profilePhoto").sort ({date: -1});
+        res.json ({notifications});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: error.message});
+    }
+});
+
 
 module.exports = router;

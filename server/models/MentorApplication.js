@@ -1,3 +1,4 @@
+const {required} = require ("joi");
 const mongoose = require ("mongoose");
 
 const mentorApplicationSchema = new mongoose.Schema ({
@@ -35,10 +36,27 @@ const mentorApplicationSchema = new mongoose.Schema ({
     status: {
         type: String,
         enum: [
-            "pending", "approved", "rejected"
+            "Pending", "Under Review", "Approved", "Rejected"
         ],
-        default: "pending"
+        default: "Pending"
     },
+    lastUpdated: [
+        {
+            admin: {
+                type: mongoose.ObjectId,
+                required: true,
+                ref: "Admin"
+            },
+            action: {
+                type: String,
+                required: true
+            },
+            dateUpdated: {
+                type: Date,
+                default: Date.now
+            }
+        }
+    ],
     createdAt: {
         type: Date,
         default: Date.now

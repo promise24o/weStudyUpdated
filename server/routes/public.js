@@ -210,6 +210,9 @@ router.get('/related-scholarships/:category/:id', async(req, res) => {
 });
 
 
+
+
+
 /**
  * @swagger
  * tags:
