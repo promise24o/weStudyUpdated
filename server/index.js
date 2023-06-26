@@ -115,12 +115,12 @@ app.get ('/', function (req, res) {
     res.send (req.useragent);
 });
 
-app.set ('views', __dirname + '/views');
+app.set ('views', __dirname + '/emails');
 app.set ('view engine', 'ejs');
 app.use (express.static (path.join (__dirname, 'public')));
 
-app.get ('/result', (req, res) => {
-    res.render ('result_mockup', {title: 'My Website'});
+app.get ('/otp', (req, res) => {
+    res.render ('otp', {title: 'My Website'});
 });
 
 // Connection Port
