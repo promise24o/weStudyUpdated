@@ -712,8 +712,8 @@ router.post('/verify-mentor-otp', async (req, res) => {
       return res.status(400).json({ message: 'OTP has expired' });
     }
 
-    // Update the mentor's status to Active
-    mentor.status = 'Active';
+    // Update the mentor's status to Under Review
+    mentor.status = 'Under Review';
     await mentor.save();
 
     // Remove the verified OTP record
@@ -723,6 +723,84 @@ router.post('/verify-mentor-otp', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'An error occurred while verifying the OTP' });
+  }
+});
+
+
+/**
+ * @swagger
+ * /auth/verify-mentor-otp:
+ *   post:
+ *     summary: Verify Mentor OTP
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: Email address of the mentor.
+ *               otp:
+ *                 type: string
+ *                 description: OTP to be verified.
+ *             required:
+ *               - email
+ *               - otp
+ *     responses:
+ *       '200':
+ *         description: OTP verified successfully.
+ *       '400':
+ *         description: Invalid OTP or OTP has expired.
+ *       '404':
+ *         description: Mentor not found.
+ *       '500':
+ *         description: An error occurred while verifying the OTP.
+ */
+
+// Route to reset mentor password
+router.post("/reset-mentor-password", async (req, res) => {
+console.log(req.body.email);
+
+  try {
+    let mentor = await Mentors.findOne({ email: req.body.email });
+    if (!mentor)
+      return res
+        .status(404)
+        .send({ message: "A mentor with this email does not exist!" });
+
+    const characters =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
+    const randomPassword = Array.from(
+      {
+        length: 12,
+      },
+      () => characters[Math.floor(Math.random() * characters.length)]
+    ).join("");
+    const salt = await bcrypt.genSalt(Number(process.env.SALT));
+    const hashPassword = await bcrypt.hash(randomPassword, salt);
+
+    // Update mentor's password
+    mentor.password = hashPassword;
+    await mentor.save();
+
+    // construct the file path using the path.join() method
+    const filePath = path.join(__dirname, "..", "emails", "reset_password.ejs");
+
+    // read the HTML content from a file
+    let template = fs.readFileSync(filePath, "utf8");
+
+    // compile the EJS template with the password variable
+    let html = ejs.render(template, { password: randomPassword });
+
+    await sendEmail(mentor.email, "Password Reset", html);
+
+    res.status(201).send({ message: "New password sent. Check your email." });
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error", error: error });
   }
 });
 

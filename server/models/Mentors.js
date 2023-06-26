@@ -65,7 +65,7 @@ const mentorsSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Pending", "Active", "Suspended"],
+    enum: ["Pending", "Under Review", "Active", "Suspended"],
     default: "Pending",
     required: true,
   },
