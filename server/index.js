@@ -1,8 +1,9 @@
 require ('dotenv').config ();
+const Notification = require ('./models/Notifications');
 
 const io = require ('socket.io')(8801, {
     cors: {
-        origin: process.env.CLIENT_BASE_URL
+        origin: process.env.ALLOWED_ORIGIN
     }
 });
 
@@ -24,12 +25,32 @@ io.on ('connection', (socket) => {
         io.to (postId).emit (`commentCounts:${postId}`, commentsCount);
     });
 
-    socket.on ('createPost', (newPost) => { 
-        // Emit the newly created post to all connected clients
+    socket.on ('createPost', (newPost) => { // Emit the newly created post to all connected clients
         io.emit ('newPost', newPost);
     });
 
+    socket.on ('getNotificationCounts', async (userId) => {
+        try { // Find the unread notifications for the specified user
+            const notificationsCount = await Notification.countDocuments ({recipient: userId, isRead: false});
+
+            // Emit the notification counts to the client
+            socket.emit ('notificationCounts', {notificationsCount});
+        } catch (error) {
+            console.error (error);
+        }
+    });
+
+    // Simulate new like event
+    socket.on ('newLike', (postId) => { // Emit the new like event to all clients in the corresponding post room
+        io.to (postId).emit ('newLike');
+    });
+
+    // Simulate new comment event
+    socket.on ('newComment', (postId) => { // Emit the new comment event to all clients in the corresponding post room
+        io.to (postId).emit ('newComment');
+    });
 });
+
 
 const express = require ('express');
 const app = express ();

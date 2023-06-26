@@ -15,8 +15,7 @@ const puppeteer = require ("puppeteer");
 const {PDFDocument, StandardFonts, rgb} = require ("pdf-lib");
 
 // Models
-const {User, validate} = require ("../models/Users");
-const Admin = require ("../models/Admin");
+const {User} = require ("../models/Users");
 const Post = require ("../models/Post");
 const Activity = require ("../models/Activities");
 const Institutions = require ("../models/Institutions");
@@ -37,8 +36,8 @@ const storage = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/users",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `user-${1}`
+        format: async () => "png",
+        public_id: () => `user-${1}`
     }
 });
 
@@ -56,19 +55,12 @@ const storage2 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/results",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `result-${1}`
+        format: async () => "png",
+        public_id: () => `result-${1}`
     }
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload2 = multer ({
-    storage: storage2,
-    limits: {
-        fileSize: 1024 * 1024 * 5,
-        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
-    }
-});
 
 const storage3 = new CloudinaryStorage ({
     cloudinary: cloudinary,
@@ -472,6 +464,7 @@ router.post ("/update-personal-info", async (req, res) => {
             contact_address,
             gender,
             phone,
+            dob,
             userId
         } = req.body;
         const updatedUser = await User.findOneAndUpdate ({
@@ -481,7 +474,8 @@ router.post ("/update-personal-info", async (req, res) => {
                 "personal.phone": phone,
                 "personal.city": city,
                 "personal.contact_address": contact_address,
-                "personal.gender": gender
+                "personal.gender": gender,
+                "personal.dob": dob
             }
         }, {new: true}).select ("-password -token");
 
@@ -3053,7 +3047,7 @@ agenda.define ("generate-result-pdf", async (job) => {
     // Set the HTML content of the page to the EJS-compiled HTML
     await page.setContent (html);
 
-    const {PDFDocument, StandardFonts, rgb} = require ("pdf-lib");
+    const {PDFDocument} = require ("pdf-lib");
 
     // Generate an image of the page using Puppeteer
     const screenshotPath = path.join (__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
@@ -3315,7 +3309,6 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
 
         story = await Story.findOne ({id: id});
 
-        const folderName = "stories";
         // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
 
         if (story) {
@@ -3642,6 +3635,9 @@ router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
         // Save the post to the database
         await newPost.save ();
 
+        // Populate the userId field with additional user data
+        await newPost.populate ("userId", "firstname lastname profilePhoto personal");
+
         res.status (200).json ({message: "Post shared successfully", post: newPost});
     } catch (error) {
         console.error (error);
@@ -3684,7 +3680,7 @@ router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
 // GET route to fetch all posts sorted by the latest
 router.get ("/posts", async (req, res) => {
     try { // Retrieve all posts from the database, sort by 'createdAt' field in descending order, and populate the 'userId' field
-        const posts = await Post.find ().sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto");
+        const posts = await Post.find ().sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto personal");
 
         res.status (200).json (posts);
     } catch (error) {
@@ -4185,11 +4181,7 @@ router.get ('/people-you-know/:userId', async (req, res) => {
             course_of_study,
             current_level,
             department,
-            institution,
-            study_mode,
-            institution_type,
-            faculty
-        } = req.query;
+            institution        } = req.query;
 
         // Check if the user exists
         const user = await User.findById (userId);
@@ -4375,7 +4367,7 @@ router.post ('/become-mentor/:userId', (req, res) => {
         });
 
         // Save the mentor application to the database
-        mentorApplication.save ().then ( (savedApplication) => {
+        mentorApplication.save ().then ( () => {
             res.json ({message: 'Mentor application submitted successfully'});
         }).catch ( (error) => {
             console.error (error);

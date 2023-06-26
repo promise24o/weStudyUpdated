@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { User } = require("../models/Users");
 const Admin = require("../models/Admin");
 const Activity = require("../models/Activities");
+const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
 const Joi = require("joi");
 const bcrypt = require("bcrypt");
 const { auth, auth2 } = require("../middleware/auth");
@@ -302,8 +303,6 @@ router.post("/register", async(req, res) => {
         if (user)
             return res.status(409).send({ message: "A User with that email already exists!" });
 
-
-
         const salt = await bcrypt.genSalt(Number(process.env.SALT));
         const hashPassword = await bcrypt.hash(req.body.password, salt);
 
@@ -507,6 +506,107 @@ router.post('/request-password', async(req, res) => {
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
+});
+
+/**
+ * @swagger
+ * /auth/register-mentor:
+ *   post:
+ *     summary: Register a new mentor
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname:
+ *                 type: string
+ *                 description: Full name of the mentor
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address of the mentor
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: Password for the mentor's account
+ *             required:
+ *               - fullname
+ *               - email
+ *               - password
+ *     responses:
+ *       200:
+ *         description: Mentor registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Mentor'
+ *       400:
+ *         description: Invalid request body or missing required fields
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Please fill in all the fields
+ *       500:
+ *         description: An error occurred while registering the mentor
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: An error occurred while registering the mentor
+ *               error: <error message>
+ *     security:
+ *       - BearerAuth: []
+ * components:
+ *   schemas:
+ *     Mentor:
+ *       type: object
+ *       properties:
+ *         fullname:
+ *           type: string
+ *           description: Full name of the mentor
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Email address of the mentor
+ *         password:
+ *           type: string
+ *           format: password
+ *           description: Password for the mentor's account
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+
+// Route: /register-mentor
+router.post('/register-mentor', async (req, res) => {
+  try {
+    const { fullname, email, password } = req.body;
+
+    // Validate the input
+    const { error } = validate({ email, password });
+    if (error) {
+      return res.status(400).json({ message: error.details[0].message });
+    }
+
+    const mentor = new Mentors({
+      fullname,
+      email,
+      password,
+      status: 'Pending', // Default status for new mentors
+      source: 'Registration', // Source as "Registration"
+    });
+
+    const savedMentor = await mentor.save();
+    res.status(200).json(savedMentor);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'An error occurred while registering the mentor' });
+  }
 });
 
 

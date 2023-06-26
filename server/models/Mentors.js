@@ -1,19 +1,19 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const mentorFacultySchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: true
-    },
-    createdBy: {
-        type: mongoose.ObjectId,
-        required: true,
-        ref: "admin"
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now()
-    }
+  title: {
+    type: String,
+    required: true,
+  },
+  createdBy: {
+    type: mongoose.ObjectId,
+    required: true,
+    ref: "admin",
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now(),
+  },
 });
 
 const mentorsSchema = new mongoose.Schema({
@@ -29,7 +29,6 @@ const mentorsSchema = new mongoose.Schema({
   },
   faculty: {
     type: mongoose.ObjectId,
-    required: true,
     ref: "MentorFaculty",
   },
   email: {
@@ -39,19 +38,15 @@ const mentorsSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
   },
   institution: {
     type: String,
-    required: true,
   },
   city: {
     type: String,
-    required: true,
   },
   country: {
     type: String,
-    required: true,
   },
   linkedin: {
     type: String,
@@ -66,6 +61,15 @@ const mentorsSchema = new mongoose.Schema({
     type: String,
   },
   calendly: {
+    type: String,
+  },
+  status: {
+    type: String,
+    enum: ["Pending", "Active", "Suspended"],
+    default: "Pending",
+    required: true,
+  },
+  source: {
     type: String,
     required: true,
   },
@@ -90,68 +94,67 @@ const mentorsSchema = new mongoose.Schema({
   ],
 });
 
-mentorsSchema.set('timestamps', true);
-
+mentorsSchema.set("timestamps", true);
 
 const scheduleSchema = new mongoose.Schema({
-    user: {
-        type: mongoose.ObjectId,
-        required: true,
-        ref: "user", 
-      },
-    mentorId: {
-        type: mongoose.ObjectId,
-        ref: 'mentors',
-        required: true
-    },
-    eventType: {
-        type: String,
-        required: true
-    },
-    eventName: {
-        type: String,
-        required: true
-    },
-    startTime: {
-        type: Date,
-        required: true
-    },
-    endTime: {
-        type: Date,
-        required: true
-    },
-    location: {
-        joinUrl: {
-            type: String,
-            required: true
-        },
-        status: {
-            type: String,
-            required: true
-        },
-        type: {
-            type: String,
-            required: true
-        }
+  user: {
+    type: mongoose.ObjectId,
+    required: true,
+    ref: "user",
+  },
+  mentorId: {
+    type: mongoose.ObjectId,
+    ref: "mentors",
+    required: true,
+  },
+  eventType: {
+    type: String,
+    required: true,
+  },
+  eventName: {
+    type: String,
+    required: true,
+  },
+  startTime: {
+    type: Date,
+    required: true,
+  },
+  endTime: {
+    type: Date,
+    required: true,
+  },
+  location: {
+    joinUrl: {
+      type: String,
+      required: true,
     },
     status: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
-    createdAt: {
-        type: Date,
-        required: true
+    type: {
+      type: String,
+      required: true,
     },
-    updatedAt: {
-        type: Date,
-        required: true
-    }
+  },
+  status: {
+    type: String,
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    required: true,
+  },
+  updatedAt: {
+    type: Date,
+    required: true,
+  },
 });
 
-scheduleSchema.set('timestamps', true);
+scheduleSchema.set("timestamps", true);
 
 module.exports = {
-    MentorFaculty: mongoose.model('MentorFaculty', mentorFacultySchema),
-    Mentors: mongoose.model('Mentors', mentorsSchema),
-    Schedule: mongoose.model('Schedule', scheduleSchema)
+  MentorFaculty: mongoose.model("MentorFaculty", mentorFacultySchema),
+  Mentors: mongoose.model("Mentors", mentorsSchema),
+  Schedule: mongoose.model("Schedule", scheduleSchema),
 };

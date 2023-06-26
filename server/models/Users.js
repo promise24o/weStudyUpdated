@@ -64,6 +64,9 @@ const userSchema = new mongoose.Schema ({
         }
     },
     personal: {
+        dob: {
+            type: String
+        },
         phone: {
             type: String
         },
