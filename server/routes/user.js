@@ -75,16 +75,16 @@ const storage3 = new CloudinaryStorage ({
         } else if (file.mimetype.includes ("video")) {
             format = "mp4";
             resourceType = "video";
-        } else {
-            throw new Error ("Invalid file type");
-        }
+        } 
+        // else {
+        //     throw new Error ("Invalid file type");
+        // }
 
-        const randomDigit = Math.floor (Math.random () * 10); // Generate a random digit (0-9)
-
+        const randomString = crypto.randomBytes (8).toString ('hex');
         const params = {
             folder: "/stories",
             format: format,
-            public_id: `story-${randomDigit}`,
+            public_id: `${randomString}`,
             resource_type: resourceType
         };
 
@@ -118,9 +118,10 @@ const storage4 = new CloudinaryStorage ({
         } else if (file.mimetype.includes ("video")) {
             format = "mp4";
             resourceType = "video";
-        } else {
-            throw new Error ("Invalid file type");
-        }
+        } 
+        // else {
+        //     throw new Error ("Invalid file type");
+        // }
 
         const randomString = crypto.randomBytes (8).toString ('hex'); // Generate a random string (8 characters)
         const fileName = `${randomString}`; // Combine the random string
