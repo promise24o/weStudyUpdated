@@ -728,9 +728,9 @@ router.post('/verify-mentor-otp', async (req, res) => {
 
 /**
  * @swagger
- * /auth/verify-mentor-otp:
+ * /mentor-request-otp:
  *   post:
- *     summary: Verify Mentor OTP
+ *     summary: Request Mentor OTP
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -743,21 +743,15 @@ router.post('/verify-mentor-otp', async (req, res) => {
  *               email:
  *                 type: string
  *                 description: The email address of the mentor
- *               otp:
- *                 type: string
- *                 description: The OTP to be verified
  *             required:
  *               - email
- *               - otp
  *     responses:
  *       '200':
- *         description: OTP verified successfully
+ *         description: New OTP sent successfully
  *       '400':
- *         description: Invalid OTP or OTP has expired
- *       '404':
- *         description: Mentor not found
+ *         description: Email does not exist or is invalid
  *       '500':
- *         description: An error occurred while verifying the OTP
+ *         description: An error occurred while requesting the OTP
  */
 
 // Route: /mentor-request-otp
