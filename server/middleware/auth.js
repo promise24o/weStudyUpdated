@@ -1,10 +1,16 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models/Users');
+const { Mentors } = require('../models/Mentors');
 const Admin = require('../models/Admin');
 
 const auth = async (req, res, next) => {
     try { // Get token from header
-        const token = JSON.parse (req.header ('Authorization').replace ('Bearer ', ''));
+        const token = req.headers.authorization.replace ('Bearer ', '').trim ().replace (/"/g, '');
+
+        // Check if a token exists
+        if (! token) {
+            return res.status (401).json ({message: 'Authentication failed. No token provided.'});
+        }
 
         // Verify token
         const decoded = jwt.verify (token, process.env.JWT_SECRET_KEY);
@@ -16,7 +22,7 @@ const auth = async (req, res, next) => {
 
         // If user not found, search in Mentor schema
         if (! user) {
-            user = await Mentor.findOne ({_id: decoded._id, token});
+            user = await Mentors.findOne ({_id: decoded._id, token});
         }
 
         // If user or mentor not found, throw error
