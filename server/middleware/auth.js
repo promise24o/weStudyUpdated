@@ -2,29 +2,37 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models/Users');
 const Admin = require('../models/Admin');
 
-const auth = async(req, res, next) => {
-
+const auth = async (req, res, next) => {
     try { // Get token from header
-        const token = JSON.parse(req.header('Authorization').replace('Bearer ', ''));
+        const token = JSON.parse (req.header ('Authorization').replace ('Bearer ', ''));
 
         // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        const decoded = jwt.verify (token, process.env.JWT_SECRET_KEY);
 
-        // Find user with token and token value
-        const user = await User.findOne({ _id: decoded._id, 'token': token });
-        // If user not found, throw error
-        if (!user) {
-            throw new Error();
+        let user;
+
+        // Find user with token and token value in User schema
+        user = await User.findOne ({_id: decoded._id, token});
+
+        // If user not found, search in Mentor schema
+        if (! user) {
+            user = await Mentor.findOne ({_id: decoded._id, token});
+        }
+
+        // If user or mentor not found, throw error
+        if (! user) {
+            throw new Error ();
         }
 
         // Add user and token to request object
         req.user = user;
         req.token = token;
-        next();
+        next ();
     } catch (error) {
-        res.status(401).send({ error: 'Authentication Failed' });
+        res.status (401).send ({error: 'Authentication Failed'});
     }
 };
+
 
 const auth2 = async(req, res, next) => { // Get the token from the request headers
 

@@ -476,6 +476,64 @@ router.get("/user/:token", auth, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /auth/mentor/{token}:
+ *   get:
+ *     summary: Get mentor details by token
+ *     tags:
+ *       - Authentication
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Token of the mentor to retrieve details for
+ *     responses:
+ *       200:
+ *         description: Mentor details successfully retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MentorWithoutPassword'
+ *       404:
+ *         description: Mentor not found with the provided token
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Mentor not found
+ *       500:
+ *         description: Internal server error occurred
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Internal Server Error
+ *               error: <error message>
+ *     security:
+ *       - BearerAuth: []
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+// Route to get mentor by token
+router.get ("/mentor/:token", auth, async (req, res) => {
+    try {
+        const mentor = await Mentors.findOne ({token: req.params.token}).select ("-password -token");
+        if (! mentor) {
+            return res.status (404).json ({message: "Mentor not found"});
+        }
+        res.status (200).json (mentor);
+    } catch (error) {
+        res.status (500).json ({message: error.message});
+    }
+});
+
+
 // Route to get New Password for User
 router.post("/request-password", async (req, res) => {
   try {
