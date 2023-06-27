@@ -20,9 +20,9 @@ module.exports = async(email, subject, html) => {
             subject: subject,
             html: html
         });
-        console.log("Sent mail  to " + email);
+        // console.log("Sent mail  to " + email);
     } catch (error) {
-        console.log("Error not sent to " + email);
+        // console.log("Error not sent to " + email);
         console.log(error);
     }
 }

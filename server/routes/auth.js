@@ -726,6 +726,78 @@ router.post('/verify-mentor-otp', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /auth/verify-mentor-otp:
+ *   post:
+ *     summary: Verify Mentor OTP
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: The email address of the mentor
+ *               otp:
+ *                 type: string
+ *                 description: The OTP to be verified
+ *             required:
+ *               - email
+ *               - otp
+ *     responses:
+ *       '200':
+ *         description: OTP verified successfully
+ *       '400':
+ *         description: Invalid OTP or OTP has expired
+ *       '404':
+ *         description: Mentor not found
+ *       '500':
+ *         description: An error occurred while verifying the OTP
+ */
+
+// Route: /mentor-request-otp
+router.post("/mentor-request-otp", async (req, res) => {
+    try {
+        const {email} = req.body;
+
+        // Check if the email exists in the Mentors collection
+        const existingMentor = await Mentors.findOne ({email});
+        if (! existingMentor) {
+            return res.status (400).json ({message: "Email does not exist. Please enter a valid email."});
+        }
+
+        // Generate a new 6-digit random number as OTP
+        const otp = Math.floor (100000 + Math.random () * 900000);
+
+        // Update the OTP in the OTP schema
+        await OTP.findOneAndUpdate ({
+            email
+        }, {otp});
+
+        // construct the file path using the path.join() method
+        const filePath = path.join (__dirname, "..", "emails", "otp.ejs");
+
+        // read the HTML content from a file
+        let template = fs.readFileSync (filePath, "utf8");
+
+        // compile the EJS template with the otp and fullname variables
+        let html = ejs.render (template, {otp, fullname: existingMentor.fullname});
+
+        await sendEmail (email, "Account Verification", html);
+
+        res.status (200).json ({message: "New OTP sent successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: "An error occurred while requesting the OTP"});
+    }
+});
+
+
 
 /**
  * @swagger
@@ -763,7 +835,6 @@ router.post('/verify-mentor-otp', async (req, res) => {
 
 // Route to reset mentor password
 router.post("/reset-mentor-password", async (req, res) => {
-console.log(req.body.email);
 
   try {
     let mentor = await Mentors.findOne({ email: req.body.email });
