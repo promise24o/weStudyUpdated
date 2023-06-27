@@ -67,9 +67,10 @@ const storage3 = new CloudinaryStorage ({
     params: (req, file) => {
         let format;
         let resourceType;
+        console.log(file);
 
         if (file.mimetype.includes ("image")) {
-            format = "png";
+            format = "jpg";
             resourceType = "image";
         } else if (file.mimetype.includes ("video")) {
             format = "mp4";

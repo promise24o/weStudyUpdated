@@ -947,8 +947,8 @@ router.post('/verify-mentor-otp', async (req, res) => {
       return res.status(400).json({ message: 'OTP has expired' });
     }
 
-    // Update the mentor's status to Under Review
-    mentor.status = 'Under Review';
+    // Update the mentor's status to Profile Pending
+    mentor.status = 'Profile Pending';
     await mentor.save();
 
     // Remove the verified OTP record

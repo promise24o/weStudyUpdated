@@ -42,7 +42,7 @@ const mentorsSchema = new mongoose.Schema ({
     },
     password: {
         type: String,
-        required: true,
+        required: true
     },
     phone: {
         type: String
@@ -74,7 +74,12 @@ const mentorsSchema = new mongoose.Schema ({
     status: {
         type: String,
         enum: [
-            "Pending", "Under Review", "Active", "Suspended"
+            "Pending",
+            "Profile Pending",
+            "Under Review",
+            "Active",
+            "Suspended"
+
         ],
         default: "Pending",
         required: true
