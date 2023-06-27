@@ -2230,16 +2230,39 @@ router.delete ("/remove-course/:courseId", async (req, res) => {
 });
 
 // Get all Mentors
-router.get ("/mentors", async (req, res) => {
-    try { // check if user exists
-        let mentors = await Mentors.find ().populate ("faculty").sort ({createdAt: "desc"});
-        if (! mentors) {
-            return res.status (400).send ({message: "No Mentor Found"});
-        }
-        res.status (200).send ({mentors: mentors});
-    } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+router.get("/mentors", async (req, res) => {
+  try {
+    const mentors = await Mentors.find({ status: "Approved" })
+      .populate("faculty")
+      .sort({ createdAt: "desc" });
+
+    if (mentors.length === 0) {
+      return res.status(404).send({ message: "No approved mentors found" });
     }
+
+    res.status(200).send({ mentors: mentors });
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error", error: error });
+  }
+});
+
+router.put("/mentors/approve-all", async (req, res) => {
+  try {
+    const updateResult = await Mentors.updateMany(
+      { bio: { $ne: null, $ne: "" } },
+      { status: "Approved" }
+    );
+
+    if (updateResult.nModified === 0) {
+      return res.status(404).send({ message: "No mentors with bio found" });
+    }
+
+    res.status(200).send({
+      message: `Status updated to 'Approved' for ${updateResult.nModified} mentors`,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error", error: error });
+  }
 });
 
 /**
