@@ -705,15 +705,87 @@ router.post("/register-mentor", async (req, res) => {
  *                   description: A success message
  *       '400':
  *         description: Invalid email address or password
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       '500':
  *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       'default':
  *         description: Unexpected error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ * 
+ * components:
+ *   schemas:
+ *     Error:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *           description: Error message
+ *       required:
+ *         - message
+ *     MentorWithoutPassword:
+ *       type: object
+ *       properties:
+ *         fullname:
+ *           type: string
+ *           description: Full name of the mentor
+ *         avatar:
+ *           type: string
+ *           description: Avatar URL of the mentor
+ *         bio:
+ *           type: string
+ *           description: Biography of the mentor
+ *         faculty:
+ *           type: string
+ *           description: Faculty of the mentor
+ *         email:
+ *           type: string
+ *           description: Email address of the mentor
+ *         phone:
+ *           type: string
+ *           description: Phone number of the mentor
+ *         institution:
+ *           type: string
+ *           description: Institution of the mentor
+ *         city:
+ *           type: string
+ *           description: City of the mentor
+ *         country:
+ *           type: string
+ *           description: Country of the mentor
+ *         linkedin:
+ *           type: string
+ *           description: LinkedIn profile URL of the mentor
+ *         twitter:
+ *           type: string
+ *           description: Twitter profile URL of the mentor
+ *         facebook:
+ *           type: string
+ *           description: Facebook profile URL of the mentor
+ *         skills:
+ *           type: string
+ *           description: Skills of the mentor
+ *         calendly:
+ *           type: string
+ *           description: Calendly URL of the mentor
+ *         status:
+ *           type: string
+ *           description: Status of the mentor
+ *       required:
+ *         - fullname
+ *         - email
+ *         - status
  */
+
 
 router.post ("/mentor-login", async (req, res) => {
     try {
