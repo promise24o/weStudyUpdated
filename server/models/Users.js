@@ -160,7 +160,7 @@ userSchema.set ('timestamps', true);
 userSchema.methods.generateAuthToken = async function () {
     const token = jwt.sign ({
         _id: this.id
-    }, process.env.JWT_SECRET_KEY, {expiresIn: "7d"})
+    }, process.env.JWT_SECRET_KEY, {expiresIn: "1d"})
     this.token = token;
     await this.save ();
     return token;

@@ -615,11 +615,13 @@ router.post("/register-mentor", async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ message: "Email already exists. Please choose a different email." });
     }
+    const salt = await bcrypt.genSalt(Number(process.env.SALT));
+    const hashPassword = await bcrypt.hash(password, salt);
 
     const mentor = new Mentors({
       fullname,
       email,
-      password,
+      password:hashPassword,
       status: "Pending", // Default status for new mentors
       source: "Registration", // Source as "Registration"
     });
@@ -650,6 +652,109 @@ router.post("/register-mentor", async (req, res) => {
     res.status(500).json({ message: "An error occurred while registering the mentor" });
   }
 });
+
+
+/**
+ * @swagger
+ * /auth/mentor-login:
+ *   post:
+ *     summary: Mentor Login
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: The email address of the mentor
+ *               password:
+ *                 type: string
+ *                 description: The password of the mentor
+ *             required:
+ *               - email
+ *               - password
+ *     responses:
+ *       '200':
+ *         description: Mentor login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                       description: The generated authentication token
+ *                     accountType:
+ *                       type: string
+ *                       description: The account type (mentor)
+ *                     mentor:
+ *                       $ref: '#/components/schemas/MentorWithoutPassword'
+ *                   required:
+ *                     - token
+ *                     - accountType
+ *                     - mentor
+ *                 message:
+ *                   type: string
+ *                   description: A success message
+ *       '400':
+ *         description: Invalid email address or password
+ *       '500':
+ *         description: Internal server error
+ *       'default':
+ *         description: Unexpected error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+router.post ("/mentor-login", async (req, res) => {
+    try {
+        const {error} = validate (req.body);
+        if (error) 
+            return res.status (400).send ({message: error.details[0].message});
+        
+
+        const mentor = await Mentors.findOne ({email: req.body.email});
+
+        if (! mentor) 
+            return res.status (400).send ({message: "Invalid Email Address"});
+        
+
+        const validPassword = await bcrypt.compare (req.body.password, mentor.password);
+
+        if (! validPassword) 
+            return res.status (400).send ({message: "Invalid Password"});
+        
+
+        const token = await mentor.generateAuthToken ();
+
+        // Update mentorWithoutPassword object to include the status property
+        const mentorWithoutPassword = await Mentors.findOne ({_id: mentor._id}).select ("-password -token");
+
+        res.status (200).send ({
+            data: {
+                token: token,
+                accountType: "mentor",
+                mentor: mentorWithoutPassword
+            },
+            message: "Login Successfully!"
+        });
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+        console.error (error);
+    }
+});
+
+
+
 
 
 /**
@@ -728,7 +833,7 @@ router.post('/verify-mentor-otp', async (req, res) => {
 
 /**
  * @swagger
- * /mentor-request-otp:
+ * /auth/mentor-request-otp:
  *   post:
  *     summary: Request Mentor OTP
  *     tags:
@@ -755,7 +860,7 @@ router.post('/verify-mentor-otp', async (req, res) => {
  */
 
 // Route: /mentor-request-otp
-router.post("/mentor-request-otp", async (req, res) => {
+router.post ("/mentor-request-otp", async (req, res) => {
     try {
         const {email} = req.body;
 
@@ -765,13 +870,19 @@ router.post("/mentor-request-otp", async (req, res) => {
             return res.status (400).json ({message: "Email does not exist. Please enter a valid email."});
         }
 
+        // Find the OTP document for the email
+        let otpDocument = await OTP.findOne ({email});
+
+        if (! otpDocument) { // If OTP document doesn't exist, create a new one
+            otpDocument = new OTP ({email});
+        }
+
         // Generate a new 6-digit random number as OTP
         const otp = Math.floor (100000 + Math.random () * 900000);
 
-        // Update the OTP in the OTP schema
-        await OTP.findOneAndUpdate ({
-            email
-        }, {otp});
+        // Update the OTP in the OTP document
+        otpDocument.otp = otp;
+        await otpDocument.save ();
 
         // construct the file path using the path.join() method
         const filePath = path.join (__dirname, "..", "emails", "otp.ejs");

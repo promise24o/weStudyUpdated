@@ -1,10 +1,8 @@
-const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
-const passwordComplexity = require('joi-password-complexity');
-const Joi = require('joi');
+const mongoose = require ('mongoose');
+const jwt = require ('jsonwebtoken');
 
 
-const adminSchema = new mongoose.Schema({
+const adminSchema = new mongoose.Schema ({
     firstname: {
         type: String,
         required: true
@@ -38,15 +36,15 @@ const adminSchema = new mongoose.Schema({
 });
 
 
-adminSchema.set('timestamps', true);
+adminSchema.set ('timestamps', true);
 
-adminSchema.methods.generateAuthToken = async function() {
-    const token = jwt.sign({
+adminSchema.methods.generateAuthToken = async function () {
+    const token = jwt.sign ({
         _id: this.id
-    }, process.env.JWT_SECRET_KEY, { expiresIn: "7d" })
+    }, process.env.JWT_SECRET_KEY, {expiresIn: "1d"})
     this.token = token;
-    await this.save();
+    await this.save ();
     return token;
 };
 
-module.exports = mongoose.model('Admin', adminSchema);
+module.exports = mongoose.model ('Admin', adminSchema);
