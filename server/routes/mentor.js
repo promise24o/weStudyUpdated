@@ -12,51 +12,77 @@ router.get ("/", function (req, res) {
 
 /**
  * @swagger
- * /mentor/remove-course/{courseId}:
- *   delete:
- *     summary: Remove course based on the course ID
- *     description: Removes a course from the GPA document based on the given course ID.
+ * /mentor/become-mentor/{mentorId}:
+ *   post:
+ *     summary: Apply to become a mentor
+ *     description: Creates a mentor application for the specified mentor ID.
  *     tags:
  *       - Mentor
  *     parameters:
  *       - in: path
- *         name: courseId
+ *         name: mentorId
  *         schema:
  *           type: string
  *         required: true
- *         description: ID of the course to remove.
+ *         description: ID of the mentor to apply for.
  *       - in: body
  *         name: body
- *         description: User object and form data object.
+ *         description: Mentor application data.
  *         schema:
  *           type: object
  *           properties:
- *             user:
- *               type: object
- *               properties:
- *                 _id:
- *                   type: string
- *             formData:
- *               type: object
- *               properties:
- *                 current_level:
- *                   type: number
- *                 semester:
- *                   type: number
+ *             skills:
+ *               type: array
+ *               items:
+ *                 type: string
+ *               description: Skills possessed by the mentor.
+ *             organization:
+ *               type: string
+ *               description: Organization the mentor is affiliated with.
+ *             education:
+ *               type: string
+ *               description: Mentor's educational background.
+ *             faculty:
+ *               type: string
+ *               description: Faculty of the mentor.
+ *             briefDescription:
+ *               type: string
+ *               description: Brief description about the mentor.
+ *             mentorshipReason:
+ *               type: string
+ *               description: Reason for applying to become a mentor.
+ *             linkedinProfile:
+ *               type: string
+ *               description: LinkedIn profile of the mentor.
+ *             facebookUsername:
+ *               type: string
+ *               description: Facebook username of the mentor.
+ *             twitterHandle:
+ *               type: string
+ *               description: Twitter handle of the mentor.
  *     responses:
  *       200:
- *         description: Course deleted successfully
+ *         description: Mentor application submitted successfully
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 gpa:
+ *                 mentor:
  *                   type: object
  *                 message:
  *                   type: string
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
  *       404:
- *         description: Course not found
+ *         description: Mentor not found
  *         content:
  *           application/json:
  *             schema:
