@@ -76,6 +76,7 @@ const mentorsSchema = new mongoose.Schema ({
         enum: [
             "Pending",
             "Profile Pending",
+            "Application Submitted",
             "Under Review",
             "Active",
             "Suspended"

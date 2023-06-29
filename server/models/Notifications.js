@@ -5,6 +5,10 @@ const notificationSchema = new mongoose.Schema ({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'user'
     },
+    recipient2: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Mentors'
+    },
     sender: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'user'

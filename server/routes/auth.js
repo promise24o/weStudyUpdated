@@ -1,28 +1,28 @@
-const router = require("express").Router();
-const { User } = require("../models/Users");
-const Admin = require("../models/Admin");
-const OTP = require("../models/Otp");
-const Activity = require("../models/Activities");
-const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
-const Joi = require("joi");
-const bcrypt = require("bcrypt");
-const { auth, auth2 } = require("../middleware/auth");
-var express = require("express");
-var app = express();
-var useragent = require("express-useragent");
+const router = require ("express").Router ();
+const {User} = require ("../models/Users");
+const Admin = require ("../models/Admin");
+const OTP = require ("../models/Otp");
+const Activity = require ("../models/Activities");
+const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
+const Joi = require ("joi");
+const bcrypt = require ("bcrypt");
+const {auth, auth2} = require ("../middleware/auth");
+var express = require ("express");
+var app = express ();
+var useragent = require ("express-useragent");
 
-const Token = require("../models/Token");
-const sendEmail = require("../utils/sendEmail");
-const crypto = require("crypto");
+const Token = require ("../models/Token");
+const sendEmail = require ("../utils/sendEmail");
+const crypto = require ("crypto");
 
-const ejs = require("ejs");
-const fs = require("fs");
-const path = require("path");
+const ejs = require ("ejs");
+const fs = require ("fs");
+const path = require ("path");
 
-app.use(useragent.express());
+app.use (useragent.express ());
 
-router.get("/", function (req, res) {
-  res.send("Auth API");
+router.get ("/", function (req, res) {
+    res.send ("Auth API");
 });
 
 /**
@@ -118,77 +118,71 @@ router.get("/", function (req, res) {
  *         - email
  */
 
-router.post("/login", async (req, res) => {
-  try {
-    const { error } = validate(req.body);
-    if (error)
-      return res.status(400).send({ message: error.details[0].message });
+router.post ("/login", async (req, res) => {
+    try {
+        const {error} = validate (req.body);
+        if (error) 
+            return res.status (400).send ({message: error.details[0].message});
+        
 
-    const user = await User.findOne({ email: req.body.email });
-    const admin = await Admin.findOne({ email: req.body.email });
+        const user = await User.findOne ({email: req.body.email});
+        const admin = await Admin.findOne ({email: req.body.email});
 
-    if (!user && !admin)
-      return res.status(400).send({ message: "Invalid Email Address" });
+        if (! user && ! admin) 
+            return res.status (400).send ({message: "Invalid Email Address"});
+        
 
-    if (user) {
-      const validPassword = await bcrypt.compare(
-        req.body.password,
-        user.password
-      );
+        if (user) {
+            const validPassword = await bcrypt.compare (req.body.password, user.password);
 
-      if (!validPassword)
-        return res.status(400).send({ message: "Invalid Password" });
+            if (! validPassword) 
+                return res.status (400).send ({message: "Invalid Password"});
+            
 
-      const token = await user.generateAuthToken();
+            const token = await user.generateAuthToken ();
 
-      const userWithoutPassword = await User.findOne({ _id: user._id }).select(
-        "-password -token"
-      );
+            const userWithoutPassword = await User.findOne ({_id: user._id}).select ("-password -token");
 
-      const activity = await new Activity({
-        userId: user._id,
-        browser: req.useragent.browser,
-        ip_address: req.socket.remoteAddress,
-        os: req.useragent.os,
-        source: req.useragent.source,
-        createdAt: Date.now(),
-      }).save();
+            const activity = await new Activity ({
+                userId: user._id,
+                browser: req.useragent.browser,
+                ip_address: req.socket.remoteAddress,
+                os: req.useragent.os,
+                source: req.useragent.source,
+                createdAt: Date.now ()
+            }).save ();
 
-      res.status(200).send({
-        data: {
-          token: token,
-          accountType: "user",
-          user: userWithoutPassword,
-        },
-        message: "Login Successfully!",
-      });
-    } else {
-      const validPassword = await bcrypt.compare(
-        req.body.password,
-        admin.password
-      );
-      if (!validPassword)
-        return res.status(400).send({ message: "Invalid Password" });
+            res.status (200).send ({
+                data: {
+                    token: token,
+                    accountType: "user",
+                    user: userWithoutPassword
+                },
+                message: "Login Successfully!"
+            });
+        } else {
+            const validPassword = await bcrypt.compare (req.body.password, admin.password);
+            if (! validPassword) 
+                return res.status (400).send ({message: "Invalid Password"});
+            
 
-      const token = await admin.generateAuthToken();
+            const token = await admin.generateAuthToken ();
 
-      const adminWithoutPassword = await Admin.findOne({
-        _id: admin._id,
-      }).select("-password -token");
+            const adminWithoutPassword = await Admin.findOne ({_id: admin._id}).select ("-password -token");
 
-      res.status(200).send({
-        data: {
-          token: token,
-          accountType: "admin",
-          admin: adminWithoutPassword,
-        },
-        message: "Login Successfully!",
-      });
+            res.status (200).send ({
+                data: {
+                    token: token,
+                    accountType: "admin",
+                    admin: adminWithoutPassword
+                },
+                message: "Login Successfully!"
+            });
+        }
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+        console.error (error);
     }
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-    console.error(error);
-  }
 });
 
 /**
@@ -291,52 +285,50 @@ router.post("/login", async (req, res) => {
  *         confirmPassword: password123
  */
 
-router.post("/register", async (req, res) => {
-  try {
-    // const { error } = validate(req.body);
-    // if (error)
-    //     return res.status(400).send({ message: error.details[0].message });
+router.post ("/register", async (req, res) => {
+    try {
+        // const { error } = validate(req.body);
+        // if (error)
+        //     return res.status(400).send({ message: error.details[0].message });
 
-    let user = await User.findOne({ email: req.body.email });
-    if (user)
-      return res
-        .status(409)
-        .send({ message: "A User with that email already exists!" });
+        let user = await User.findOne ({email: req.body.email});
+        if (user) 
+            return res.status (409).send ({message: "A User with that email already exists!"});
+        
 
-    const salt = await bcrypt.genSalt(Number(process.env.SALT));
-    const hashPassword = await bcrypt.hash(req.body.password, salt);
+        const salt = await bcrypt.genSalt (Number (process.env.SALT));
+        const hashPassword = await bcrypt.hash (req.body.password, salt);
 
-    user = await new User({
-      ...req.body,
-      password: hashPassword,
-      accountType: "user",
-    }).save();
-    const token = await new Token({
-      userId: user._id,
-      token: crypto.randomBytes(32).toString("hex"),
-    }).save();
+        user = await new User ({
+            ...req.body,
+            password: hashPassword,
+            accountType: "user"
+        }).save ();
+        const token = await new Token ({userId: user._id, token: crypto.randomBytes (32).toString ("hex")}).save ();
 
-    // construct the file path using the path.join() method
-    const filePath = path.join(__dirname, "..", "emails", "verify_email.ejs");
+        // construct the file path using the path.join() method
+        const filePath = path.join (__dirname, "..", "emails", "verify_email.ejs");
 
-    // read the HTML content from a file
-    let template = fs.readFileSync(filePath, "utf8");
+        // read the HTML content from a file
+        let template = fs.readFileSync (filePath, "utf8");
 
-    const urlLink = `${process.env.CLIENT_BASE_URL}/users/${user._id}/verify/${token.token}`;
+        const urlLink = `${
+            process.env.CLIENT_BASE_URL
+        }/users/${
+            user._id
+        }/verify/${
+            token.token
+        }`;
 
-    // compile the EJS template with the url variable
-    let html = ejs.render(template, { url: urlLink });
+        // compile the EJS template with the url variable
+        let html = ejs.render (template, {url: urlLink});
 
-    await sendEmail(user.email, "Verify Email", html);
+        await sendEmail (user.email, "Verify Email", html);
 
-    res
-      .status(201)
-      .send({
-        message: "Account Created Successfully! Visit Email to Verify Account",
-      });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-  }
+        res.status (201).send ({message: "Account Created Successfully! Visit Email to Verify Account"});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+    }
 });
 
 /**
@@ -387,34 +379,47 @@ router.post("/register", async (req, res) => {
  */
 
 // Logout user
-router.post("/logout", auth, async (req, res) => {
-  try {
-    // Remove the token from the user's document
-    const user = req.user;
-    user.token = null;
-    await user.save();
+router.post ("/logout", auth, async (req, res) => {
+    try { // Remove the token from the user's document
+        const user = req.user;
+        user.token = null;
+        await user.save ();
 
-    res.status(200).send({ message: "Logout successful" });
-  } catch (error) {
-    res.status(500).send({ error: "Internal Server Error" });
-  }
+        res.status (200).send ({message: "Logout successful"});
+    } catch (error) {
+        res.status (500).send ({error: "Internal Server Error"});
+    }
 });
 
+// Logout Mentor
+router.post ("/mentor-logout", async (req, res) => {
+    const mentorId = req.body.id;
+    try { // Remove the token from the mentor's document
+        const mentor = await Mentors.findOne ({_id: mentorId});
+        mentor.token = null;
+        await mentor.save ();
+
+        res.status (200).send ({message: "Logout successful"});
+    } catch (error) {
+        res.status (500).send ({error: "Internal Server Error"});
+    }
+});
+
+
 // Logout Admin
-router.post("/admin-logout", auth2, async (req, res) => {
-  const adminId = req.body.id;
+router.post ("/admin-logout", auth2, async (req, res) => {
+    const adminId = req.body.id;
 
-  try {
-    // Remove the token from the user's document
-    const user = await Admin.findOne({ _id: adminId });
+    try { // Remove the token from the user's document
+        const user = await Admin.findOne ({_id: adminId});
 
-    user.token = null;
-    await user.save();
+        user.token = null;
+        await user.save ();
 
-    res.status(200).send({ message: "Logout successful" });
-  } catch (error) {
-    res.status(500).send({ error: "Internal Server Error" });
-  }
+        res.status (200).send ({message: "Logout successful"});
+    } catch (error) {
+        res.status (500).send ({error: "Internal Server Error"});
+    }
 });
 
 /**
@@ -462,18 +467,16 @@ router.post("/admin-logout", auth2, async (req, res) => {
  */
 
 // Route to get user by token
-router.get("/user/:token", auth, async (req, res) => {
-  try {
-    const user = await User.findOne({ token: req.params.token }).select(
-      "-password -token"
-    );
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+router.get ("/user/:token", auth, async (req, res) => {
+    try {
+        const user = await User.findOne ({token: req.params.token}).select ("-password -token");
+        if (! user) {
+            return res.status (404).json ({message: "User not found"});
+        }
+        res.status (200).json (user);
+    } catch (error) {
+        res.status (500).json ({message: error.message});
     }
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
 });
 
 /**
@@ -535,44 +538,39 @@ router.get ("/mentor/:token", auth, async (req, res) => {
 
 
 // Route to get New Password for User
-router.post("/request-password", async (req, res) => {
-  try {
-    let user = await User.findOne({ email: req.body.email });
-    if (!user)
-      return res
-        .status(404)
-        .send({ message: "A User with this Email does not Exists!" });
+router.post ("/request-password", async (req, res) => {
+    try {
+        let user = await User.findOne ({email: req.body.email});
+        if (! user) 
+            return res.status (404).send ({message: "A User with this Email does not Exists!"});
+        
 
-    const characters =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
-    const randomPassword = Array.from(
-      {
-        length: 12,
-      },
-      () => characters[Math.floor(Math.random() * characters.length)]
-    ).join("");
-    const salt = await bcrypt.genSalt(Number(process.env.SALT));
-    const hashPassword = await bcrypt.hash(randomPassword, salt);
+        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
+        const randomPassword = Array.from ({
+            length: 12
+        }, () => characters[Math.floor (Math.random () * characters.length)]).join ("");
+        const salt = await bcrypt.genSalt (Number (process.env.SALT));
+        const hashPassword = await bcrypt.hash (randomPassword, salt);
 
-    // Update user's password
-    user.password = hashPassword;
-    await user.save();
+        // Update user's password
+        user.password = hashPassword;
+        await user.save ();
 
-    // construct the file path using the path.join() method
-    const filePath = path.join(__dirname, "..", "emails", "reset_password.ejs");
+        // construct the file path using the path.join() method
+        const filePath = path.join (__dirname, "..", "emails", "reset_password.ejs");
 
-    // read the HTML content from a file
-    let template = fs.readFileSync(filePath, "utf8");
+        // read the HTML content from a file
+        let template = fs.readFileSync (filePath, "utf8");
 
-    // compile the EJS template with the url variable
-    let html = ejs.render(template, { password: randomPassword });
+        // compile the EJS template with the url variable
+        let html = ejs.render (template, {password: randomPassword});
 
-    await sendEmail(user.email, "Password Reset", html);
+        await sendEmail (user.email, "Password Reset", html);
 
-    res.status(201).send({ message: "New Password Sent. Check  your Email" });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-  }
+        res.status (201).send ({message: "New Password Sent. Check  your Email"});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+    }
 });
 
 /**
@@ -649,66 +647,63 @@ router.post("/request-password", async (req, res) => {
  */
 
 // Route: /register-mentor
-router.post("/register-mentor", async (req, res) => {
-  try {
-    const { fullname, email, password } = req.body;
+router.post ("/register-mentor", async (req, res) => {
+    try {
+        const {fullname, email, password} = req.body;
 
-    // Generate a 6-digit random number as OTP
-    const otp = Math.floor(100000 + Math.random() * 900000);
+        // Generate a 6-digit random number as OTP
+        const otp = Math.floor (100000 + Math.random () * 900000);
 
-    // Validate the input
-    const { error } = validate({ email, password });
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
+        // Validate the input
+        const {error} = validate ({email, password});
+        if (error) {
+            return res.status (400).json ({message: error.details[0].message});
+        }
+
+        // Check if the email already exists in Mentors collection
+        const existingMentor = await Mentors.findOne ({email});
+        if (existingMentor) {
+            return res.status (400).json ({message: "Email already exists. Please choose a different email."});
+        }
+
+        // Check if the email already exists in User collection
+        const existingUser = await User.findOne ({email});
+        if (existingUser) {
+            return res.status (400).json ({message: "Email already exists. Please choose a different email."});
+        }
+        const salt = await bcrypt.genSalt (Number (process.env.SALT));
+        const hashPassword = await bcrypt.hash (password, salt);
+
+        const mentor = new Mentors ({
+            fullname,
+            email,
+            password: hashPassword,
+            status: "Pending", // Default status for new mentors
+            source: "Registration", // Source as "Registration"
+        });
+
+        const savedMentor = await mentor.save ();
+
+        // Save the OTP in the OTP schema
+        const otpData = new OTP ({email, otp});
+        await otpData.save ();
+
+        // construct the file path using the path.join() method
+        const filePath = path.join (__dirname, "..", "emails", "otp.ejs");
+
+        // read the HTML content from a file
+        let template = fs.readFileSync (filePath, "utf8");
+
+        // compile the EJS template with the otp and fullname variables
+        let html = ejs.render (template, {otp, fullname});
+
+        await sendEmail (email, "Account Verification", html);
+
+        res.status (200).json ({message: "Account created successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: "An error occurred while registering the mentor"});
     }
-
-    // Check if the email already exists in Mentors collection
-    const existingMentor = await Mentors.findOne({ email });
-    if (existingMentor) {
-      return res.status(400).json({ message: "Email already exists. Please choose a different email." });
-    }
-
-    // Check if the email already exists in User collection
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already exists. Please choose a different email." });
-    }
-    const salt = await bcrypt.genSalt(Number(process.env.SALT));
-    const hashPassword = await bcrypt.hash(password, salt);
-
-    const mentor = new Mentors({
-      fullname,
-      email,
-      password:hashPassword,
-      status: "Pending", // Default status for new mentors
-      source: "Registration", // Source as "Registration"
-    });
-
-    const savedMentor = await mentor.save();
-
-    // Save the OTP in the OTP schema
-    const otpData = new OTP({
-      email,
-      otp,
-    });
-    await otpData.save();
-
-    // construct the file path using the path.join() method
-    const filePath = path.join(__dirname, "..", "emails", "otp.ejs");
-
-    // read the HTML content from a file
-    let template = fs.readFileSync(filePath, "utf8");
-
-    // compile the EJS template with the otp and fullname variables
-    let html = ejs.render(template, { otp, fullname });
-
-    await sendEmail(email, "Account Verification", html);
-
-    res.status(200).json({ message: "Account created successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "An error occurred while registering the mentor" });
-  }
 });
 
 
@@ -852,17 +847,20 @@ router.post ("/mentor-login", async (req, res) => {
             return res.status (400).send ({message: error.details[0].message});
         
 
+
         const mentor = await Mentors.findOne ({email: req.body.email});
 
         if (! mentor) 
             return res.status (400).send ({message: "Invalid Email Address"});
         
 
+
         const validPassword = await bcrypt.compare (req.body.password, mentor.password);
 
         if (! validPassword) 
             return res.status (400).send ({message: "Invalid Password"});
         
+
 
         const token = await mentor.generateAuthToken ();
 
@@ -882,9 +880,6 @@ router.post ("/mentor-login", async (req, res) => {
         console.error (error);
     }
 });
-
-
-
 
 
 /**
@@ -921,27 +916,27 @@ router.post ("/mentor-login", async (req, res) => {
  *         description: An error occurred while verifying the OTP
  */
 
-router.post('/verify-mentor-otp', async (req, res) => {
-  try {
-    const { email, otp } = req.body;
+router.post ('/verify-mentor-otp', async (req, res) => {
+    try {
+        const {email, otp} = req.body;
 
-    // Find the mentor by email
-    const mentor = await Mentors.findOne({ email });
+        // Find the mentor by email
+        const mentor = await Mentors.findOne ({email});
 
-    if (!mentor) {
-      return res.status(404).json({ message: 'Mentor not found' });
-    }
+        if (! mentor) {
+            return res.status (404).json ({message: 'Mentor not found'});
+        }
 
-    // Find the OTP record in the OTP schema
-    const otpRecord = await OTP.findOne({ email, otp });
+        // Find the OTP record in the OTP schema
+        const otpRecord = await OTP.findOne ({email, otp});
 
-    if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid OTP' });
-    }
+        if (! otpRecord) {
+            return res.status (400).json ({message: 'Invalid OTP'});
+        }
 
-    // Check if the OTP is expired
-    const currentTime = new Date();
-    if (otpRecord.expiryTime < currentTime) {
+        // Check if the OTP is expired
+        const currentTime = new Date ();
+        if (otpRecord.expiryTime<currentTime) {
       // Remove the expired OTP record
       await OTP.deleteOne({ email, otp });
       return res.status(400).json({ message: 'OTP has expired' });
@@ -991,50 +986,50 @@ router.post('/verify-mentor-otp', async (req, res) => {
 
 // Route: /mentor-request-otp
 router.post ("/mentor-request-otp", async (req, res) => {
-    try {
-        const {email} = req.body;
+            try {
+                const {email} = req.body;
 
-        // Check if the email exists in the Mentors collection
-        const existingMentor = await Mentors.findOne ({email});
-        if (! existingMentor) {
-            return res.status (400).json ({message: "Email does not exist. Please enter a valid email."});
-        }
+                // Check if the email exists in the Mentors collection
+                const existingMentor = await Mentors.findOne ({email});
+                if (! existingMentor) {
+                    return res.status (400).json ({message: "Email does not exist. Please enter a valid email."});
+                }
 
-        // Find the OTP document for the email
-        let otpDocument = await OTP.findOne ({email});
+                // Find the OTP document for the email
+                let otpDocument = await OTP.findOne ({email});
 
-        if (! otpDocument) { // If OTP document doesn't exist, create a new one
-            otpDocument = new OTP ({email});
-        }
+                if (! otpDocument) { // If OTP document doesn't exist, create a new one
+                    otpDocument = new OTP ({email});
+                }
 
-        // Generate a new 6-digit random number as OTP
-        const otp = Math.floor (100000 + Math.random () * 900000);
+                // Generate a new 6-digit random number as OTP
+                const otp = Math.floor (100000 + Math.random () * 900000);
 
-        // Update the OTP in the OTP document
-        otpDocument.otp = otp;
-        await otpDocument.save ();
+                // Update the OTP in the OTP document
+                otpDocument.otp = otp;
+                await otpDocument.save ();
 
-        // construct the file path using the path.join() method
-        const filePath = path.join (__dirname, "..", "emails", "otp.ejs");
+                // construct the file path using the path.join() method
+                const filePath = path.join (__dirname, "..", "emails", "otp.ejs");
 
-        // read the HTML content from a file
-        let template = fs.readFileSync (filePath, "utf8");
+                // read the HTML content from a file
+                let template = fs.readFileSync (filePath, "utf8");
 
-        // compile the EJS template with the otp and fullname variables
-        let html = ejs.render (template, {otp, fullname: existingMentor.fullname});
+                // compile the EJS template with the otp and fullname variables
+                let html = ejs.render (template, {otp, fullname: existingMentor.fullname});
 
-        await sendEmail (email, "Account Verification", html);
+                await sendEmail (email, "Account Verification", html);
 
-        res.status (200).json ({message: "New OTP sent successfully"});
-    } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: "An error occurred while requesting the OTP"});
-    }
-});
+                res.status (200).json ({message: "New OTP sent successfully"});
+            } catch (error) {
+                console.error (error);
+                res.status (500).json ({message: "An error occurred while requesting the OTP"});
+            }
+        }) 
+        
 
 
-
-/**
+        /**
  * @swagger
  * /auth/verify-mentor-otp:
  *   post:
@@ -1068,56 +1063,48 @@ router.post ("/mentor-request-otp", async (req, res) => {
  *         description: An error occurred while verifying the OTP.
  */
 
-// Route to reset mentor password
-router.post("/reset-mentor-password", async (req, res) => {
+        // Route to reset mentor password
+        router.post ("/reset-mentor-password", async (req, res) => {
 
-  try {
-    let mentor = await Mentors.findOne({ email: req.body.email });
-    if (!mentor)
-      return res
-        .status(404)
-        .send({ message: "A mentor with this email does not exist!" });
+            try {
+                let mentor = await Mentors.findOne ({email: req.body.email});
+                if (! mentor) 
+                    return res.status (404).send ({message: "A mentor with this email does not exist!"});
+                
 
-    const characters =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
-    const randomPassword = Array.from(
-      {
-        length: 12,
-      },
-      () => characters[Math.floor(Math.random() * characters.length)]
-    ).join("");
-    const salt = await bcrypt.genSalt(Number(process.env.SALT));
-    const hashPassword = await bcrypt.hash(randomPassword, salt);
+                const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
+                const randomPassword = Array.from ({
+                    length: 12
+                }, () => characters[Math.floor (Math.random () * characters.length)]).join ("");
+                const salt = await bcrypt.genSalt (Number (process.env.SALT));
+                const hashPassword = await bcrypt.hash (randomPassword, salt);
 
-    // Update mentor's password
-    mentor.password = hashPassword;
-    await mentor.save();
+                // Update mentor's password
+                mentor.password = hashPassword;
+                await mentor.save ();
 
-    // construct the file path using the path.join() method
-    const filePath = path.join(__dirname, "..", "emails", "reset_password.ejs");
+                // construct the file path using the path.join() method
+                const filePath = path.join (__dirname, "..", "emails", "reset_password.ejs");
 
-    // read the HTML content from a file
-    let template = fs.readFileSync(filePath, "utf8");
+                // read the HTML content from a file
+                let template = fs.readFileSync (filePath, "utf8");
 
-    // compile the EJS template with the password variable
-    let html = ejs.render(template, { password: randomPassword });
+                // compile the EJS template with the password variable
+                let html = ejs.render (template, {password: randomPassword});
 
-    await sendEmail(mentor.email, "Password Reset", html);
+                await sendEmail (mentor.email, "Password Reset", html);
 
-    res.status(201).send({ message: "New password sent. Check your email." });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-  }
-});
+                res.status (201).send ({message: "New password sent. Check your email."});
+            } catch (error) {
+                res.status (500).send ({message: "Internal Server Error", error: error});
+            }
+        });
 
 
-const validate = (data) => {
-  const schema = Joi.object({
-    email: Joi.string().email().required().label("Email"),
-    password: Joi.string().required().label("Password"),
-  });
+        const validate = (data) => {
+            const schema = Joi.object ({email: Joi.string ().email ().required ().label ("Email"), password: Joi.string ().required ().label ("Password")});
 
-  return schema.validate(data);
-};
+            return schema.validate (data);
+        };
 
-module.exports = router;
+        module.exports = router;

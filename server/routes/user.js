@@ -2248,24 +2248,24 @@ router.get("/mentors", async (req, res) => {
   }
 });
 
-router.put("/mentors/approve-all", async (req, res) => {
-  try {
-    const updateResult = await Mentors.updateMany(
-      { bio: { $ne: null, $ne: "" } },
-      { status: "Approved" }
-    );
+// router.put("/mentors/approve-all", async (req, res) => {
+//   try {
+//     const updateResult = await Mentors.updateMany(
+//       { bio: { $ne: null, $ne: "" } },
+//       { status: "Approved" }
+//     );
 
-    if (updateResult.nModified === 0) {
-      return res.status(404).send({ message: "No mentors with bio found" });
-    }
+//     if (updateResult.nModified === 0) {
+//       return res.status(404).send({ message: "No mentors with bio found" });
+//     }
 
-    res.status(200).send({
-      message: `Status updated to 'Approved' for ${updateResult.nModified} mentors`,
-    });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-  }
-});
+//     res.status(200).send({
+//       message: `Status updated to 'Approved' for ${updateResult.nModified} mentors`,
+//     });
+//   } catch (error) {
+//     res.status(500).send({ message: "Internal Server Error", error: error });
+//   }
+// });
 
 /**
  * @swagger

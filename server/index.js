@@ -58,6 +58,7 @@ const cors = require ('cors');
 const connection = require ('./lib/mongoose');
 const userRoutes = require ('./routes/user');
 const authRoutes = require ('./routes/auth');
+const mentorRoutes = require ('./routes/mentor');
 const adminRoutes = require ('./routes/admin');
 const publicRoutes = require ('./routes/public');
 const AIRoutes = require ('./routes/acadabooai');
@@ -87,6 +88,7 @@ app.use ('/api/auth/admin', authRoutes);
 app.use ('/api/admin/', adminRoutes);
 app.use ('/api/public/', publicRoutes);
 app.use ('/api/ai/', AIRoutes);
+app.use ('/api/mentor/', mentorRoutes);
 
 // Swagger Definition
 const options = {
