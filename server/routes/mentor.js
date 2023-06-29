@@ -12,12 +12,12 @@ router.get ("/", function (req, res) {
 
 /**
  * @swagger
- * /users/remove-course/{courseId}:
+ * /mentor/remove-course/{courseId}:
  *   delete:
  *     summary: Remove course based on the course ID
  *     description: Removes a course from the GPA document based on the given course ID.
  *     tags:
- *       - User
+ *       - Mentor
  *     parameters:
  *       - in: path
  *         name: courseId
