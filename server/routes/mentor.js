@@ -124,7 +124,7 @@ router.post ('/become-mentor/:mentorId', (req, res) => {
             facebookUsername,
             twitterHandle
         } = req.body;
-
+        console.log(skills);
         // Check if required fields are empty
         if (!skills || !faculty || !briefDescription || !mentorshipReason) {
             return res.status (400).json ({error: 'Please fill in all required fields.'});
