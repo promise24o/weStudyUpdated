@@ -111,7 +111,6 @@ router.post ('/become-mentor/:mentorId', (req, res) => {
         }
 
         mentor.status = 'Application Submitted';
-        // Update the mentor's status
 
         // Extract the form values from the request body
         const {
@@ -131,40 +130,57 @@ router.post ('/become-mentor/:mentorId', (req, res) => {
             return res.status (400).json ({error: 'Please fill in all required fields.'});
         }
 
-        // Create a new mentor application instance
-        const mentorApplication = new MentorApplicationWithMentor ({
-            mentorId,
-            skills,
-            organization,
-            education,
-            faculty,
-            about: briefDescription,
-            reason: mentorshipReason,
-            linkedin: linkedinProfile,
-            facebook: facebookUsername,
-            twitterHandle,
-            status: 'Application Submitted'
-        });
+        // Check if an existing mentor application exists for the user
+        MentorApplicationWithMentor.findOne ({mentorId}).then ( (existingApplication) => {
+            if (existingApplication) { // Update the existing mentor application
+                existingApplication.skills = skills;
+                existingApplication.organization = organization;
+                existingApplication.education = education;
+                existingApplication.faculty = faculty;
+                existingApplication.about = briefDescription;
+                existingApplication.reason = mentorshipReason;
+                existingApplication.linkedin = linkedinProfile;
+                existingApplication.facebook = facebookUsername;
+                existingApplication.twitterHandle = twitterHandle;
+                existingApplication.status = 'Application Submitted';
 
-        // Save the mentor application to the database
-        mentorApplication.save ().then ( () => { // Save the updated mentor status
-            mentor.save ().then ( () => {
-                res.status (200).json ({mentor, message: 'Mentor application submitted successfully'});
-            }).catch ( (error) => {
-                console.error (error);
-                res.status (500).json ({error: 'Failed to update mentor status'});
-            });
+                existingApplication.save ().then ( () => {
+                    res.status (200).json ({mentor, message: 'Mentor application updated successfully'});
+                }).catch ( (error) => {
+                    console.error (error);
+                    res.status (500).json ({error: 'Failed to update mentor application'});
+                });
+            } else { // Create a new mentor application instance
+                const mentorApplication = new MentorApplicationWithMentor ({
+                    mentorId,
+                    skills,
+                    organization,
+                    education,
+                    faculty,
+                    about: briefDescription,
+                    reason: mentorshipReason,
+                    linkedin: linkedinProfile,
+                    facebook: facebookUsername,
+                    twitterHandle,
+                    status: 'Application Submitted'
+                });
+
+                mentorApplication.save ().then ( () => {
+                    res.status (200).json ({mentor, message: 'Mentor application submitted successfully'});
+                }).catch ( (error) => {
+                    console.error (error);
+                    res.status (500).json ({error: 'Failed to submit mentor application'});
+                });
+            }
         }).catch ( (error) => {
             console.error (error);
-            res.status (500).json ({error: 'Failed to submit mentor application'});
+            res.status (500).json ({error: 'Failed to check existing mentor application'});
         });
     }).catch ( (error) => {
         console.error (error);
         res.status (500).json ({error: 'Failed to check mentor existence'});
     });
 });
-
-
 
 
 module.exports = router;
