@@ -107,6 +107,23 @@ const mentorsSchema = new mongoose.Schema ({
                 default: Date.now
             }
         },
+    ],
+    mentees: [
+        {
+            user: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'user',
+                required: true,
+            },
+            dateAdded: {
+                type: Date,
+                default: Date.now ()
+            },
+            chatStatus: {
+                type: Boolean,
+                default: false
+            }
+        }
     ]
 });
 
@@ -123,7 +140,7 @@ mentorsSchema.methods.generateAuthToken = async function () {
 
 
 const scheduleSchema = new mongoose.Schema ({
-    user: {
+    userId: {
         type: mongoose.ObjectId,
         required: true,
         ref: "user"
@@ -131,6 +148,14 @@ const scheduleSchema = new mongoose.Schema ({
     mentorId: {
         type: mongoose.ObjectId,
         ref: "mentors",
+        required: true
+    },
+    eventId: {
+        type: String,
+        required: true
+    },
+    inviteeId: {
+        type: String,
         required: true
     },
     eventType: {

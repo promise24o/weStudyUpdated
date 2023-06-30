@@ -3,6 +3,8 @@ const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const router = require ("express").Router ();
 const bcrypt = require ("bcrypt");
 const mongoose = require ('mongoose');
+const axios = require ('axios');
+
 
 const Token = require ("../models/Token");
 const sendEmail = require ("../utils/sendEmail");
@@ -51,14 +53,6 @@ const upload = multer ({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-const storage2 = new CloudinaryStorage ({
-    cloudinary: cloudinary,
-    params: {
-        folder: "/results",
-        format: async () => "png",
-        public_id: () => `result-${1}`
-    }
-});
 
 // Create a multer instance with the storage engine and limits (if necessary)
 
@@ -67,7 +61,7 @@ const storage3 = new CloudinaryStorage ({
     params: (req, file) => {
         let format;
         let resourceType;
-        console.log(file);
+        console.log (file);
 
         if (file.mimetype.includes ("image")) {
             format = "jpg";
@@ -75,7 +69,7 @@ const storage3 = new CloudinaryStorage ({
         } else if (file.mimetype.includes ("video")) {
             format = "mp4";
             resourceType = "video";
-        } 
+        }
         // else {
         //     throw new Error ("Invalid file type");
         // }
@@ -118,7 +112,7 @@ const storage4 = new CloudinaryStorage ({
         } else if (file.mimetype.includes ("video")) {
             format = "mp4";
             resourceType = "video";
-        } 
+        }
         // else {
         //     throw new Error ("Invalid file type");
         // }
@@ -2232,24 +2226,22 @@ router.delete ("/remove-course/:courseId", async (req, res) => {
 });
 
 // Get all Mentors
-router.get("/mentors", async (req, res) => {
-  try {
-    const mentors = await Mentors.find({ status: "Approved" })
-      .populate("faculty")
-      .sort({ createdAt: "desc" });
+router.get ("/mentors", async (req, res) => {
+    try {
+        const mentors = await Mentors.find ({status: "Approved"}).populate ("faculty").sort ({createdAt: "desc"});
 
-    if (mentors.length === 0) {
-      return res.status(404).send({ message: "No approved mentors found" });
+        if (mentors.length === 0) {
+            return res.status (404).send ({message: "No approved mentors found"});
+        }
+
+        res.status (200).send ({mentors: mentors});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
     }
-
-    res.status(200).send({ mentors: mentors });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-  }
 });
 
 // router.put("/mentors/approve-all", async (req, res) => {
-//   try {
+// try {
 //     const updateResult = await Mentors.updateMany(
 //       { bio: { $ne: null, $ne: "" } },
 //       { status: "Approved" }
@@ -2262,9 +2254,9 @@ router.get("/mentors", async (req, res) => {
 //     res.status(200).send({
 //       message: `Status updated to 'Approved' for ${updateResult.nModified} mentors`,
 //     });
-//   } catch (error) {
+// } catch (error) {
 //     res.status(500).send({ message: "Internal Server Error", error: error });
-//   }
+// }
 // });
 
 /**
@@ -2583,6 +2575,8 @@ router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
     try {
         const {mentorId, userId} = req.params;
         const {
+            eventId,
+            inviteeId,
             event_type,
             location,
             name,
@@ -2593,31 +2587,79 @@ router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
             updated_at
         } = req.body;
 
-        const schedule = new Schedule ({
-            userId: userId,
-            mentorId: mentorId,
-            eventType: event_type,
-            eventName: name,
-            startTime: start_time,
-            endTime: end_time,
-            location: {
-                joinUrl: location.join_url,
-                status: location.status,
-                type: location.type
-            },
-            createdAt: created_at,
-            updatedAt: updated_at,
-            status: status
-        });
+        const createSchedule = async () => {
+            const schedule = new Schedule ({
+                userId: userId,
+                mentorId: mentorId,
+                eventId: eventId,
+                inviteeId: inviteeId,
+                eventType: event_type,
+                eventName: name,
+                startTime: start_time,
+                endTime: end_time,
+                location: {
+                    joinUrl: location.join_url,
+                    status: location.status,
+                    type: location.type
+                },
+                createdAt: created_at,
+                updatedAt: updated_at,
+                status: status
+            });
 
-        await schedule.save ();
+            await schedule.save ();
 
-        res.status (200).json ({message: "Meeting Schedule Confirmed!"});
+            return schedule;
+        };
+
+        const createdSchedule = await createSchedule ();
+
+        res.status (200).json ({message: "Meeting Schedule Confirmed!", schedule: createdSchedule});
     } catch (err) {
         console.error (err);
-        res.status (500).json ({message: "Server Error"});
+        res.status (500).json ({error: "Booking Schedule not Confirmed"});
     }
 });
+
+
+
+router.post ('/cancel-meeting/:userId/:eventId', async (req, res) => {
+    try {
+        const {userId, eventId} = req.params;
+
+        // Find the schedule using userId and eventId
+        const schedule = await Schedule.findOne ({userId, eventId});
+
+        if (! schedule) {
+            return res.status (404).json ({error: 'Schedule not found'});
+        }
+
+        const cancellationUrl = `https://api.calendly.com/scheduled_events/${eventId}/cancellation`;
+
+        // Set the headers with authorization using the API_KEY from .env
+        const headers = {
+            Authorization: `Bearer ${
+                process.env.CALENDLY_ACCESS_TOKEN
+            }`,
+            'Content-Type': 'application/json'
+        };
+        
+        // Send a POST request to the cancellation URL with headers
+        const response = await axios.post (cancellationUrl, null, {headers});
+
+        // If the cancellation request is successful, update the schedule status to "Cancelled"
+        if (response.status === 200) {
+            schedule.status = 'Cancelled';
+            await schedule.save ();
+        }
+
+        res.status (200).json ({message: 'Meeting canceled successfully'});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Failed to cancel meeting'});
+    }
+});
+
 
 /**
  * @swagger
@@ -4202,11 +4244,7 @@ router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
 router.get ('/people-you-know/:userId', async (req, res) => {
     try {
         const {userId} = req.params;
-        const {
-            course_of_study,
-            current_level,
-            department,
-            institution        } = req.query;
+        const {course_of_study, current_level, department, institution} = req.query;
 
         // Check if the user exists
         const user = await User.findById (userId);
