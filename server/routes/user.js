@@ -3932,7 +3932,7 @@ router.post ('/posts/:postId/like', async (req, res) => {
                 const notification = new Notification ({
                     recipient: post.userId, // Post owner's ID
                     sender: userId, // Liked user's ID
-                    action: `<strong>${fullName}</strong> liked your post on the live feed ${postText}`,
+                    action: `${fullName} liked your post on the live feed ${postText}`,
                     isSystemNotification: false
                 });
 
@@ -4032,7 +4032,7 @@ router.post ("/posts/:postId/comments", async (req, res) => {
             const postText = post.content ? `"${
                 post.content.substring (0, 100)
             }..."` : "...";
-            const notification = new Notification ({recipient: post.userId, sender: req.body.user, action: `<strong>${fullName}</strong> commented on your post: ${postText}`, isSystemNotification: false});
+            const notification = new Notification ({recipient: post.userId, sender: req.body.user, action: `${fullName} commented on your post: ${postText}`, isSystemNotification: false});
 
             // Save the notification
             await notification.save ();
@@ -4483,7 +4483,6 @@ router.get ('/people-you-know/:userId', async (req, res) => {
  *                   description: A message indicating a server error occurred.
  *                   example: Server error
  */
-
 
 router.post ("/update-livefeed-settings/:userId", async (req, res) => {
     const userId = req.params.userId;
