@@ -2,8 +2,9 @@ require ('dotenv').config ();
 const Notification = require ('./models/Notifications');
 
 const io = require ('socket.io')(8801, {
-    cors: {
-        origin: process.env.ALLOWED_ORIGIN
+    cors : {
+        origin: process.env.ALLOWED_ORIGIN,
+        methods: ["GET", "POST"]
     }
 });
 
@@ -52,6 +53,9 @@ io.on ('connection', (socket) => {
     socket.on ('newComment', (postId) => { // Emit the new comment event to all clients in the corresponding post room
         io.to (postId).emit ('newComment');
     });
+
+    socket.on('disconnect', () => console.log('Client disconnected'));
+
 });
 
 
