@@ -7,6 +7,9 @@ const io = require ('socket.io')(8801, {
     }
 });
 
+console.log ('WebSocket server is running on port 8801');
+
+
 io.on ('connection', (socket) => {
     console.log ('A client connected');
 
@@ -130,6 +133,6 @@ const port = process.env.PORT || 8080;
 app.listen (port, () => console.log ('Express server is running on port ' + port));
 
 // Start the WebSocket server
-const socketPort = 8800;
-io.listen (socketPort);
-console.log ('WebSocket server is running on port ' + socketPort);
+// const socketPort = 8800;
+// io.listen (socketPort);
+// console.log ('WebSocket server is running on port ' + socketPort);
