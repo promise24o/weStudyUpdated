@@ -2,20 +2,20 @@ require ('dotenv').config ();
 const Notification = require ('./models/Notifications');
 
 const io = require ('socket.io')(8801, {
-    cors : {
+    cors: {
         origin: process.env.ALLOWED_ORIGIN,
         methods: ["GET", "POST"]
     }
 });
 
-console.log ('WebSocket server is running on port 8801');
-
 
 io.on ('connection', (socket) => {
     console.log ('A client connected');
 
-    socket.on ('postUpdate', (post) => {
+    socket.on ('postUpdate', async (post) => {
         const postId = post._id;
+        const userId = post.userId;
+        // Assuming the user ID is available in the 'post' object
 
         // Join the room corresponding to the post ID
         socket.join (postId);
@@ -27,34 +27,30 @@ io.on ('connection', (socket) => {
         // Emit like count and comment count to the room
         io.to (postId).emit (`likesCount:${postId}`, likesCount);
         io.to (postId).emit (`commentCounts:${postId}`, commentsCount);
+
+        // Trigger the getNotificationCounts event
+        socket.emit('getNotificationCounts', userId);
     });
+
 
     socket.on ('createPost', (newPost) => { // Emit the newly created post to all connected clients
         io.emit ('newPost', newPost);
     });
-
+    
     socket.on ('getNotificationCounts', async (userId) => {
         try { // Find the unread notifications for the specified user
             const notificationsCount = await Notification.countDocuments ({recipient: userId, isRead: false});
 
             // Emit the notification counts to the client
             socket.emit ('notificationCounts', {notificationsCount});
+            console.log('getNotificationCounts triggered'); // Add this console log
         } catch (error) {
             console.error (error);
         }
     });
 
-    // Simulate new like event
-    socket.on ('newLike', (postId) => { // Emit the new like event to all clients in the corresponding post room
-        io.to (postId).emit ('newLike');
-    });
 
-    // Simulate new comment event
-    socket.on ('newComment', (postId) => { // Emit the new comment event to all clients in the corresponding post room
-        io.to (postId).emit ('newComment');
-    });
-
-    socket.on('disconnect', () => console.log('Client disconnected'));
+    socket.on ('disconnect', () => console.log ('Client disconnected'));
 
 });
 
@@ -135,6 +131,8 @@ app.get ('/otp', (req, res) => {
 // Connection Port
 const port = process.env.PORT || 8080;
 app.listen (port, () => console.log ('Express server is running on port ' + port));
+console.log ('WebSocket server is running on port 8801');
+
 
 // Start the WebSocket server
 // const socketPort = 8800;

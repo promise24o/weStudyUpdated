@@ -4241,6 +4241,95 @@ router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/people-you-know/{userId}:
+ *   get:
+ *     summary: Get recommended people you may know
+ *     tags:
+ *       - User
+ *     description: Retrieves a list of recommended people you may know based on specific criteria.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: course_of_study
+ *         description: The course of study filter.
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: current_level
+ *         description: The current level filter.
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: department
+ *         description: The department filter.
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: institution
+ *         description: The institution filter.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Recommended people retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 people:
+ *                   type: array
+ *                   description: An array of recommended people.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       firstname:
+ *                         type: string
+ *                         description: The first name of the recommended person.
+ *                       lastname:
+ *                         type: string
+ *                         description: The last name of the recommended person.
+ *                       profilePhoto:
+ *                         type: string
+ *                         description: The profile photo URL of the recommended person.
+ *                       education:
+ *                         type: object
+ *                         description: The education details of the recommended person.
+ *                         properties:
+ *                           institution:
+ *                             type: string
+ *                             description: The institution attended by the recommended person.
+ *       404:
+ *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that the user was not found.
+ *                   example: User not found
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ *                   example: Internal Server Error
+ */
+
 router.get ('/people-you-know/:userId', async (req, res) => {
     try {
         const {userId} = req.params;
@@ -4319,6 +4408,82 @@ router.get ('/people-you-know/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/update-livefeed-settings/{userId}:
+ *   post:
+ *     summary: Update live feed settings
+ *     tags:
+ *       - User
+ *     description: Update the live feed settings for a user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: liveFeedSettings
+ *         required: true
+ *         description: The live feed settings object.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             about:
+ *               type: boolean
+ *               description: The flag indicating whether to show about information in the live feed.
+ *             personal_details:
+ *               type: boolean
+ *               description: The flag indicating whether to show personal details in the live feed.
+ *             edu_details:
+ *               type: boolean
+ *               description: The flag indicating whether to show education details in the live feed.
+ *             contact_details:
+ *               type: boolean
+ *               description: The flag indicating whether to show contact details in the live feed.
+ *             friends_list:
+ *               type: boolean
+ *               description: The flag indicating whether to show the friends list in the live feed.
+ *     responses:
+ *       200:
+ *         description: Live feed settings updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   description: The updated user object with sensitive fields excluded.
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the successful update of live feed settings.
+ *                   example: Live feed settings updated successfully
+ *       404:
+ *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that the user was not found.
+ *                   example: User not found
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ *                   example: Server error
+ */
+
 
 router.post ("/update-livefeed-settings/:userId", async (req, res) => {
     const userId = req.params.userId;
@@ -4358,6 +4523,77 @@ router.post ("/update-livefeed-settings/:userId", async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /user/author/{id}:
+ *   get:
+ *     summary: Get a post author details by ID
+ *     tags:
+ *       - User
+ *     description: Retrieves the details of a post author by their ID.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The ID of the author.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Author details retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 author:
+ *                   type: object
+ *                   description: The author details.
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                       description: The ID of the author.
+ *                       example: 60e7a4b573e2ab0015c2158b
+ *                     name:
+ *                       type: string
+ *                       description: The name of the author.
+ *                       example: John Doe
+ *                     email:
+ *                       type: string
+ *                       description: The email of the author.
+ *                       example: johndoe@example.com
+ *                     createdAt:
+ *                       type: string
+ *                       description: The creation date of the author.
+ *                       example: 2021-07-08T12:30:45.000Z
+ *                     updatedAt:
+ *                       type: string
+ *                       description: The last update date of the author.
+ *                       example: 2021-07-15T09:20:15.000Z
+ *       404:
+ *         description: Author not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that the author was not found.
+ *                   example: Author not found
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ *                   example: An error occurred while fetching author details.
+ */
+
 router.get ('/author/:id', async (req, res) => {
     const {id} = req.params;
 
@@ -4376,6 +4612,58 @@ router.get ('/author/:id', async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/posts/media/{type}/{userId}:
+ *   get:
+ *     summary: Get post media by type and user ID
+ *     tags:
+ *       - User
+ *     description: Retrieves the media of posts based on the specified type and user ID.
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         description: The type of media.
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Post media retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   type:
+ *                     type: string
+ *                     description: The type of media.
+ *                     example: image
+ *                   url:
+ *                     type: string
+ *                     description: The URL of the media.
+ *                     example: https://example.com/media/image.jpg
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ *                   example: Internal server error
+ */
+
 router.get ('/posts/media/:type/:userId', async (req, res) => {
     const {type, userId} = req.params;
 
@@ -4391,6 +4679,96 @@ router.get ('/posts/media/:type/:userId', async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/become-mentor/{userId}:
+ *   post:
+ *     summary: Submit mentor application
+ *     tags:
+ *       - User
+ *     description: Submits a mentor application for the specified user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: mentorApplication
+ *         required: true
+ *         description: The mentor application object.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             skills:
+ *               type: string
+ *               description: The skills of the mentor.
+ *             faculty:
+ *               type: string
+ *               description: The faculty of the mentor.
+ *             briefDescription:
+ *               type: string
+ *               description: A brief description of the mentor.
+ *             mentorshipReason:
+ *               type: string
+ *               description: The reason for applying to be a mentor.
+ *             linkedinProfile:
+ *               type: string
+ *               description: The LinkedIn profile URL of the mentor.
+ *             facebookUsername:
+ *               type: string
+ *               description: The Facebook username of the mentor.
+ *             twitterHandle:
+ *               type: string
+ *               description: The Twitter handle of the mentor.
+ *     responses:
+ *       200:
+ *         description: Mentor application submitted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the successful submission of the mentor application.
+ *                   example: Mentor application submitted successfully
+ *       400:
+ *         description: Bad request.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that required fields are missing or empty.
+ *                   example: Please fill in all required fields.
+ *       404:
+ *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that the user was not found.
+ *                   example: User not found
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ *                   example: Failed to submit mentor application
+ */
 
 router.post ('/become-mentor/:userId', (req, res) => {
     const userId = req.params.userId;
@@ -4441,6 +4819,66 @@ router.post ('/become-mentor/:userId', (req, res) => {
         res.status (500).json ({error: 'Failed to check user existence'});
     });
 });
+
+/**
+ * @swagger
+ * /users/notifications/{userId}:
+ *   get:
+ *     summary: Get notifications for a user
+ *     tags:
+ *       - User
+ *     description: Retrieves the notifications for a specific user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Notifications retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notifications:
+ *                   type: array
+ *                   description: An array of notifications for the user.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         description: The ID of the notification.
+ *                       sender:
+ *                         type: object
+ *                         description: The sender of the notification.
+ *                         properties:
+ *                           firstname:
+ *                             type: string
+ *                             description: The first name of the sender.
+ *                           lastname:
+ *                             type: string
+ *                             description: The last name of the sender.
+ *                           profilePhoto:
+ *                             type: string
+ *                             description: The profile photo URL of the sender.
+ *                       date:
+ *                         type: string
+ *                         description: The date of the notification.
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ */
 
 router.get ('/notifications/:userId', async (req, res) => {
     const userId = req.params.userId;
