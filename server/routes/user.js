@@ -29,6 +29,7 @@ const multer = require ("multer");
 const Agenda = require ("agenda");
 const MentorApplication = require ("../models/MentorApplication");
 const Notification = require ("../models/Notifications");
+const FriendRequest = require("../models/FriendRequest");
 
 // Configure Cloudinary credentials
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
@@ -4890,6 +4891,146 @@ router.get ('/notifications/:userId', async (req, res) => {
         res.status (500).json ({message: error.message});
     }
 });
+
+
+/**
+ * @swagger
+ * /users/send-friend-request:
+ *   post:
+ *     summary: Send a friend request
+ *     tags:
+ *       - User
+ *     description: Sends a friend request from one user to another.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               senderId:
+ *                 type: string
+ *                 description: The ID of the sender user.
+ *               receiverId:
+ *                 type: string
+ *                 description: The ID of the receiver user.
+ *     responses:
+ *       200:
+ *         description: Friend request sent successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating that the friend request was sent successfully.
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred while sending the friend request.
+ */
+
+// Route for sending a friend request
+router.post ('/send-friend-request', async (req, res) => {
+    try {
+        const {senderId, receiverId} = req.body;
+
+        // Create a new friend request
+        const friendRequest = new FriendRequest ({sender: senderId, receiver: receiverId});
+
+        // Save the friend request to the database
+        const savedFriendRequest = await friendRequest.save ();
+
+        res.status (200).json ({message: "Request sent successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while sending the friend request.'});
+    }
+});
+
+/**
+ * @swagger
+ * /users/friend-requests/{userId}:
+ *   get:
+ *     summary: Get friend requests for a user
+ *     tags:
+ *       - User
+ *     description: Retrieves all friend requests where the user is either the sender or receiver.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Friend requests retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 friendRequests:
+ *                   type: array
+ *                   description: An array of friend requests.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sender:
+ *                         type: string
+ *                         description: The ID of the sender user.
+ *                       receiver:
+ *                         type: string
+ *                         description: The ID of the receiver user.
+ *                       status:
+ *                         type: string
+ *                         enum: [pending, accepted, rejected]
+ *                         description: The status of the friend request.
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: The date and time when the friend request was created.
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred while retrieving friend requests.
+ */
+router.get ('/friend-requests/:userId', async (req, res) => {
+    try {
+        const {userId} = req.params;
+
+        // Find all friend requests where the user is the sender or receiver
+        const friendRequests = await FriendRequest.findOne({
+            $or: [
+                {
+                    sender: userId
+                }, {
+                    receiver: userId
+                }
+            ]
+        }) 
+        console.log(friendRequests)
+        res.status (200).json ({friendRequests});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while retrieving friend requests.'});
+    }
+});
+
 
 
 module.exports = router;

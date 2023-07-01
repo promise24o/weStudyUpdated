@@ -15,7 +15,6 @@ io.on ('connection', (socket) => {
     socket.on ('postUpdate', async (post) => {
         const postId = post._id;
         const userId = post.userId;
-        // Assuming the user ID is available in the 'post' object
 
         // Join the room corresponding to the post ID
         socket.join (postId);
@@ -28,22 +27,30 @@ io.on ('connection', (socket) => {
         io.to (postId).emit (`likesCount:${postId}`, likesCount);
         io.to (postId).emit (`commentCounts:${postId}`, commentsCount);
 
-        // Trigger the getNotificationCounts event
-        socket.emit('getNotificationCounts', userId);
+        // Emit notification event to the author
+        io.to (userId).emit ('notification', {message: 'You have a new notification'});
+
+        // Trigger the getNotificationCounts event for the author
+        io.to (userId).emit ('getNotificationCounts');
     });
 
 
-    socket.on ('createPost', (newPost) => { // Emit the newly created post to all connected clients
+    socket.on ("notification", (data) => {
+        const {userId, message} = data;
+        // Emit the notification to the specific user
+        io.to (userId).emit ("notification", message);
+    });
+
+
+    socket.on ('createPost', (newPost) => {
         io.emit ('newPost', newPost);
     });
-    
+
     socket.on ('getNotificationCounts', async (userId) => {
         try { // Find the unread notifications for the specified user
             const notificationsCount = await Notification.countDocuments ({recipient: userId, isRead: false});
-
             // Emit the notification counts to the client
             socket.emit ('notificationCounts', {notificationsCount});
-            console.log('getNotificationCounts triggered'); // Add this console log
         } catch (error) {
             console.error (error);
         }
