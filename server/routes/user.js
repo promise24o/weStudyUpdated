@@ -5023,13 +5023,261 @@ router.get ('/friend-requests/:userId', async (req, res) => {
                 }
             ]
         }) 
-        console.log(friendRequests)
         res.status (200).json ({friendRequests});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred while retrieving friend requests.'});
     }
 });
+
+/**
+ * @swagger
+ * /users/friend-requests/{requestId}:
+ *   delete:
+ *     summary: Delete a friend request
+ *     tags:
+ *       - User
+ *     description: Deletes a friend request by its ID.
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         description: The ID of the friend request to delete.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Friend request deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the successful deletion.
+ *       404:
+ *         description: Friend request not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that the friend request was not found.
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ */
+
+router.delete ('/friend-requests/:requestId', async (req, res) => {
+    try {
+        const {requestId} = req.params;
+
+        // Find the friend request by ID
+        const friendRequest = await FriendRequest.findById (requestId);
+
+        if (! friendRequest) {
+            return res.status (404).json ({error: 'Friend request not found'});
+        }
+
+        // Delete the friend request
+        await FriendRequest.deleteOne ({_id: requestId});
+
+        res.status (200).json ({message: 'Friend request deleted successfully'});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while deleting the friend request'});
+    }
+});
+
+/**
+ * @swagger
+ * /users/friend-requests/accept/{requestId}:
+ *   put:
+ *     summary: Accept a friend request
+ *     tags:
+ *       - User
+ *     description: Accepts a friend request by updating its status to 'accepted' and adding the users as friends.
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         description: The ID of the friend request.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Friend request accepted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A message indicating the successful acceptance of the friend request.
+ *       404:
+ *         description: Friend request not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that the friend request was not found.
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating that a server error occurred while accepting the friend request.
+ */
+
+router.put ('/friend-requests/accept/:requestId', async (req, res) => {
+    try {
+        const {requestId} = req.params;
+
+        // Find the friend request by ID
+        const friendRequest = await FriendRequest.findById (requestId);
+
+        if (! friendRequest) {
+            return res.status (404).json ({error: 'Friend request not found'});
+        }
+
+        // Update the status to 'accepted'
+        friendRequest.status = 'accepted';
+
+        // Save the updated friend request
+        const updatedFriendRequest = await friendRequest.save ();
+
+        // Add receiver as a friend of the sender
+        await User.findByIdAndUpdate (friendRequest.sender, {
+            $push: {
+                friends: {
+                    userId: friendRequest.receiver
+                }
+            }
+        });
+
+        // Add sender as a friend of the receiver
+        await User.findByIdAndUpdate (friendRequest.receiver, {
+            $push: {
+                friends: {
+                    userId: friendRequest.sender
+                }
+            }
+        });
+
+        // Create a notification for the friend request acceptance
+        const senderUser = await User.findById (friendRequest.sender);
+        const receiverUser = await User.findById (friendRequest.receiver);
+        const fullName = `${
+            receiverUser.firstname
+        } ${
+            receiverUser.lastname
+        }`;
+        const notificationMessage = `${fullName} has accepted your Buddy Request. You can now chat on Acadaboo.`;
+
+        const notification = new Notification ({recipient: friendRequest.sender, sender: friendRequest.receiver, action: notificationMessage, isSystemNotification: true});
+
+        // Save the notification to the database
+        await notification.save ();
+
+        res.status (200).json ({message: 'Friend request accepted successfully'});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while accepting the friend request'});
+    }
+});
+
+/**
+ * @swagger
+ * /users/all-friend-requests/{userId}:
+ *   get:
+ *     summary: Get all pending friend requests for a user
+ *     tags:
+ *       - User
+ *     description: Retrieves all pending friend requests for a specific user.
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Friend requests retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 friendRequests:
+ *                   type: array
+ *                   description: An array of pending friend requests for the user.
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         description: The ID of the friend request.
+ *                       sender:
+ *                         type: object
+ *                         description: The sender of the friend request.
+ *                         properties:
+ *                           firstname:
+ *                             type: string
+ *                             description: The first name of the sender.
+ *                           lastname:
+ *                             type: string
+ *                             description: The last name of the sender.
+ *                           profilePhoto:
+ *                             type: string
+ *                             description: The profile photo URL of the sender.
+ *                       created_at:
+ *                         type: string
+ *                         description: The creation date of the friend request.
+ *       500:
+ *         description: Server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: A message indicating a server error occurred.
+ */
+
+router.get ('/all-friend-requests/:userId', async (req, res) => {
+    try {
+        const {userId} = req.params;
+
+        // Find all friend requests where the user is the receiver and the status is 'pending'
+        const friendRequests = await FriendRequest.find ({receiver: userId, status: 'pending'}).populate ('sender', 'firstname lastname profilePhoto') // Populate the sender details.exec ();
+
+        res.status (200).json ({friendRequests});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while retrieving friend requests'});
+    }
+});
+
 
 
 

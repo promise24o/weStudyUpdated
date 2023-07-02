@@ -130,6 +130,18 @@ const userSchema = new mongoose.Schema ({
             }
         }
     ],
+    friends: [
+        {
+            userId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'user'
+            },
+            dateAdded: {
+                type: Date,
+                default: Date.now ()
+            }
+        }
+    ],
     liveFeedSettings: {
         about: {
             type: String,
