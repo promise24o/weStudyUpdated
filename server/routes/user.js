@@ -29,7 +29,7 @@ const multer = require ("multer");
 const Agenda = require ("agenda");
 const MentorApplication = require ("../models/MentorApplication");
 const Notification = require ("../models/Notifications");
-const FriendRequest = require("../models/FriendRequest");
+const FriendRequest = require ("../models/FriendRequest");
 
 // Configure Cloudinary credentials
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
@@ -2623,7 +2623,6 @@ router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
 });
 
 
-
 router.post ('/cancel-meeting/:userId/:eventId', async (req, res) => {
     try {
         const {userId, eventId} = req.params;
@@ -2644,7 +2643,7 @@ router.post ('/cancel-meeting/:userId/:eventId', async (req, res) => {
             }`,
             'Content-Type': 'application/json'
         };
-        
+
         // Send a POST request to the cancellation URL with headers
         const response = await axios.post (cancellationUrl, null, {headers});
 
@@ -4489,6 +4488,7 @@ router.post ("/update-livefeed-settings/:userId", async (req, res) => {
     const userId = req.params.userId;
     const {
         about,
+        username,
         personal_details,
         edu_details,
         contact_details,
@@ -4503,7 +4503,8 @@ router.post ("/update-livefeed-settings/:userId", async (req, res) => {
 
         // Update the liveFeedSettings object
         user.liveFeedSettings = {
-            about: about,
+            about,
+            username,
             personal_details: personal_details,
             edu_details: edu_details,
             contact_details: contact_details,
@@ -4942,22 +4943,30 @@ router.post ('/send-friend-request', async (req, res) => {
     try {
         const {senderId, receiverId} = req.body;
 
+        // Check if the friend request already exists
+        const existingRequest = await FriendRequest.findOne ({sender: senderId, receiver: receiverId});
+
+        if (existingRequest) {
+            return res.status (400).json ({error: 'Friend request already sent to this user.'});
+        }
+
         // Create a new friend request
         const friendRequest = new FriendRequest ({sender: senderId, receiver: receiverId});
 
         // Save the friend request to the database
         const savedFriendRequest = await friendRequest.save ();
 
-        res.status (200).json ({message: "Request sent successfully"});
+        res.status (200).json ({message: 'Request sent successfully'});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred while sending the friend request.'});
     }
 });
 
+
 /**
  * @swagger
- * /users/friend-requests/{userId}:
+ * /users/friend-request/{userId}/{id}:
  *   get:
  *     summary: Get friend requests for a user
  *     tags:
@@ -4968,6 +4977,12 @@ router.post ('/send-friend-request', async (req, res) => {
  *         name: userId
  *         required: true
  *         description: The ID of the user.
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The ID of the second user.
  *         schema:
  *           type: string
  *     responses:
@@ -5009,26 +5024,31 @@ router.post ('/send-friend-request', async (req, res) => {
  *                   type: string
  *                   description: A message indicating that a server error occurred while retrieving friend requests.
  */
-router.get ('/friend-requests/:userId', async (req, res) => {
-    try {
-        const {userId} = req.params;
 
-        // Find all friend requests where the user is the sender or receiver
-        const friendRequests = await FriendRequest.findOne({
+router.get ('/friend-request/:userId/:id', async (req, res) => {
+    try {
+        const {userId, id} = req.params;
+
+        // Find friend requests where the user is the sender or receiver
+        const friendRequests = await FriendRequest.findOne ({
             $or: [
                 {
-                    sender: userId
+                    sender: userId,
+                    receiver: id
                 }, {
+                    sender: id,
                     receiver: userId
-                }
+                },
             ]
-        }) 
+        });
+
         res.status (200).json ({friendRequests});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred while retrieving friend requests.'});
     }
 });
+
 
 /**
  * @swagger
@@ -5206,7 +5226,7 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
 
 /**
  * @swagger
- * /users/all-friend-requests/{userId}:
+ * /users/8iend-requests/{userId}:
  *   get:
  *     summary: Get all pending friend requests for a user
  *     tags:
@@ -5269,7 +5289,7 @@ router.get ('/all-friend-requests/:userId', async (req, res) => {
         const {userId} = req.params;
 
         // Find all friend requests where the user is the receiver and the status is 'pending'
-        const friendRequests = await FriendRequest.find ({receiver: userId, status: 'pending'}).populate ('sender', 'firstname lastname profilePhoto') // Populate the sender details.exec ();
+        const friendRequests = await FriendRequest.find ({receiver: userId, status: 'pending'}).populate ('sender', 'firstname lastname profilePhoto personal')
 
         res.status (200).json ({friendRequests});
     } catch (error) {
@@ -5279,6 +5299,153 @@ router.get ('/all-friend-requests/:userId', async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/unfriend/{requestId}:
+ *   delete:
+ *     tags:
+ *       - User
+ *     summary: Unfriend a user
+ *     description: Unfriend a user by deleting a friend request and removing from friend lists
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         description: ID of the friend request to be unfriended
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Unfriended successfully
+ *       404:
+ *         description: Friend request not found
+ *       500:
+ *         description: An error occurred while unfriending
+ */
+
+router.delete ('/unfriend/:requestId', async (req, res) => {
+    try {
+        const {requestId} = req.params;
+
+        // Find the friend request by ID
+        const friendRequest = await FriendRequest.findById (requestId);
+
+        if (! friendRequest) {
+            return res.status (404).json ({error: 'Friend request not found'});
+        }
+
+        // Delete the friend request document
+        await FriendRequest.deleteOne ({_id: requestId});
+
+        // Remove the sender from the receiver's friend list
+        await User.findByIdAndUpdate (friendRequest.receiver, {
+            $pull: {
+                friends: {
+                    userId: friendRequest.sender
+                }
+            }
+        });
+
+        // Remove the receiver from the sender's friend list
+        await User.findByIdAndUpdate (friendRequest.sender, {
+            $pull: {
+                friends: {
+                    userId: friendRequest.receiver
+                }
+            }
+        });
+
+        res.status (200).json ({message: 'Unfriended successfully'});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while unfriending'});
+    }
+});
+
+
+router.get ('/count-mutual-friends/:user1Id/:user2Id', async (req, res) => {
+    try {
+        const {user1Id, user2Id} = req.params;
+
+        // Find user1
+        const user1 = await User.findById (user1Id).populate ('friends.userId');
+
+        if (! user1) {
+            return res.status (404).json ({error: 'User1 not found'});
+        }
+
+        // Find user2
+        const user2 = await User.findById (user2Id).populate ('friends.userId');
+
+        if (! user2) {
+            return res.status (404).json ({error: 'User2 not found'});
+        }
+
+        // Get the list of user1's friend userIds
+        const user1FriendIds = user1.friends.map ( (friend) => friend.userId.toString ());
+
+        // Get the list of user2's friend userIds
+        const user2FriendIds = user2.friends.map ( (friend) => friend.userId.toString ());
+
+        // Calculate the mutual friends count
+        const mutualFriendsCount = user1FriendIds.filter ( (friendId) => user2FriendIds.includes (friendId)).length;
+
+        res.status (200).json ({mutualFriendsCount});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while retrieving mutual friends count'});
+    }
+});
+
+
+router.post ('/check-username', async (req, res) => {
+    try {
+        const {username} = req.body;
+
+        // Check if the username already exists in the database
+        const existingUser = await User.findOne ({'liveFeedSettings.username': username});
+
+        if (existingUser) { // Username already taken, suggest alternative usernames
+            const suggestedUsernames = generateSuggestedUsernames (username);
+            res.status (200).json ({taken: true, suggestedUsernames});
+        } else { // Username is available
+            res.status (200).json ({taken: false});
+        }
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while checking the username.'});
+    }
+});
+
+
+const generateSuggestedUsernames = (username) => {
+    const suggestedUsernames = [];
+    const MAX_SUFFIX = 4; // Maximum numeric suffix to be appended
+
+    for (let i = 1; i <= MAX_SUFFIX; i++) {
+        const suggestedUsername = `${username}${i}`;
+        suggestedUsernames.push (suggestedUsername);
+    }
+
+    return suggestedUsernames;
+};
+
+
+router.get ('/friends/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const user = await User.findById (userId).populate ('friends.userId', 'firstname lastname liveFeedSettings.username education.institution profilePhoto personal');
+
+        if (! user) {
+            return res.status (404).json ({message: 'User not found'});
+        }
+
+        res.json ({friends: user.friends});
+    } catch (err) {
+        console.error (err);
+        res.status (500).json ({message: 'Server Error'});
+    }
+});
 
 
 module.exports = router;

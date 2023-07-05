@@ -143,6 +143,10 @@ const userSchema = new mongoose.Schema ({
         }
     ],
     liveFeedSettings: {
+        username: {
+            type: String,
+            default: ""
+        },
         about: {
             type: String,
             default: ""
