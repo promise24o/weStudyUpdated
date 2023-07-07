@@ -2,7 +2,7 @@ const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMen
 const cloudinary = require ("cloudinary").v2;
 const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const multer = require ("multer");
-const {Mentors} = require ("../models/Mentors");
+const {Mentors, Schedule} = require ("../models/Mentors");
 const router = require ("express").Router ();
 const crypto = require ("crypto");
 const bcrypt = require ("bcrypt");
@@ -149,7 +149,8 @@ router.post ('/become-mentor/:mentorId', (req, res) => {
             mentorshipReason,
             linkedinProfile,
             facebookUsername,
-            twitterHandle
+            twitterHandle,
+            googleMeet
         } = req.body;
 
         // Check if required fields are empty
@@ -169,6 +170,7 @@ router.post ('/become-mentor/:mentorId', (req, res) => {
                 existingApplication.linkedin = linkedinProfile;
                 existingApplication.facebook = facebookUsername;
                 existingApplication.twitterHandle = twitterHandle;
+                existingApplication.googleMeet = googleMeet;
                 existingApplication.status = 'Application Submitted';
 
                 existingApplication.save ().then ( () => {
@@ -187,6 +189,7 @@ router.post ('/become-mentor/:mentorId', (req, res) => {
                     about: briefDescription,
                     reason: mentorshipReason,
                     linkedin: linkedinProfile,
+                    googleMeet,
                     facebook: facebookUsername,
                     twitterHandle,
                     status: 'Application Submitted'
@@ -373,7 +376,7 @@ router.post ('/update-profile', async (req, res) => {
             bio,
             skills
         } = req.body;
-        
+
         const updatedMentor = await Mentors.findByIdAndUpdate (mentorId, {
             city,
             gender,
@@ -492,5 +495,274 @@ router.post ("/change-password", async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /mentor/schedules/{mentorId}:
+ *   get:
+ *     summary: Get schedules for a mentor
+ *     description: Retrieves the schedules associated with the specified mentor ID.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor to retrieve schedules for.
+ *     responses:
+ *       200:
+ *         description: Schedules retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 schedules:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Schedule'
+ *       404:
+ *         description: Mentor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *
+ * components:
+ *   schemas:
+ *     Schedule:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         date:
+ *           type: string
+ *           format: date
+ *         startTime:
+ *           type: string
+ *           format: time
+ *         endTime:
+ *           type: string
+ *           format: time
+ *         slots:
+ *           type: number
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ *         userId:
+ *           $ref: '#/components/schemas/User'
+ *     User:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         firstname:
+ *           type: string
+ *         lastname:
+ *           type: string
+ *         profilePhoto:
+ *           type: string
+ *         personal:
+ *           type: object
+ */
+
+
+router.get ('/schedules/:mentorId', async (req, res) => {
+    try {
+        const mentorId = req.params.mentorId;
+
+        const schedules = await Schedule.find ({mentorId}).populate ("userId", "firstname lastname profilePhoto personal");;
+
+        res.status (200).json ({schedules});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred'});
+    }
+});
+
+
+/**
+ * @swagger
+ * /mentor/add-session/{mentorId}:
+ *   post:
+ *     summary: Add a session for a mentor
+ *     description: Adds a session for the specified mentor.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor to add a session for.
+ *       - in: body
+ *         name: sessionData
+ *         description: Session data
+ *         required: true
+ *         schema:
+ *           $ref: '#/components/schemas/SessionData'
+ *     responses:
+ *       200:
+ *         description: Session added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 mentor:
+ *                   $ref: '#/components/schemas/Mentor'
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       404:
+ *         description: Mentor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *
+ * components:
+ *   schemas:
+ *     SessionData:
+ *       type: object
+ *       properties:
+ *         date:
+ *           type: string
+ *           format: date
+ *         startTime:
+ *           type: string
+ *           format: time
+ *         endTime:
+ *           type: string
+ *           format: time
+ *         slots:
+ *           type: number
+ *     Mentor:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         fullname:
+ *           type: string
+ *         sessions:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Session'
+ *     Session:
+ *       type: object
+ *       properties:
+ *         date:
+ *           type: string
+ *           format: date
+ *         startTime:
+ *           type: string
+ *           format: time
+ *         endTime:
+ *           type: string
+ *           format: time
+ *         slots:
+ *           type: number
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ */
+
+
+router.post ('/add-session/:mentorId', async (req, res) => {
+    try {
+        const {mentorId} = req.params;
+        const {date, startTime, endTime, slots} = req.body;
+
+        // Find the mentor by mentorId
+        const mentor = await Mentors.findById (mentorId);
+
+        if (! mentor) {
+            return res.status (404).json ({error: 'Mentor not found'});
+        }
+
+        // Check if the session date is in the future
+        const currentDate = new Date ();
+        const sessionDate = new Date (date);
+
+        if (sessionDate < currentDate) {
+            return res.status (400).json ({error: 'Cannot choose backward dates'});
+        }
+
+        // Initialize the sessions array if it doesn't exist
+        if (! mentor.sessions) {
+            mentor.sessions = [];
+        }
+
+        // Check for duplicate session
+        const isDuplicateSession = mentor.sessions.some ( (session) => session.date === date && session.startTime === startTime && session.endTime === endTime);
+
+        if (isDuplicateSession) {
+            return res.status (400).json ({error: 'Session with the same date, start time, and end time already exists'});
+        }
+
+        // Check if the start time is before the end time
+        const startTimeMs = new Date (startTime).getTime ();
+        const endTimeMs = new Date (endTime).getTime ();
+
+        if (startTimeMs >= endTimeMs) {
+            return res.status (400).json ({error: 'Start time must be before the end time'});
+        }
+
+        // Create a new session object
+        const newSession = {
+            date,
+            startTime,
+            endTime,
+            slots,
+            dateAdded: new Date ()
+        };
+
+        // Add the session to the sessions array
+        mentor.sessions.push (newSession);
+
+        // Save the updated mentor document
+        const updatedMentor = await mentor.save ();
+
+        console.log(updatedMentor)
+        res.status (200).json ({message: 'Session added successfully', mentor: updatedMentor});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Internal Server Error'});
+    }
+});
 
 module.exports = router;

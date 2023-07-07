@@ -23,7 +23,7 @@ const mentorsSchema = new mongoose.Schema ({
         required: true
     },
     gender: {
-        type: String,
+        type: String
     },
     avatar: {
         type: String
@@ -74,6 +74,9 @@ const mentorsSchema = new mongoose.Schema ({
     calendly: {
         type: String
     },
+    googleMeet: {
+        type: String
+    },
     status: {
         type: String,
         enum: [
@@ -83,8 +86,8 @@ const mentorsSchema = new mongoose.Schema ({
             "Under Review",
             "Approved",
             "Active",
-            "Suspended", 
-             "Rejected"
+            "Suspended",
+            "Rejected"
         ],
         default: "Pending",
         required: true
@@ -117,7 +120,7 @@ const mentorsSchema = new mongoose.Schema ({
             user: {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: 'user',
-                required: true,
+                required: true
             },
             dateAdded: {
                 type: Date,
@@ -126,6 +129,30 @@ const mentorsSchema = new mongoose.Schema ({
             chatStatus: {
                 type: Boolean,
                 default: false
+            }
+        }
+    ],
+    sessions: [
+        {
+            date: {
+                type: Date,
+                required: true
+            },
+            startTime: {
+                type: String,
+                required: true
+            },
+            endTime: {
+                type: String,
+                required: true
+            },
+            slots: {
+                type: Number,
+                required: true
+            },
+            dateAdded: {
+                type: Date,
+                default: Date.now ()
             }
         }
     ]

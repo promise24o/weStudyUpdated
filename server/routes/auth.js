@@ -865,7 +865,7 @@ router.post ("/mentor-login", async (req, res) => {
         const token = await mentor.generateAuthToken ();
 
         // Update mentorWithoutPassword object to include the status property
-        const mentorWithoutPassword = await Mentors.findOne ({_id: mentor._id}).select ("-password -token");
+        const mentorWithoutPassword = await Mentors.findOne ({_id: mentor._id}).select ("-password -token").populate("faculty");
 
         res.status (200).send ({
             data: {

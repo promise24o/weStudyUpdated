@@ -35,7 +35,7 @@ const mentorApplicationWithMentorSchema = new mongoose.Schema ({
     linkedin: {
         type: String
     },
-    facebook: {
+    googleMeet: {
         type: String
     },
     twitterHandle: {

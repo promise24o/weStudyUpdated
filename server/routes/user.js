@@ -2588,7 +2588,7 @@ router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
             created_at,
             updated_at
         } = req.body;
-
+        console.log(location);
         const createSchedule = async () => {
             const schedule = new Schedule ({
                 userId: userId,
@@ -4789,7 +4789,8 @@ router.post ('/become-mentor/:userId', (req, res) => {
             mentorshipReason,
             linkedinProfile,
             facebookUsername,
-            twitterHandle
+            twitterHandle, 
+            googleMeet
         } = req.body;
 
         // Check if required fields are empty
@@ -4806,7 +4807,8 @@ router.post ('/become-mentor/:userId', (req, res) => {
             reason: mentorshipReason,
             linkedin: linkedinProfile,
             facebook: facebookUsername,
-            twitterHandle
+            twitterHandle, 
+            googleMeet
         });
 
         // Save the mentor application to the database

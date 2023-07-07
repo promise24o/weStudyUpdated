@@ -834,7 +834,7 @@ router.post ("/add-mentor", upload2.single ("file"), async (req, res) => {
         linkedin,
         twitter,
         facebook,
-        calendly,
+        googleMeet,
         skills
     } = JSON.parse (req.body.data);
 
@@ -854,7 +854,7 @@ router.post ("/add-mentor", upload2.single ("file"), async (req, res) => {
             linkedin,
             twitter,
             facebook,
-            calendly,
+            googleMeet,
             skills,
             avatar: result.url
         });
@@ -1027,7 +1027,8 @@ router.put ('/update-application-status/:id', async (req, res) => {
                 mentor.linkedin = mentorApplication.linkedin;
                 mentor.facebook = mentorApplication.facebook;
                 mentor.twitter = mentorApplication.twitterHandle;
-                mentor.institution = mentorApplication.organization;
+                mentor.googleMeet = mentorApplication.googleMeet;
+                mentor.faculty = mentorApplication.faculty;
             }
             mentor.status = status;
 
