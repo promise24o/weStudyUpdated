@@ -388,10 +388,10 @@ router.get ("/faculties", auth2, async (req, res) => {
 
 router.get ("/mentors", auth2, async (req, res) => {
     try {
-        let mentors = await Mentors.find ().populate ("faculty") // Populate the faculty field.sort ({createdAt: "desc"});
+        let mentors = await Mentors.find ({status: "Approved"}).populate ("faculty").sort ({createdAt: "desc"});
 
         if (mentors.length === 0) {
-            return res.status (400).send ({message: "No Mentor Found"});
+            return res.status (400).send ({message: "No Approved Mentors Found"});
         }
 
         res.status (200).send ({mentors: mentors});
@@ -399,6 +399,7 @@ router.get ("/mentors", auth2, async (req, res) => {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
+
 
 router.put ("/update-institution/:id", async (req, res) => {
     try {
@@ -950,7 +951,7 @@ router.get ("/mentors-applications", async (req, res) => {
 
         const mentorApplications2 = await MentorApplicationWithMentor.find ().populate ("mentorId", "fullname avatar").populate ("faculty");
 
-        res.status (200).json ({mentors: mentorApplications, mentors2:mentorApplications2});
+        res.status (200).json ({mentors: mentorApplications, mentors2: mentorApplications2});
     } catch (err) {
         res.status (500).json ({message: err.message});
     }
@@ -958,25 +959,39 @@ router.get ("/mentors-applications", async (req, res) => {
 
 router.get ("/mentor-application/:id", async (req, res) => {
     try {
-        const appplicationId = req.params.id;
-        console.log (appplicationId)
-        const mentorApplication = await MentorApplication.findOne ({_id: appplicationId}).populate ("userId", "firstname lastname profilePhoto education createdAt").populate ("faculty");
+        const applicationId = req.params.id;
 
-        res.status (200).json ({mentor: mentorApplication});
+        let mentorApplication = await MentorApplication.findOne ({_id: applicationId}).populate ("userId", "firstname lastname profilePhoto education createdAt").populate ("faculty");
+
+        let userType = "student";
+
+        if (! mentorApplication) {
+            mentorApplication = await MentorApplicationWithMentor.findOne ({_id: applicationId}).populate ("mentorId", "fullname avatar").populate ("faculty");
+
+            userType = "mentor";
+        }
+
+        const mentor = mentorApplication;
+
+        res.status (200).json ({mentor, userType});
     } catch (err) {
         res.status (500).json ({message: err.message});
     }
 });
+
 
 router.put ('/update-application-status/:id', async (req, res) => {
     const id = req.params.id;
     const {status, adminId} = req.body;
 
     try {
-        const mentorApplication = await MentorApplication.findById (id);
+        let mentorApplication = await MentorApplication.findById (id);
 
         if (! mentorApplication) {
-            return res.status (404).json ({error: 'Mentor application not found'});
+            mentorApplication = await MentorApplicationWithMentor.findById (id);
+            if (! mentorApplication) {
+                return res.status (404).json ({error: 'Mentor application not found'});
+            }
         }
 
         mentorApplication.status = status;
@@ -984,22 +999,50 @@ router.put ('/update-application-status/:id', async (req, res) => {
 
         const updatedMentorApplication = await mentorApplication.save ();
 
-        // Update isMentor property based on status
-        const user = await User.findOne ({_id: mentorApplication.userId});
+        if (mentorApplication instanceof MentorApplication) {
+            const user = await User.findOne ({_id: mentorApplication.userId});
 
-        if (! user) {
-            return res.status (404).json ({error: 'User not found'});
+            if (! user) {
+                return res.status (404).json ({error: 'User not found'});
+            }
+
+            if (status === 'Approved') {
+                user.isMentor = true;
+                user.isMentorStatus = 'Approved';
+            } else {
+                user.isMentor = false;
+                user.isMentorStatus = status;
+            }
+
+            await user.save ();
+        } else if (mentorApplication instanceof MentorApplicationWithMentor) {
+            const mentor = await Mentors.findOne ({_id: mentorApplication.mentorId});
+
+            if (! mentor) {
+                return res.status (404).json ({error: 'Mentor not found'});
+            }
+            if (status === 'Approved') {
+                mentor.bio = mentorApplication.about;
+                mentor.skills = mentorApplication.skills;
+                mentor.linkedin = mentorApplication.linkedin;
+                mentor.facebook = mentorApplication.facebook;
+                mentor.twitter = mentorApplication.twitterHandle;
+                mentor.institution = mentorApplication.organization;
+            }
+            mentor.status = status;
+
+            await mentor.save ();
         }
 
-        user.isMentor = status === 'Approved';
-
-        await user.save ();
-
-        const application = await MentorApplication.findOne ({_id: id}).populate ('userId', 'firstname lastname profilePhoto education createdAt').populate ('faculty');
+        let application = null;
+        if (mentorApplication instanceof MentorApplication) {
+            application = await MentorApplication.findOne ({_id: id}).populate ('userId', 'firstname lastname profilePhoto education createdAt').populate ('faculty');
+        } else if (mentorApplication instanceof MentorApplicationWithMentor) {
+            application = await MentorApplicationWithMentor.findOne ({_id: id}).populate ('mentorId', 'fullname avatar').populate ('faculty');
+        }
 
         // Send notification to the user
         const notificationMessage = `The status of your mentor application has been changed to <strong>${status}</strong>`;
-
         const notification = new Notification ({recipient: mentorApplication.userId, action: notificationMessage, isSystemNotification: true});
 
         await notification.save ();

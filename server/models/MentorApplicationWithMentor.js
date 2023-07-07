@@ -44,7 +44,14 @@ const mentorApplicationWithMentorSchema = new mongoose.Schema ({
     status: {
         type: String,
         enum: [
-            "Application Submitted", "Under Review", "Approved", "Rejected"
+            "Pending",
+            "Profile Pending",
+            "Application Submitted",
+            "Under Review",
+            "Approved",
+            "Active",
+            "Suspended",
+            "Rejected"
         ],
         default: "Application Submitted"
     },
@@ -74,4 +81,3 @@ const mentorApplicationWithMentorSchema = new mongoose.Schema ({
 const MentorApplicationWithMentor = mongoose.model ("MentorApplicationWithMentor", mentorApplicationWithMentorSchema);
 
 module.exports = MentorApplicationWithMentor;
-

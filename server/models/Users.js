@@ -32,6 +32,14 @@ const userSchema = new mongoose.Schema ({
         type: Boolean,
         default: false
     },
+    isMentorStatus: {
+        type: String,
+        enum: [
+            "Pending", "Under Review", "Approved", "Rejected"
+        ],
+        default: "Pending"
+    },
+
     isDonor: {
         type: Boolean,
         default: false

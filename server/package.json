@@ -10,6 +10,7 @@
         "ejs": "^3.1.9",
         "express": "^4.18.2",
         "express-useragent": "^1.0.15",
+        "google-cal-meet-api": "^1.1.7",
         "html-pdf": "^3.0.1",
         "joi": "^17.8.3",
         "joi-password-complexity": "^5.1.0",

@@ -35,12 +35,13 @@ const FriendRequest = require ("../models/FriendRequest");
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
 
 // Configure Multer to use Cloudinary as the storage engine
+const randomString = crypto.randomBytes (8).toString ('hex');
 const storage = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/users",
         format: async () => "png",
-        public_id: () => `user-${1}`
+        public_id: () => randomString
     }
 });
 

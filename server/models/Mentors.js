@@ -22,6 +22,9 @@ const mentorsSchema = new mongoose.Schema ({
         type: String,
         required: true
     },
+    gender: {
+        type: String,
+    },
     avatar: {
         type: String
     },
@@ -78,9 +81,10 @@ const mentorsSchema = new mongoose.Schema ({
             "Profile Pending",
             "Application Submitted",
             "Under Review",
+            "Approved",
             "Active",
-            "Suspended"
-
+            "Suspended", 
+             "Rejected"
         ],
         default: "Pending",
         required: true

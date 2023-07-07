@@ -36,7 +36,14 @@ const mentorApplicationSchema = new mongoose.Schema ({
     status: {
         type: String,
         enum: [
-            "Pending", "Under Review", "Approved", "Rejected"
+            "Pending",
+            "Profile Pending",
+            "Application Submitted",
+            "Under Review",
+            "Approved",
+            "Active",
+            "Suspended",
+            "Rejected"
         ],
         default: "Pending"
     },
