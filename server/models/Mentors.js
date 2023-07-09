@@ -181,43 +181,14 @@ const scheduleSchema = new mongoose.Schema ({
         ref: "mentors",
         required: true
     },
-    eventId: {
+    session: {
+        type: mongoose.ObjectId,
+        ref: 'mentors.sessions',  
+        required: true,
+    },
+    topic: {
         type: String,
         required: true
-    },
-    inviteeId: {
-        type: String,
-        required: true
-    },
-    eventType: {
-        type: String,
-        required: true
-    },
-    eventName: {
-        type: String,
-        required: true
-    },
-    startTime: {
-        type: Date,
-        required: true
-    },
-    endTime: {
-        type: Date,
-        required: true
-    },
-    location: {
-        joinUrl: {
-            type: String,
-            required: true
-        },
-        status: {
-            type: String,
-            required: true
-        },
-        type: {
-            type: String,
-            required: true
-        }
     },
     status: {
         type: String,

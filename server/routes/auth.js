@@ -125,6 +125,7 @@ router.post ("/login", async (req, res) => {
             return res.status (400).send ({message: error.details[0].message});
         
 
+
         const user = await User.findOne ({email: req.body.email});
         const admin = await Admin.findOne ({email: req.body.email});
 
@@ -132,12 +133,14 @@ router.post ("/login", async (req, res) => {
             return res.status (400).send ({message: "Invalid Email Address"});
         
 
+
         if (user) {
             const validPassword = await bcrypt.compare (req.body.password, user.password);
 
             if (! validPassword) 
                 return res.status (400).send ({message: "Invalid Password"});
             
+
 
             const token = await user.generateAuthToken ();
 
@@ -165,6 +168,7 @@ router.post ("/login", async (req, res) => {
             if (! validPassword) 
                 return res.status (400).send ({message: "Invalid Password"});
             
+
 
             const token = await admin.generateAuthToken ();
 
@@ -295,6 +299,7 @@ router.post ("/register", async (req, res) => {
         if (user) 
             return res.status (409).send ({message: "A User with that email already exists!"});
         
+
 
         const salt = await bcrypt.genSalt (Number (process.env.SALT));
         const hashPassword = await bcrypt.hash (req.body.password, salt);
@@ -544,6 +549,7 @@ router.post ("/request-password", async (req, res) => {
         if (! user) 
             return res.status (404).send ({message: "A User with this Email does not Exists!"});
         
+
 
         const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
         const randomPassword = Array.from ({
@@ -865,7 +871,7 @@ router.post ("/mentor-login", async (req, res) => {
         const token = await mentor.generateAuthToken ();
 
         // Update mentorWithoutPassword object to include the status property
-        const mentorWithoutPassword = await Mentors.findOne ({_id: mentor._id}).select ("-password -token").populate("faculty");
+        const mentorWithoutPassword = await Mentors.findOne ({_id: mentor._id}).select ("-password -token").populate ("faculty").populate ("rating.user", "firstname lastname profilePhoto");
 
         res.status (200).send ({
             data: {
@@ -1026,10 +1032,9 @@ router.post ("/mentor-request-otp", async (req, res) => {
                 res.status (500).json ({message: "An error occurred while requesting the OTP"});
             }
         }) 
-        
 
 
-        /**
+            /**
  * @swagger
  * /auth/verify-mentor-otp:
  *   post:
@@ -1063,42 +1068,44 @@ router.post ("/mentor-request-otp", async (req, res) => {
  *         description: An error occurred while verifying the OTP.
  */
 
-        // Route to reset mentor password
-        router.post ("/reset-mentor-password", async (req, res) => {
+            // Route to reset mentor password
+            router.post ("/reset-mentor-password", async (req, res) => {
 
-            try {
-                let mentor = await Mentors.findOne ({email: req.body.email});
-                if (! mentor) 
-                    return res.status (404).send ({message: "A mentor with this email does not exist!"});
-                
+                try {
+                    let mentor = await Mentors.findOne ({email: req.body.email});
+                    if (! mentor) 
+                        return res.status (404).send ({message: "A mentor with this email does not exist!"});
+                    
 
-                const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
-                const randomPassword = Array.from ({
-                    length: 12
-                }, () => characters[Math.floor (Math.random () * characters.length)]).join ("");
-                const salt = await bcrypt.genSalt (Number (process.env.SALT));
-                const hashPassword = await bcrypt.hash (randomPassword, salt);
 
-                // Update mentor's password
-                mentor.password = hashPassword;
-                await mentor.save ();
+                    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
+                    const randomPassword = Array.from ({
+                        length: 12
+                    }, () => characters[Math.floor (Math.random () * characters.length)]).join ("");
+                    const salt = await bcrypt.genSalt (Number (process.env.SALT));
+                    const hashPassword = await bcrypt.hash (randomPassword, salt);
 
-                // construct the file path using the path.join() method
-                const filePath = path.join (__dirname, "..", "emails", "reset_password.ejs");
+                    // Update mentor's password
+                    mentor.password = hashPassword;
+                    await mentor.save ();
 
-                // read the HTML content from a file
-                let template = fs.readFileSync (filePath, "utf8");
+                    // construct the file path using the path.join() method
+                    const filePath = path.join (__dirname, "..", "emails", "reset_password.ejs");
 
-                // compile the EJS template with the password variable
-                let html = ejs.render (template, {password: randomPassword});
+                    // read the HTML content from a file
+                    let template = fs.readFileSync (filePath, "utf8");
 
-                await sendEmail (mentor.email, "Password Reset", html);
+                    // compile the EJS template with the password variable
+                    let html = ejs.render (template, {password: randomPassword});
 
-                res.status (201).send ({message: "New password sent. Check your email."});
-            } catch (error) {
-                res.status (500).send ({message: "Internal Server Error", error: error});
-            }
-        });
+                    await sendEmail (mentor.email, "Password Reset", html);
+
+                    res.status (201).send ({message: "New password sent. Check your email."});
+                } catch (error) {
+                    res.status (500).send ({message: "Internal Server Error", error: error});
+                }
+            });
+        
 
 
         const validate = (data) => {

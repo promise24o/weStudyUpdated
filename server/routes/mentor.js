@@ -372,6 +372,7 @@ router.post ('/update-profile', async (req, res) => {
             institution,
             facebook,
             linkedin,
+            googleMeet,
             twitter,
             bio,
             skills
@@ -386,6 +387,7 @@ router.post ('/update-profile', async (req, res) => {
             facebook,
             linkedin,
             twitter,
+            googleMeet,
             bio,
             skills
         }, {new: true});
@@ -764,5 +766,123 @@ router.post ('/add-session/:mentorId', async (req, res) => {
         res.status (500).json ({error: 'Internal Server Error'});
     }
 });
+
+
+/**
+ * @swagger
+ * /mentor/delete-session/{mentorId}/{sessionId}:
+ *   delete:
+ *     summary: Delete a session for a mentor
+ *     description: Deletes a session for the specified mentor.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor to delete a session from.
+ *       - in: path
+ *         name: sessionId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the session to delete.
+ *     responses:
+ *       200:
+ *         description: Session deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 mentor:
+ *                   $ref: '#/components/schemas/Mentor'
+ *       404:
+ *         description: Mentor or session not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *
+ * components:
+ *   schemas:
+ *     Mentor:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         fullname:
+ *           type: string
+ *         sessions:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Session'
+ *     Session:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         date:
+ *           type: string
+ *           format: date
+ *         startTime:
+ *           type: string
+ *           format: time
+ *         endTime:
+ *           type: string
+ *           format: time
+ *         slots:
+ *           type: number
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ */
+
+router.delete ('/delete-session/:mentorId/:sessionId', async (req, res) => {
+    try {
+        const {mentorId, sessionId} = req.params;
+
+        // Find the mentor by mentorId
+        const mentor = await Mentors.findById (mentorId);
+
+        if (! mentor) {
+            return res.status (404).json ({error: 'Mentor not found'});
+        }
+
+        // Find the session by sessionId
+        const sessionIndex = mentor.sessions.findIndex ( (session) => session._id.toString () === sessionId);
+
+        if (sessionIndex === -1) {
+            return res.status (404).json ({error: 'Session not found'});
+        }
+
+        // Remove the session from the sessions array
+        mentor.sessions.splice (sessionIndex, 1);
+
+        // Save the updated mentor document
+        const updatedMentor = await mentor.save ();
+        res.status (200).json ({message: 'Session deleted successfully', mentor: updatedMentor});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Internal Server Error'});
+    }
+});
+
 
 module.exports = router;

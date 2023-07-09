@@ -2454,39 +2454,46 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
         const {mentorId, userId} = req.params;
         const {review, rating} = req.body;
 
+        // Convert userId to ObjectId
+        const userObjectId =  new mongoose.Types.ObjectId (userId)
+
         // Check if mentor exists
-        const mentor = await Mentors.findById (mentorId);
+        const mentor = await Mentors.findById (mentorId).populate ("rating.user", "firstname lastname profilePhoto");
         if (! mentor) {
             return res.status (404).json ({message: "Mentor not found"});
         }
 
-        // Check if user has already rated this mentor
-        const userRatingIndex = mentor.rating.findIndex ( (rating) => rating.user === userId);
-
-        if (userRatingIndex !== -1) { // Update existing rating
-            mentor.rating[userRatingIndex].review = review;
-            mentor.rating[userRatingIndex].rating = rating;
-            mentor.rating[userRatingIndex].createdAt = Date.now ();
-        } else { // Create new rating object
-            const ratingObj = {
+        // Find the user's existing rating for the mentor
+        const userRating = mentor.rating.find ( (r) => r.user._id.equals (userObjectId));
+        if (userRating) { // User has already rated, update the existing rating
+            userRating.review = review;
+            userRating.rating = rating;
+            userRating.createdAt = Date.now ();
+        } else { // User has not rated yet, create a new rating object
+            const newRating = {
                 review,
                 rating,
-                user: userId,
+                user: userObjectId,
                 createdAt: Date.now ()
             };
 
-            // Add rating to mentor's ratings array
-            mentor.rating.push (ratingObj);
+            // Add the new rating to the mentor's ratings array
+            mentor.rating.push (newRating);
         }
 
-        // Save mentor document
+        // Save the updated mentor document
         const updatedMentor = await mentor.save ();
+
+        // Populate user information in the updated mentor
+        await updatedMentor.populate ("rating.user", "firstname lastname profilePhoto");
+
         res.status (200).json ({mentor: updatedMentor, message: "Rating submitted successfully"});
-    } catch (err) {
-        console.error (err);
+    } catch (error) {
+        console.error (error);
         res.status (500).json ({message: "Server Error"});
     }
 });
+
 
 /**
  * @swagger
