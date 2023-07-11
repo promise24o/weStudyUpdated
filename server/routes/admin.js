@@ -213,6 +213,17 @@ router.get ("/institutions-list", auth2, async (req, res) => {
     }
 });
 
+router.get ("/institutions/:id", async (req, res) => {
+    const institutionId = req.params.id;
+    try {
+        let institution = await Institutions.findOne ({_id: institutionId});
+        res.status (201).send ({institution: institution});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+    }
+});
+
+
 router.get ("/users-list", auth2, async (req, res) => {
     try { // check if user exists
         let users = await User.find ().sort ({createdAt: "desc"});
@@ -400,6 +411,25 @@ router.get ("/mentors", auth2, async (req, res) => {
     }
 });
 
+
+router.put ("/update-school-summary/:id", async (req, res) => {
+    try {
+        const institutionId = req.params.id;
+        const {editorContent} = req.body;
+
+        const institution = await Institutions.findById(institutionId);
+        if (!institution) {
+            return res.status (404).json ({error: 'Institution not found'});
+        }
+
+        institution.summary = editorContent;
+        const updatedInstitution = await institution.save ();
+       
+        res.status (201).send ({message: "School Summary Updated Successfully"});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
+});
 
 router.put ("/update-institution/:id", async (req, res) => {
     try {

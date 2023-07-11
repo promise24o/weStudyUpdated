@@ -1,16 +1,20 @@
 require ('dotenv').config ();
 const Notification = require ('./models/Notifications');
 
-const io = require ('socket.io')(8801, {
+const io = require ('socket.io')({
     cors: {
         origin: process.env.ALLOWED_ORIGIN,
         methods: ["GET", "POST"]
     }
 });
 
+let clients = []; // Array to store connected clients
 
 io.on ('connection', (socket) => {
     console.log ('A client connected');
+
+    // Add the socket to the clients array
+    clients.push (socket);
 
     socket.on ('postUpdate', async (post) => {
         const postId = post._id;
@@ -34,13 +38,11 @@ io.on ('connection', (socket) => {
         io.to (userId).emit ('getNotificationCounts');
     });
 
-
     socket.on ("notification", (data) => {
         const {userId, message} = data;
         // Emit the notification to the specific user
         io.to (userId).emit ("notification", message);
     });
-
 
     socket.on ('createPost', (newPost) => {
         io.emit ('newPost', newPost);
@@ -56,10 +58,22 @@ io.on ('connection', (socket) => {
         }
     });
 
-
-    socket.on ('disconnect', () => console.log ('Client disconnected'));
-
+    socket.on ('disconnect', () => {
+        console.log ('Client disconnected');
+        // Remove the disconnected socket from the clients array
+        clients = clients.filter ( (client) => client !== socket);
+    });
 });
+
+// Close all client connections on server shutdown
+process.on ('SIGINT', () => {
+    clients.forEach ( (client) => {
+        client.disconnect (true);
+    });
+    process.exit (0);
+});
+
+const server = io.listen (8801);
 
 
 const express = require ('express');

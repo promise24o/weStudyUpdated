@@ -183,12 +183,23 @@ const scheduleSchema = new mongoose.Schema ({
     },
     session: {
         type: mongoose.ObjectId,
-        ref: 'mentors.sessions',  
-        required: true,
+        ref: 'mentors.sessions',
+        required: true
     },
-    topic: {
+    startTime: {
         type: String,
         required: true
+    },
+    endTime: {
+        type: String,
+        required: true
+    },
+    title: {
+        type: String,
+        required: true
+    },
+    notes: {
+        type: String
     },
     status: {
         type: String,

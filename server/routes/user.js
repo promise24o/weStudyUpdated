@@ -2579,57 +2579,49 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
  *                   type: string
  */
 
-// Confirm Meeting Schedule
-router.post ("/confirm-schedule/:mentorId/:userId", async (req, res) => {
+
+// POST /users/confirm-schedule/:mentorId/:userId
+router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
     try {
         const {mentorId, userId} = req.params;
         const {
-            eventId,
-            inviteeId,
-            event_type,
-            location,
-            name,
-            start_time,
-            end_time,
-            status,
-            created_at,
-            updated_at
+            selectedSession,
+            title,
+            notes,
+            startTime,
+            endTime
         } = req.body;
-        console.log(location);
-        const createSchedule = async () => {
-            const schedule = new Schedule ({
-                userId: userId,
-                mentorId: mentorId,
-                eventId: eventId,
-                inviteeId: inviteeId,
-                eventType: event_type,
-                eventName: name,
-                startTime: start_time,
-                endTime: end_time,
-                location: {
-                    joinUrl: location.join_url,
-                    status: location.status,
-                    type: location.type
-                },
-                createdAt: created_at,
-                updatedAt: updated_at,
-                status: status
-            });
 
-            await schedule.save ();
+        // Check if the user already has a schedule with the mentor
+        const existingSchedule = await Schedule.findOne ({userId, mentorId});
+        if (existingSchedule) {
+            return res.status (400).json ({error: 'User already has a schedule with this mentor'});
+        }
 
-            return schedule;
-        };
+        // Create a new schedule document
+        const newSchedule = new Schedule ({
+            userId,
+            mentorId,
+            session: selectedSession,
+            startTime,
+            endTime,
+            title,
+            notes,
+            status: 'Confirmed',
+            createdAt: new Date (),
+            updatedAt: new Date ()
+        });
 
-        const createdSchedule = await createSchedule ();
+        // Save the new schedule document to the database
+        const savedSchedule = await newSchedule.save ();
 
-        res.status (200).json ({message: "Meeting Schedule Confirmed!", schedule: createdSchedule});
-    } catch (err) {
-        console.error (err);
-        res.status (500).json ({error: "Booking Schedule not Confirmed"});
+        // Return the saved schedule to the client
+        res.status (200).json ({message: 'Session booked successfully'});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Server Error'});
     }
 });
-
 
 router.post ('/cancel-meeting/:userId/:eventId', async (req, res) => {
     try {
