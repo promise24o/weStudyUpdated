@@ -137,6 +137,11 @@ router.post ('/become-mentor/:mentorId', (req, res) => {
             return res.status (404).json ({error: 'Mentor not found'});
         }
 
+        // Check if the mentor has an avatar
+        if (!mentor.avatar) {
+            return res.status (400).json ({error: 'Please Upload your Profile Photo before submitting'});
+        }
+
         mentor.status = 'Application Submitted';
 
         // Extract the form values from the request body
@@ -759,7 +764,7 @@ router.post ('/add-session/:mentorId', async (req, res) => {
         // Save the updated mentor document
         const updatedMentor = await mentor.save ();
 
-        console.log(updatedMentor)
+        console.log (updatedMentor)
         res.status (200).json ({message: 'Session added successfully', mentor: updatedMentor});
     } catch (error) {
         console.error (error);

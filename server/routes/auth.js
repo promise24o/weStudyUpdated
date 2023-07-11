@@ -474,7 +474,7 @@ router.post ("/admin-logout", auth2, async (req, res) => {
 // Route to get user by token
 router.get ("/user/:token", auth, async (req, res) => {
     try {
-        const user = await User.findOne ({token: req.params.token}).select ("-password -token").populate('friends.userId', 'firstname lastname profilePhoto');
+        const user = await User.findOne ({token: req.params.token}).select ("-password -token").populate ('friends.userId', 'firstname lastname profilePhoto');
 
         if (! user) {
             return res.status (404).json ({message: "User not found"});
@@ -532,7 +532,8 @@ router.get ("/user/:token", auth, async (req, res) => {
 // Route to get mentor by token
 router.get ("/mentor/:token", auth, async (req, res) => {
     try {
-        const mentor = await Mentors.findOne ({token: req.params.token}).select ("-password -token");
+        const mentor = await Mentors.findOne ({token: req.params.token}).select ("-password -token").populate ("faculty").populate ("rating.user", "firstname lastname profilePhoto");
+
         if (! mentor) {
             return res.status (404).json ({message: "Mentor not found"});
         }

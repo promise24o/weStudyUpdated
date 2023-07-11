@@ -4607,7 +4607,7 @@ router.get ('/author/:id', async (req, res) => {
     const {id} = req.params;
 
     try {
-        const author = await User.findById (id).select ('-token -password');
+        const author = await User.findById (id).select ('-token -password').populate ("friends.userId", "firstname lastname profilePhoto");
 
         if (! author) {
             return res.status (404).json ({error: 'Author not found'});
