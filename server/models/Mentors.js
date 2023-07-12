@@ -1,5 +1,5 @@
 const mongoose = require ("mongoose");
-const jwt = require ('jsonwebtoken');
+const jwt = require ("jsonwebtoken");
 
 const mentorFacultySchema = new mongoose.Schema ({
     title: {
@@ -12,6 +12,34 @@ const mentorFacultySchema = new mongoose.Schema ({
         ref: "admin"
     },
     createdAt: {
+        type: Date,
+        default: Date.now ()
+    }
+});
+
+const mentorSessionsSchema = new mongoose.Schema ({
+    mentor: {
+        type: mongoose.ObjectId,
+        ref: "Mentors",
+        required: true
+    },
+    date: {
+        type: Date,
+        required: true
+    },
+    startTime: {
+        type: String,
+        required: true
+    },
+    endTime: {
+        type: String,
+        required: true
+    },
+    slots: {
+        type: Number,
+        required: true
+    },
+    dateAdded: {
         type: Date,
         default: Date.now ()
     }
@@ -87,7 +115,7 @@ const mentorsSchema = new mongoose.Schema ({
             "Approved",
             "Active",
             "Suspended",
-            "Rejected"
+            "Rejected",
         ],
         default: "Pending",
         required: true
@@ -119,7 +147,7 @@ const mentorsSchema = new mongoose.Schema ({
         {
             user: {
                 type: mongoose.Schema.Types.ObjectId,
-                ref: 'user',
+                ref: "user",
                 required: true
             },
             dateAdded: {
@@ -130,31 +158,13 @@ const mentorsSchema = new mongoose.Schema ({
                 type: Boolean,
                 default: false
             }
-        }
+        },
     ],
     sessions: [
         {
-            date: {
-                type: Date,
-                required: true
-            },
-            startTime: {
-                type: String,
-                required: true
-            },
-            endTime: {
-                type: String,
-                required: true
-            },
-            slots: {
-                type: Number,
-                required: true
-            },
-            dateAdded: {
-                type: Date,
-                default: Date.now ()
-            }
-        }
+            type: mongoose.ObjectId,
+            ref: "MentorSessions"
+        },
     ]
 });
 
@@ -163,12 +173,11 @@ mentorsSchema.set ("timestamps", true);
 mentorsSchema.methods.generateAuthToken = async function () {
     const token = jwt.sign ({
         _id: this._id
-    }, process.env.JWT_SECRET_KEY, {expiresIn: '1d'});
+    }, process.env.JWT_SECRET_KEY, {expiresIn: "1d"});
     this.token = token;
     await this.save ();
     return token;
 };
-
 
 const scheduleSchema = new mongoose.Schema ({
     userId: {
@@ -178,12 +187,12 @@ const scheduleSchema = new mongoose.Schema ({
     },
     mentorId: {
         type: mongoose.ObjectId,
-        ref: "mentors",
+        ref: "Mentors",
         required: true
     },
     session: {
         type: mongoose.ObjectId,
-        ref: 'mentors.sessions',
+        ref: "MentorSessions",
         required: true
     },
     startTime: {
@@ -219,6 +228,8 @@ scheduleSchema.set ("timestamps", true);
 
 module.exports = {
     MentorFaculty: mongoose.model ("MentorFaculty", mentorFacultySchema),
+    MentorSessions: mongoose.model ("MentorSessions", mentorSessionsSchema),
     Mentors: mongoose.model ("Mentors", mentorsSchema),
     Schedule: mongoose.model ("Schedule", scheduleSchema)
 };
+

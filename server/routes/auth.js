@@ -532,7 +532,14 @@ router.get ("/user/:token", auth, async (req, res) => {
 // Route to get mentor by token
 router.get ("/mentor/:token", auth, async (req, res) => {
     try {
-        const mentor = await Mentors.findOne ({token: req.params.token}).select ("-password -token").populate ("faculty").populate ("rating.user", "firstname lastname profilePhoto");
+        const mentor = await Mentors.findOne ({token: req.params.token}).select ("-password -token").populate ("faculty").populate ({
+            path: "sessions",
+            model: "MentorSessions",
+            populate: {
+                path: "mentor",
+                model: "Mentors"
+            }
+        }).populate ("rating.user", "firstname lastname profilePhoto");
 
         if (! mentor) {
             return res.status (404).json ({message: "Mentor not found"});
@@ -873,7 +880,14 @@ router.post ("/mentor-login", async (req, res) => {
         const token = await mentor.generateAuthToken ();
 
         // Update mentorWithoutPassword object to include the status property
-        const mentorWithoutPassword = await Mentors.findOne ({_id: mentor._id}).select ("-password -token").populate ("faculty").populate ("rating.user", "firstname lastname profilePhoto");
+        const mentorWithoutPassword = await Mentors.findOne ({_id: mentor._id}).select ("-password -token").populate ("faculty").populate ({
+            path: "sessions",
+            model: "MentorSessions",
+            populate: {
+                path: "mentor",
+                model: "Mentors"
+            }
+        }).populate ("rating.user", "firstname lastname profilePhoto");
 
         res.status (200).send ({
             data: {

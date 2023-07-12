@@ -2,7 +2,7 @@ const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMen
 const cloudinary = require ("cloudinary").v2;
 const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const multer = require ("multer");
-const {Mentors, Schedule} = require ("../models/Mentors");
+const {Mentors, Schedule, MentorSessions} = require ("../models/Mentors");
 const router = require ("express").Router ();
 const crypto = require ("crypto");
 const bcrypt = require ("bcrypt");
@@ -32,7 +32,7 @@ const upload = multer ({
 });
 
 
-router.get ("/", function (req, res) {
+router.get ("/", function (_req, res) {
     res.send ("Mentor API");
 });
 
@@ -591,12 +591,29 @@ router.get ('/schedules/:mentorId', async (req, res) => {
     try {
         const mentorId = req.params.mentorId;
 
-        const schedules = await Schedule.find ({mentorId}).populate ("userId", "firstname lastname profilePhoto personal");;
-
+        const schedules = await Schedule.find ({mentorId}).populate ("userId", "firstname lastname profilePhoto personal").populate ("session", "date startTime endTime slots");
         res.status (200).json ({schedules});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred'});
+    }
+});
+
+
+router.get ('/schedule/:id', async (req, res) => {
+    try {
+        const {id} = req.params;
+
+        // Find the schedule by ID
+        const schedule = await Schedule.findById (id).populate ("userId", "firstname lastname profilePhoto personal").populate ("session", "date startTime endTime slots");
+        if (! schedule) {
+            return res.status (404).json ({error: 'Schedule not found'});
+        }
+
+        res.status (200).json ({schedule});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Internal Server Error'});
     }
 });
 
@@ -715,7 +732,14 @@ router.post ('/add-session/:mentorId', async (req, res) => {
         const {date, startTime, endTime, slots} = req.body;
 
         // Find the mentor by mentorId
-        const mentor = await Mentors.findById (mentorId);
+        const mentor = await Mentors.findById (mentorId).select ('-password -token').populate ('faculty').populate ({
+            path: 'sessions',
+            model: 'MentorSessions',
+            populate: {
+                path: 'mentor',
+                model: 'Mentors'
+            }
+        }).populate ('rating.user', 'firstname lastname profilePhoto');
 
         if (! mentor) {
             return res.status (404).json ({error: 'Mentor not found'});
@@ -729,13 +753,8 @@ router.post ('/add-session/:mentorId', async (req, res) => {
             return res.status (400).json ({error: 'Cannot choose backward dates'});
         }
 
-        // Initialize the sessions array if it doesn't exist
-        if (! mentor.sessions) {
-            mentor.sessions = [];
-        }
-
         // Check for duplicate session
-        const isDuplicateSession = mentor.sessions.some ( (session) => session.date === date && session.startTime === startTime && session.endTime === endTime);
+        const isDuplicateSession = mentor.sessions.some ( (session) => session.date.toString () === date && session.startTime === startTime && session.endTime === endTime);
 
         if (isDuplicateSession) {
             return res.status (400).json ({error: 'Session with the same date, start time, and end time already exists'});
@@ -751,27 +770,40 @@ router.post ('/add-session/:mentorId', async (req, res) => {
 
         // Create a new session object
         const newSession = {
-            date,
+            mentor: mentor._id,
+            date: new Date (date),
             startTime,
             endTime,
             slots,
             dateAdded: new Date ()
         };
 
-        // Add the session to the sessions array
-        mentor.sessions.push (newSession);
+        // Create a new mentor session
+        const mentorSession = new MentorSessions (newSession);
+
+        // Save the new mentor session
+        const savedMentorSession = await mentorSession.save ();
+
+        // Add the session to the sessions array of the mentor
+        mentor.sessions.push (savedMentorSession._id);
 
         // Save the updated mentor document
-        const updatedMentor = await mentor.save ();
+        mentor.save ();
+        const updatedMentor = await Mentors.findById (mentorId).populate ('faculty').populate ({
+            path: 'sessions',
+            model: 'MentorSessions',
+            populate: {
+                path: 'mentor',
+                model: 'Mentors'
+            }
+        }).populate ('rating.user', 'firstname lastname profilePhoto');
 
-        console.log (updatedMentor)
         res.status (200).json ({message: 'Session added successfully', mentor: updatedMentor});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'Internal Server Error'});
     }
 });
-
 
 /**
  * @swagger
@@ -864,14 +896,14 @@ router.delete ('/delete-session/:mentorId/:sessionId', async (req, res) => {
         const {mentorId, sessionId} = req.params;
 
         // Find the mentor by mentorId
-        const mentor = await Mentors.findById (mentorId);
+        const mentor = await Mentors.findById (mentorId).select ('-password -token');
 
         if (! mentor) {
             return res.status (404).json ({error: 'Mentor not found'});
         }
 
         // Find the session by sessionId
-        const sessionIndex = mentor.sessions.findIndex ( (session) => session._id.toString () === sessionId);
+        const sessionIndex = mentor.sessions.findIndex ( (session) => session.toString () === sessionId);
 
         if (sessionIndex === -1) {
             return res.status (404).json ({error: 'Session not found'});
@@ -881,13 +913,23 @@ router.delete ('/delete-session/:mentorId/:sessionId', async (req, res) => {
         mentor.sessions.splice (sessionIndex, 1);
 
         // Save the updated mentor document
-        const updatedMentor = await mentor.save ();
+        await mentor.save ();
+
+        // Populate the mentor with the updated sessions
+        const updatedMentor = await Mentors.findById (mentorId).populate ('faculty').populate ({
+            path: 'sessions',
+            model: 'MentorSessions',
+            populate: {
+                path: 'mentor',
+                model: 'Mentors'
+            }
+        }).populate ('rating.user', 'firstname lastname profilePhoto');
+
         res.status (200).json ({message: 'Session deleted successfully', mentor: updatedMentor});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'Internal Server Error'});
     }
 });
-
 
 module.exports = router;

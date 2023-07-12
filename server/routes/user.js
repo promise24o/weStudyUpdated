@@ -2317,7 +2317,14 @@ router.get ("/mentors", async (req, res) => {
 router.get ("/mentor/:id", async (req, res) => {
     try {
         const mentorId = req.params.id;
-        const mentor = await Mentors.findOne ({_id: mentorId}).populate ("faculty").populate ({path: "rating.user", select: "firstname lastname profilePhoto"});
+        const mentor = await Mentors.findOne ({_id: mentorId}).populate ("faculty").populate ({path: "rating.user", select: "firstname lastname profilePhoto"}).populate ({
+            path: "sessions",
+            model: "MentorSessions",
+            populate: {
+                path: "mentor",
+                model: "Mentors"
+            }
+        });
         res.status (200).json ({mentor});
     } catch (err) {
         res.status (500).json ({message: err.message});
@@ -2595,7 +2602,7 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
         // Check if the user already has a schedule with the mentor
         const existingSchedule = await Schedule.findOne ({userId, mentorId});
         if (existingSchedule) {
-            return res.status (400).json ({error: 'User already has a schedule with this mentor'});
+            return res.status (400).json ({error: 'You already have a pending schedule with this mentor'});
         }
 
         // Create a new schedule document
@@ -2607,7 +2614,7 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
             endTime,
             title,
             notes,
-            status: 'Confirmed',
+            status: 'Pending',
             createdAt: new Date (),
             updatedAt: new Date ()
         });
@@ -2623,40 +2630,92 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
     }
 });
 
-router.post ('/cancel-meeting/:userId/:eventId', async (req, res) => {
-    try {
-        const {userId, eventId} = req.params;
+/**
+ * @swagger
+ * /cancel-meeting/{userId}/{scheduleId}:
+ *   post:
+ *     summary: Cancel a meeting by deleting it
+ *     tags:
+ *       - Meeting
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: scheduleId
+ *         required: true
+ *         description: ID of the schedule to be canceled
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Meeting canceled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Meeting canceled successfully
+ *       '404':
+ *         description: Schedule not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Schedule not found
+ *       '403':
+ *         description: Unauthorized access
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Unauthorized access
+ *       '500':
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Internal Server Error
+ */
 
-        // Find the schedule using userId and eventId
-        const schedule = await Schedule.findOne ({userId, eventId});
+router.post ('/cancel-meeting/:userId/:scheduleId', async (req, res) => {
+    try {
+        const {userId, scheduleId} = req.params;
+
+        // Find the schedule by scheduleId
+        const schedule = await Schedule.findById (scheduleId);
 
         if (! schedule) {
             return res.status (404).json ({error: 'Schedule not found'});
         }
 
-        const cancellationUrl = `https://api.calendly.com/scheduled_events/${eventId}/cancellation`;
-
-        // Set the headers with authorization using the API_KEY from .env
-        const headers = {
-            Authorization: `Bearer ${
-                process.env.CALENDLY_ACCESS_TOKEN
-            }`,
-            'Content-Type': 'application/json'
-        };
-
-        // Send a POST request to the cancellation URL with headers
-        const response = await axios.post (cancellationUrl, null, {headers});
-
-        // If the cancellation request is successful, update the schedule status to "Cancelled"
-        if (response.status === 200) {
-            schedule.status = 'Cancelled';
-            await schedule.save ();
+        // Check if the schedule belongs to the specified user
+        if (schedule.userId.toString () !== userId) {
+            return res.status (403).json ({error: 'Unauthorized access'});
         }
+
+        // Delete the schedule
+        await Schedule.findByIdAndDelete (scheduleId);
 
         res.status (200).json ({message: 'Meeting canceled successfully'});
     } catch (error) {
         console.error (error);
-        res.status (500).json ({error: 'Failed to cancel meeting'});
+        res.status (500).json ({error: 'Internal Server Error'});
     }
 });
 
@@ -2742,7 +2801,7 @@ router.post ('/cancel-meeting/:userId/:eventId', async (req, res) => {
 router.get ("/schedules/:mentorId/:userId", async (req, res) => {
     try {
         const {userId, mentorId} = req.params;
-        const schedules = await Schedule.find ({userId, mentorId});
+        const schedules = await Schedule.find ({userId, mentorId}).populate("session", "date startTime endTime slots");
         res.json ({schedules});
     } catch (err) {
         console.error (err);
