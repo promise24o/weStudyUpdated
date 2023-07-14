@@ -586,12 +586,12 @@ router.post ("/change-password", async (req, res) => {
  *           type: object
  */
 
-
 router.get ('/schedules/:mentorId', async (req, res) => {
     try {
         const mentorId = req.params.mentorId;
 
-        const schedules = await Schedule.find ({mentorId}).populate ("userId", "firstname lastname profilePhoto personal").populate ("session", "date startTime endTime slots");
+        const schedules = await Schedule.find ({mentorId}).sort ({createdAt: -1}).populate ('userId', 'firstname lastname profilePhoto personal').populate ('session', 'date startTime endTime slots');
+
         res.status (200).json ({schedules});
     } catch (error) {
         console.error (error);
@@ -909,6 +909,12 @@ router.delete ('/delete-session/:mentorId/:sessionId', async (req, res) => {
             return res.status (404).json ({error: 'Session not found'});
         }
 
+        // Check if the session has any booked schedules
+        const existingSchedules = await Schedule.find ({session: sessionId});
+        if (existingSchedules.length > 0) {
+            return res.status (400).json ({error: 'Cannot delete session. It has booked schedules.'});
+        }
+
         // Remove the session from the sessions array
         mentor.sessions.splice (sessionIndex, 1);
 
@@ -931,5 +937,387 @@ router.delete ('/delete-session/:mentorId/:sessionId', async (req, res) => {
         res.status (500).json ({error: 'Internal Server Error'});
     }
 });
+
+/**
+ * @swagger
+ * /mentor/update-session-status/{id}:
+ *   put:
+ *     summary: Update session status
+ *     description: Updates the status of a session.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the session to update the status for.
+ *       - in: body
+ *         name: body
+ *         description: Updated session status.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             status:
+ *               type: string
+ *               description: Updated status of the session.
+ *     responses:
+ *       200:
+ *         description: Session status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Session not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+// PUT /mentor/update-session-status/:id
+router.put ("/update-session-status/:id", async (req, res) => {
+    const {id} = req.params;
+    const {status} = req.body;
+
+    try {
+        const updatedSchedule = await Schedule.findByIdAndUpdate (id, {
+            status
+        }, {new: true});
+
+        if (! updatedSchedule) {
+            return res.status (404).json ({message: "Schedule not found"});
+        }
+
+        res.json ({message: "Schedule Status Changed Successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: "Server Error"});
+    }
+});
+
+/**
+ * @swagger
+ * /mentor/mentor/{mentorId}:
+ *   get:
+ *     summary: Get mentor details
+ *     description: Retrieves the details of the specified mentor.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor to retrieve details for.
+ *     responses:
+ *       200:
+ *         description: Mentor details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mentor:
+ *                   $ref: '#/components/schemas/Mentor'
+ *       404:
+ *         description: Mentor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *
+ * components:
+ *   schemas:
+ *     Mentor:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         fullname:
+ *           type: string
+ *         gender:
+ *           type: string
+ *         avatar:
+ *           type: string
+ *         bio:
+ *           type: string
+ *         faculty:
+ *           $ref: '#/components/schemas/MentorFaculty'
+ *         email:
+ *           type: string
+ *         phone:
+ *           type: string
+ *         institution:
+ *           type: string
+ *         city:
+ *           type: string
+ *         country:
+ *           type: string
+ *         linkedin:
+ *           type: string
+ *         twitter:
+ *           type: string
+ *         facebook:
+ *           type: string
+ *         skills:
+ *           type: string
+ *         calendly:
+ *           type: string
+ *         googleMeet:
+ *           type: string
+ *         status:
+ *           type: string
+ *         rating:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/MentorRating'
+ *         sessions:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/MentorSession'
+ *
+ *     MentorFaculty:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         title:
+ *           type: string
+ *         createdBy:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *
+ *     MentorRating:
+ *       type: object
+ *       properties:
+ *         review:
+ *           type: string
+ *         rating:
+ *           type: number
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *
+ *     MentorSession:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         mentor:
+ *           $ref: '#/components/schemas/Mentor'
+ *         date:
+ *           type: string
+ *           format: date
+ *         startTime:
+ *           type: string
+ *         endTime:
+ *           type: string
+ *         slots:
+ *           type: number
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ *
+ *     User:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         firstname:
+ *           type: string
+ *         lastname:
+ *           type: string
+ *         profilePhoto:
+ *           type: string
+ */
+
+router.get ("/mentor/:mentorId", async (req, res) => {
+    const {mentorId} = req.params;
+    try {
+        const mentor = await Mentors.findOne ({_id: mentorId}).select ("-password -token").populate ("faculty").populate ({
+            path: "sessions",
+            model: "MentorSessions",
+            populate: {
+                path: "mentor",
+                model: "Mentors"
+            }
+        }).populate ("rating.user", "firstname lastname profilePhoto");
+
+        if (! mentor) {
+            return res.status (404).json ({message: "Mentor not found"});
+        }
+        res.status (200).json ({mentor: mentor});
+    } catch (error) {
+        res.status (500).json ({message: error.message});
+    }
+});
+
+/**
+ * @swagger
+ * /mentor/mentees/{mentorId}:
+ *   get:
+ *     summary: Get mentees of a mentor
+ *     description: Retrieves the mentees associated with the specified mentor.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor to retrieve mentees for.
+ *     responses:
+ *       200:
+ *         description: Mentees retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mentees:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Mentee'
+ *       404:
+ *         description: Mentor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *
+ * components:
+ *   schemas:
+ *     Mentee:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ *
+ *     User:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         firstname:
+ *           type: string
+ *         lastname:
+ *           type: string
+ *         profilePhoto:
+ *           type: string
+ *         education:
+ *           $ref: '#/components/schemas/Education'
+ *
+ *     Education:
+ *       type: object
+ *       properties:
+ *         course_of_study:
+ *           type: string
+ *         current_level:
+ *           type: string
+ *         department:
+ *           type: string
+ *         institution:
+ *           type: string
+ *         institution_type:
+ *           type: string
+ *         study_mode:
+ *           type: string
+ *         faculty:
+ *           type: string
+ */
+
+router.get ('/mentees/:mentorId', async (req, res) => {
+    try {
+        const {mentorId} = req.params;
+
+        const mentor = await Mentors.findById (mentorId).populate ({path: 'mentees.user', model: 'user', select: 'firstname lastname profilePhoto education'}).select ('mentees');
+
+        if (! mentor) {
+            return res.status (404).json ({message: 'Mentor not found'});
+        }
+
+        res.status (200).json ({mentees: mentor.mentees});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred'});
+    }
+});
+
+router.get ('/mentee/:mentorId/:id', async (req, res) => {
+    try {
+        const {mentorId, id} = req.params;
+
+        const mentor = await Mentors.findById (mentorId).populate ({path: 'mentees.user', model: 'user', select: 'firstname lastname education personal profilePhoto'}).select ('mentees');
+
+        if (! mentor) {
+            return res.status (404).json ({message: 'Mentor not found'});
+        }
+
+        const mentee = mentor.mentees.find ( (mentee) => mentee._id.toString () === id);
+
+        if (! mentee) {
+            return res.status (404).json ({message: 'Mentee not found'});
+        }
+
+        res.status (200).json ({mentee});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred'});
+    }
+});
+
 
 module.exports = router;

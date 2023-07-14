@@ -212,7 +212,10 @@ const scheduleSchema = new mongoose.Schema ({
     },
     status: {
         type: String,
-        required: true
+        enum: [
+            "Pending", "Completed", "Absent"
+        ],
+        default: "Pending"
     },
     createdAt: {
         type: Date,
@@ -232,4 +235,3 @@ module.exports = {
     Mentors: mongoose.model ("Mentors", mentorsSchema),
     Schedule: mongoose.model ("Schedule", scheduleSchema)
 };
-

@@ -2462,7 +2462,7 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
         const {review, rating} = req.body;
 
         // Convert userId to ObjectId
-        const userObjectId =  new mongoose.Types.ObjectId (userId)
+        const userObjectId = new mongoose.Types.ObjectId (userId)
 
         // Check if mentor exists
         const mentor = await Mentors.findById (mentorId).populate ("rating.user", "firstname lastname profilePhoto");
@@ -2507,8 +2507,9 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
  * /users/confirm-schedule/{mentorId}/{userId}:
  *   post:
  *     summary: Confirm a meeting schedule with a mentor
- *     tags :   [User]
- *     description: Confirms a meeting schedule between a user and a mentor, and saves it in the database.
+ *     tags:
+ *       - User
+ *     description: Confirms a meeting schedule between a user and a mentor and saves it in the database.
  *     parameters:
  *       - in: path
  *         name: mentorId
@@ -2525,46 +2526,27 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
  *       - in: body
  *         name: body
  *         description: Meeting schedule details.
+ *         required: true
  *         schema:
  *           type: object
  *           properties:
- *             event_type:
- *               type: string
- *               description: Type of the event (e.g. meeting).
- *             location:
+ *             selectedSession:
  *               type: object
- *               properties:
- *                 join_url:
- *                   type: string
- *                   description: URL to join the meeting.
- *                 status:
- *                   type: string
- *                   description: Status of the meeting (e.g. 'pending', 'approved').
- *                 type:
- *                   type: string
- *                   description: Type of the meeting (e.g. 'online', 'in-person').
- *             name:
+ *               description: Selected session details.
+ *             title:
  *               type: string
- *               description: Name of the event.
- *             start_time:
+ *               description: Title of the meeting.
+ *             notes:
+ *               type: string
+ *               description: Additional notes for the meeting.
+ *             startTime:
  *               type: string
  *               format: date-time
- *               description: Start time of the event in ISO format.
- *             end_time:
+ *               description: Start time of the meeting in ISO format.
+ *             endTime:
  *               type: string
  *               format: date-time
- *               description: End time of the event in ISO format.
- *             status:
- *               type: string
- *               description: Status of the schedule (e.g. 'confirmed', 'cancelled').
- *             created_at:
- *               type: string
- *               format: date-time
- *               description: Time when the schedule was created in ISO format.
- *             updated_at:
- *               type: string
- *               format: date-time
- *               description: Time when the schedule was last updated in ISO format.
+ *               description: End time of the meeting in ISO format.
  *     responses:
  *       200:
  *         description: Meeting schedule confirmed successfully
@@ -2575,6 +2557,15 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
  *               properties:
  *                 message:
  *                   type: string
+ *       400:
+ *         description: Bad request or conflict in schedule
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
  *       500:
  *         description: Internal server error
  *         content:
@@ -2582,10 +2573,9 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
  *             schema:
  *               type: object
  *               properties:
- *                 message:
+ *                 error:
  *                   type: string
  */
-
 
 // POST /users/confirm-schedule/:mentorId/:userId
 router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
@@ -2600,11 +2590,40 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
         } = req.body;
 
         // Check if the user already has a schedule with the mentor
-        const existingSchedule = await Schedule.findOne ({userId, mentorId});
+        const existingSchedule = await Schedule.findOne ({userId, mentorId, status: 'Pending'});
         if (existingSchedule) {
             return res.status (400).json ({error: 'You already have a pending schedule with this mentor'});
         }
 
+        // Count the number of already booked sessions for the selected session
+        const bookedSessionsCount = await Schedule.countDocuments ({session: selectedSession._id});
+
+        // Check if there are available slots in the session
+        if (bookedSessionsCount >= selectedSession.slots) {
+            return res.status (400).json ({error: 'No available slots for this session'});
+        }
+
+        // Check if there is an existing schedule with the same start time and end time
+        const existingScheduleWithSameTime = await Schedule.findOne ({
+            mentorId,
+            session: selectedSession._id,
+            // status: 'Pending',
+            $and: [
+                {
+                    startTime: {
+                        $lte: endTime
+                    }
+                }, {
+                    endTime: {
+                        $gte: startTime
+                    }
+                }
+            ]
+        });
+
+        if (existingScheduleWithSameTime) {
+            return res.status (400).json ({error: 'Another user has already booked a schedule within the same time'});
+        }
         // Create a new schedule document
         const newSchedule = new Schedule ({
             userId,
@@ -2801,7 +2820,7 @@ router.post ('/cancel-meeting/:userId/:scheduleId', async (req, res) => {
 router.get ("/schedules/:mentorId/:userId", async (req, res) => {
     try {
         const {userId, mentorId} = req.params;
-        const schedules = await Schedule.find ({userId, mentorId}).populate("session", "date startTime endTime slots");
+        const schedules = await Schedule.find ({userId, mentorId}).populate ("session", "date startTime endTime slots");
         res.json ({schedules});
     } catch (err) {
         console.error (err);
@@ -2894,6 +2913,12 @@ router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
     const {mentorId, userId} = req.params;
 
     try {
+        const mentor = await Mentors.findById (mentorId);
+
+        if (! mentor) {
+            return res.status (404).json ({message: "Mentor not found"});
+        }
+
         const user = await User.findById (userId);
 
         if (! user) {
@@ -2906,7 +2931,10 @@ router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
         };
 
         user.favoriteMentors.push (favoriteMentor);
+        mentor.mentees.push ({user: userId, dateAdded: Date.now ()});
+
         const updatedUser = await user.save ();
+        const updatedMentor = await mentor.save ();
 
         const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
 
@@ -2916,6 +2944,8 @@ router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
         return res.status (500).json ({message: "Server error"});
     }
 });
+
+
 
 /**
  * @swagger
@@ -2986,6 +3016,12 @@ router.delete ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
             return res.status (404).json ({message: "User not found"});
         }
 
+        const mentor = await Mentors.findById (mentorId);
+
+        if (! mentor) {
+            return res.status (404).json ({message: "Mentor not found"});
+        }
+
         const favoriteMentorIndex = user.favoriteMentors.findIndex ( (item) => item.mentor.toString () === mentorId);
 
         if (favoriteMentorIndex === -1) {
@@ -2993,7 +3029,15 @@ router.delete ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
         }
 
         user.favoriteMentors.splice (favoriteMentorIndex, 1);
+
+        const menteeIndex = mentor.mentees.findIndex ( (item) => item.user.toString () === userId);
+
+        if (menteeIndex !== -1) {
+            mentor.mentees.splice (menteeIndex, 1);
+        }
+
         const updatedUser = await user.save ();
+        const updatedMentor = await mentor.save ();
 
         const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
 
@@ -3003,6 +3047,7 @@ router.delete ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
         return res.status (500).json ({message: "Server error"});
     }
 });
+
 
 /**
  * @swagger
@@ -4847,7 +4892,7 @@ router.post ('/become-mentor/:userId', (req, res) => {
             mentorshipReason,
             linkedinProfile,
             facebookUsername,
-            twitterHandle, 
+            twitterHandle,
             googleMeet
         } = req.body;
 
@@ -4865,7 +4910,7 @@ router.post ('/become-mentor/:userId', (req, res) => {
             reason: mentorshipReason,
             linkedin: linkedinProfile,
             facebook: facebookUsername,
-            twitterHandle, 
+            twitterHandle,
             googleMeet
         });
 
@@ -5287,7 +5332,7 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
 
 /**
  * @swagger
- * /users/8iend-requests/{userId}:
+ * /users/all-friend-requests/{userId}:
  *   get:
  *     summary: Get all pending friend requests for a user
  *     tags:

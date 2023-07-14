@@ -88,10 +88,6 @@ const userSchema = new mongoose.Schema ({
             type: String
         }
     },
-    photo: {
-        data: Buffer,
-        contentType: String
-    },
     twofa: {
         type: Boolean,
         default: false
@@ -135,6 +131,10 @@ const userSchema = new mongoose.Schema ({
             dateAdded: {
                 type: Date,
                 default: Date.now ()
+            },
+            chatStatus: {
+                type: Boolean,
+                default: false
             }
         }
     ],
@@ -183,7 +183,7 @@ userSchema.set ('timestamps', true);
 
 userSchema.methods.generateAuthToken = async function () {
     const token = jwt.sign ({
-        _id: this.id, 
+        _id: this.id,
         user_id: this.id
     }, process.env.JWT_SECRET_KEY, {expiresIn: "1d"})
     this.token = token;
