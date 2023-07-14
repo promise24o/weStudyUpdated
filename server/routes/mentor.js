@@ -1296,6 +1296,98 @@ router.get ('/mentees/:mentorId', async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /mentor/mentee/{mentorId}/{id}:
+ *   get:
+ *     summary: Get mentee details
+ *     description: Retrieves the details of a mentee associated with the specified mentor.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor.
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentee to retrieve.
+ *     responses:
+ *       200:
+ *         description: Mentee details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Mentee'
+ *       404:
+ *         description: Mentor or mentee not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *
+ * components:
+ *   schemas:
+ *     Mentee:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ *
+ *     User:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         firstname:
+ *           type: string
+ *         lastname:
+ *           type: string
+ *         email:
+ *           type: string
+ *         education:
+ *           $ref: '#/components/schemas/Education'
+ *         personal:
+ *           $ref: '#/components/schemas/Personal'
+ *         profilePhoto:
+ *           type: string
+ *
+ *     Education:
+ *       type: object
+ *       properties:
+ *         institution:
+ *           type: string
+ *
+ *     Personal:
+ *       type: object
+ *       properties:
+ *         gender:
+ *           type: string
+ */
+
 router.get ('/mentee/:mentorId/:id', async (req, res) => {
     try {
         const {mentorId, id} = req.params;
@@ -1318,6 +1410,78 @@ router.get ('/mentee/:mentorId/:id', async (req, res) => {
         res.status (500).json ({error: 'An error occurred'});
     }
 });
+
+
+/**
+ * @swagger
+ * /mentor/mentee/{mentorId}/{menteeId}:
+ *   put:
+ *     summary: Update mentee's chat status
+ *     description: Updates the chat status of a mentee associated with a mentor.
+ *     tags:
+ *       - Mentor
+ *     parameters:
+ *       - in: path
+ *         name: mentorId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentor.
+ *       - in: path
+ *         name: menteeId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the mentee to update.
+ *       - in: body
+ *         name: chatStatus
+ *         schema:
+ *           type: object
+ *           properties:
+ *             chatStatus:
+ *               type: boolean
+ *         required: true
+ *         description: New chat status for the mentee.
+ *     responses:
+ *       200:
+ *         description: Mentee chat status updated successfully.
+ *       404:
+ *         description: Mentor or mentee not found.
+ *       500:
+ *         description: Internal server error.
+ */
+
+router.put ('/mentee/:mentorId/:menteeId', async (req, res) => {
+    const {mentorId, menteeId} = req.params;
+    const {chatStatus} = req.body;
+
+    try { // Find the mentor by ID
+        const mentor = await Mentors.findById (mentorId);
+
+        if (! mentor) {
+            return res.status (404).json ({message: 'Mentor not found'});
+        }
+
+        // Find the mentee in the mentor's mentees array
+        const mentee = mentor.mentees.find ( (mentee) => mentee._id.toString () === menteeId);
+
+        if (! mentee) {
+            return res.status (404).json ({message: 'Mentee not found'});
+        }
+
+        // Update the mentee's chat status
+        mentee.chatStatus = chatStatus;
+
+        // Save the changes to the mentor document
+        await mentor.save ();
+
+        res.json ({message: 'Mentee chat status updated successfully'});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred'});
+    }
+});
+
 
 
 module.exports = router;
