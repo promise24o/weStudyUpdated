@@ -1176,7 +1176,7 @@ router.get ("/mentor/:mentorId", async (req, res) => {
                 path: "mentor",
                 model: "Mentors"
             }
-        }).populate ("rating.user", "firstname lastname profilePhoto");
+        }).populate ("rating.user", "firstname lastname profilePhoto").populate ({path: 'mentees.user', model: 'user', select: 'firstname lastname profilePhoto education'}).select ('mentees');
 
         if (! mentor) {
             return res.status (404).json ({message: "Mentor not found"});
@@ -1300,7 +1300,7 @@ router.get ('/mentee/:mentorId/:id', async (req, res) => {
     try {
         const {mentorId, id} = req.params;
 
-        const mentor = await Mentors.findById (mentorId).populate ({path: 'mentees.user', model: 'user', select: 'firstname lastname education personal profilePhoto'}).select ('mentees');
+        const mentor = await Mentors.findById (mentorId).populate ({path: 'mentees.user', model: 'user', select: 'firstname lastname email education personal profilePhoto'}).select ('mentees');
 
         if (! mentor) {
             return res.status (404).json ({message: 'Mentor not found'});
