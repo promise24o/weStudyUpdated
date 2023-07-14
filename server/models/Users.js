@@ -126,7 +126,7 @@ const userSchema = new mongoose.Schema ({
         {
             mentor: {
                 type: mongoose.Schema.Types.ObjectId,
-                ref: 'mentors'
+                ref: 'mentor'
             },
             dateAdded: {
                 type: Date,

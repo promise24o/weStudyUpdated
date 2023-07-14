@@ -6,6 +6,7 @@ const {Mentors, Schedule, MentorSessions} = require ("../models/Mentors");
 const router = require ("express").Router ();
 const crypto = require ("crypto");
 const bcrypt = require ("bcrypt");
+const { User } = require("../models/Users");
 
 
 // Configure Cloudinary credentials
@@ -1471,12 +1472,34 @@ router.put ('/mentee/:mentorId/:menteeId', async (req, res) => {
         // Save the changes to the mentor document
         await mentor.save ();
 
+        // Find the user by ID
+        const user = await User.findById (mentee.user);
+
+        if (! user) {
+            return res.status (404).json ({message: 'User not found'});
+        }
+
+        // Find the mentor in the user's favoriteMentors array
+        const favoriteMentor = user.favoriteMentors.find ( (fm) => fm.mentor.toString () === mentorId);
+
+        if (! favoriteMentor) {
+            return res.status (404).json ({message: 'Mentor not found in user\'s favorite mentors'});
+        }
+
+        // Update the mentor's chat status in the user's favoriteMentors array
+        favoriteMentor.chatStatus = chatStatus;
+
+        // Save the changes to the user document
+        await user.save ();
+
         res.json ({message: 'Mentee chat status updated successfully'});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred'});
     }
 });
+
+
 
 
 

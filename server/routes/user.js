@@ -2331,6 +2331,75 @@ router.get ("/mentor/:id", async (req, res) => {
     }
 });
 
+// Get a Favorite Mentor based on ID
+router.get ("/favorite-mentor/:id/:mentorId", async (req, res) => {
+    try {
+        const mentorId = req.params.mentorId;
+        const id = req.params.id;
+
+        const user = await User.findById ({_id: id}).populate ({
+            path: "favoriteMentors.mentor",
+            model: "Mentors",
+            populate: [
+                {
+                    path: "faculty"
+                }, {
+                    path: "rating.user",
+                    select: "firstname lastname profilePhoto"
+                }, {
+                    path: "sessions",
+                    model: "MentorSessions",
+                    populate: {
+                        path: "mentor",
+                        model: "Mentors"
+                    }
+                },
+            ]
+        }).exec ();
+
+        if (! user) {
+            return res.status (404).json ({message: "User not found"});
+        }
+
+        const favoriteMentor = user.favoriteMentors.find ( (item) => item.mentor._id.toString () === mentorId);
+
+        if (! favoriteMentor) {
+            return res.status (404).json ({message: "Mentor not found"});
+        }
+
+        res.status (200).json ({mentor: favoriteMentor});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
+});
+
+
+router.get ("/mentor/chat-status/:userId/:mentorId", async (req, res) => {
+    try {
+        const {userId, mentorId} = req.params;
+
+        const user = await User.findById (userId);
+
+        if (! user) {
+            return res.status (404).json ({message: "User not found"});
+        }
+
+        const favoriteMentor = user.favoriteMentors.find ( (item) => item.mentor.toString () === mentorId);
+
+        if (! favoriteMentor) {
+            return res.status (404).json ({message: "Mentor not found"});
+        }
+
+        const chatStatus = favoriteMentor.chatStatus;
+
+        res.status (200).json ({status: chatStatus});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
+});
+
+
+
 /**
  * @swagger
  * /users/faculty/{id}:
