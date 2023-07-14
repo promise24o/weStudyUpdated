@@ -2651,11 +2651,11 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
 
 /**
  * @swagger
- * /cancel-meeting/{userId}/{scheduleId}:
+ * /users/cancel-meeting/{userId}/{scheduleId}:
  *   post:
  *     summary: Cancel a meeting by deleting it
  *     tags:
- *       - Meeting
+ *       - User
  *     parameters:
  *       - in: path
  *         name: userId
