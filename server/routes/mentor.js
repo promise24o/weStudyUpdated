@@ -1171,11 +1171,7 @@ router.get ("/mentor/:mentorId", async (req, res) => {
     try {
         const mentor = await Mentors.findOne ({_id: mentorId}).select ("-password -token").populate ("faculty").populate ({
             path: "sessions",
-            model: "MentorSessions",
-            populate: {
-                path: "mentor",
-                model: "Mentors"
-            }
+            model: "MentorSessions"
         }).populate ("rating.user", "firstname lastname profilePhoto").populate ({path: 'mentees.user', model: 'user', select: 'firstname lastname profilePhoto education'}).select ('mentees');
 
         if (! mentor) {
