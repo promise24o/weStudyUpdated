@@ -532,14 +532,7 @@ router.get ("/user/:token", auth, async (req, res) => {
 // Route to get mentor by token
 router.get ("/mentor/:token", auth, async (req, res) => {
     try {
-        const mentor = await Mentors.findOne ({token: req.params.token}).select ("-password -token").populate ("faculty").populate ({
-            path: "sessions",
-            model: "MentorSessions",
-            populate: {
-                path: "mentor",
-                model: "Mentors"
-            }
-        }).populate ("rating.user", "firstname lastname profilePhoto");
+        const mentor = await Mentors.findOne ({token: req.params.token}).select ("-password -token").populate ("faculty").populate ({path: "sessions", model: "MentorSessions"}).populate ("rating.user", "firstname lastname profilePhoto").populate ({path: 'mentees.user', model: 'user', select: 'firstname lastname profilePhoto education'}).select ('mentees');
 
         if (! mentor) {
             return res.status (404).json ({message: "Mentor not found"});
