@@ -6071,4 +6071,104 @@ router.put ('/update-message-status/:receiverId/:senderId', async (req, res) => 
     }
 });
 
+/**
+ * @swagger
+ * /users/send-message:
+ *   post:
+ *     tags:
+ *       - User
+ *     summary: Send a message
+ *     description: Send a message from one user to another user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sender:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     description: ID of the sender user
+ *                   model:
+ *                     type: string
+ *                     enum: [user, Mentors]
+ *                     description: Type of the sender model (user or Mentors)
+ *               receiver:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     description: ID of the receiver user
+ *                   model:
+ *                     type: string
+ *                     enum: [user, Mentors]
+ *                     description: Type of the receiver model (user or Mentors)
+ *               content:
+ *                 type: string
+ *                 description: The content of the message
+ *               timeSent:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The timestamp of when the message was sent
+ *               status:
+ *                 type: string
+ *                 enum: [sent, delivered, seen]
+ *                 default: sent
+ *                 description: The status of the message
+ *     responses:
+ *       200:
+ *         description: Message sent successfully
+ *       500:
+ *         description: An error occurred while sending the message
+ */
+
+// POST route to send a message
+router.post ('/send-message', async (req, res) => {
+    try {
+        const message = req.body;
+        // Assuming the message object is sent in the request body
+
+        // Save the message to the database using Mongoose
+        const newMessage = {
+            sender: message.sender._id,
+            receiver: message.receiver._id,
+            content: message.content,
+            timeSent: message.timeSent,
+            status: message.status
+        };
+
+        // Find the chat between sender A and receiver B
+        let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
+
+        if (! chat) { // Check if the reverse chat exists between sender B and receiver A
+            chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
+        }
+
+        if (! chat) { // Create a new chat if neither chat exists
+            chat = new Chat ({
+                sender: message.sender._id,
+                receiver: message.receiver._id,
+                senderModel: message.sender.model,
+                receiverModel: message.receiver.model,
+                messages: [newMessage]
+            });
+        } else { // Add the new message to the messages array
+            chat.messages.push (newMessage);
+        }
+
+        // Save the chat document
+        await chat.save ();
+
+        // Respond with a success message or status code (200 OK)
+        res.json ({message: 'Message sent successfully'});
+    } catch (error) {
+        console.error ('Error sending message:', error);
+        res.status (500).json ({error: 'An error occurred while sending the message'});
+    }
+});
+
+
 module.exports = router;
