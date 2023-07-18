@@ -2,11 +2,29 @@ require ('dotenv').config ();
 const Notification = require ('./models/Notifications');
 const Chat = require ('./models/Chat');
 const moment = require ('moment');
+const http = require ('http');
+const express = require ('express');
+const cors = require ('cors');
+const useragent = require ('express-useragent');
+const path = require ('path');
+const swaggerUI = require ('swagger-ui-express');
+const swaggerJsDoc = require ('swagger-jsdoc');
+const connection = require ('./lib/mongoose');
+const userRoutes = require ('./routes/user');
+const authRoutes = require ('./routes/auth');
+const mentorRoutes = require ('./routes/mentor');
+const adminRoutes = require ('./routes/admin');
+const publicRoutes = require ('./routes/public');
+const AIRoutes = require ('./routes/acadabooai');
+const Mentors = require ('./models/Mentors');
+const {User} = require ('./models/Users');
 
-const io = require ('socket.io')({
+const app = express ();
+const server = http.createServer (app); // Create an HTTP server using Express
+const io = require ('socket.io')(server, {
     cors: {
         origin: process.env.ALLOWED_ORIGIN,
-        methods: ["GET", "POST"]
+        methods: ['GET', 'POST']
     }
 });
 
@@ -183,15 +201,12 @@ io.on ('connection', (socket) => {
         });
     });
 
-
     socket.on ('disconnect', () => {
         console.log ('Client disconnected');
         // Remove the disconnected socket from the clients array
         clients = clients.filter ( (client) => client !== socket);
-
     });
 });
-
 
 // Close all client connections on server shutdown
 process.on ('SIGINT', () => {
@@ -200,25 +215,6 @@ process.on ('SIGINT', () => {
     });
     process.exit (0);
 });
-
-const server = io.listen (8801);
-
-const express = require ('express');
-const app = express ();
-const cors = require ('cors');
-const connection = require ('./lib/mongoose');
-const userRoutes = require ('./routes/user');
-const authRoutes = require ('./routes/auth');
-const mentorRoutes = require ('./routes/mentor');
-const adminRoutes = require ('./routes/admin');
-const publicRoutes = require ('./routes/public');
-const AIRoutes = require ('./routes/acadabooai');
-var useragent = require ('express-useragent');
-const swaggerUI = require ('swagger-ui-express');
-const swaggerJsDoc = require ('swagger-jsdoc');
-const path = require ('path');
-const Mentors = require ('./models/Mentors');
-const {User} = require ('./models/Users');
 
 // Database connection
 connection ();
@@ -257,7 +253,7 @@ const options = {
                 url: 'http://127.0.0.1:8080/api/'
             }, {
                 url: 'https://we-study.onrender.com/api/'
-            },
+            }
         ]
     },
     apis: ['./routes/*.js']
@@ -280,5 +276,5 @@ app.get ('/otp', (req, res) => {
 
 // Connection Port
 const port = process.env.PORT || 8080;
-app.listen (port, () => console.log ('Express server is running on port ' + port));
-console.log ('WebSocket server is running on port 8801');
+server.listen (port, () => console.log ('Express server is running on port ' + port));
+console.log ('WebSocket server is running on port 8080');
