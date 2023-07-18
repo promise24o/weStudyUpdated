@@ -20,27 +20,27 @@ io.on ('connection', (socket) => {
     // Add the socket to the clients array
     clients.push (socket);
 
-    socket.on ('postUpdate', async (post) => {
-        const postId = post._id;
-        const userId = post.userId;
+    // socket.on ('postUpdate', async (post) => {
+    //     const postId = post._id;
+    //     const userId = post.userId;
 
-        // Join the room corresponding to the post ID
-        socket.join (postId);
+    //     // Join the room corresponding to the post ID
+    //     socket.join (postId);
 
-        // Calculate the like count and comment count
-        const likesCount = post.likes.length;
-        const commentsCount = post.comments.length;
+    //     // Calculate the like count and comment count
+    //     const likesCount = post.likes.length;
+    //     const commentsCount = post.comments.length;
 
-        // Emit like count and comment count to the room
-        io.to (postId).emit (`likesCount:${postId}`, likesCount);
-        io.to (postId).emit (`commentCounts:${postId}`, commentsCount);
+    //     // Emit like count and comment count to the room
+    //     io.to (postId).emit (`likesCount:${postId}`, likesCount);
+    //     io.to (postId).emit (`commentCounts:${postId}`, commentsCount);
 
-        // Emit notification event to the author
-        io.to (userId).emit ('notification', {message: 'You have a new notification'});
+    //     // Emit notification event to the author
+    //     io.to (userId).emit ('notification', {message: 'You have a new notification'});
 
-        // Trigger the getNotificationCounts event for the author
-        io.to (userId).emit ('getNotificationCounts');
-    });
+    //     // Trigger the getNotificationCounts event for the author
+    //     io.to (userId).emit ('getNotificationCounts');
+    // });
 
     socket.on ("notification", (data) => {
         const {userId, message} = data;

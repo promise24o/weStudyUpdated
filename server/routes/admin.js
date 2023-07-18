@@ -417,14 +417,14 @@ router.put ("/update-school-summary/:id", async (req, res) => {
         const institutionId = req.params.id;
         const {editorContent} = req.body;
 
-        const institution = await Institutions.findById(institutionId);
-        if (!institution) {
+        const institution = await Institutions.findById (institutionId);
+        if (! institution) {
             return res.status (404).json ({error: 'Institution not found'});
         }
 
         institution.summary = editorContent;
         const updatedInstitution = await institution.save ();
-       
+
         res.status (201).send ({message: "School Summary Updated Successfully"});
     } catch (err) {
         res.status (500).json ({message: err.message});
@@ -517,6 +517,32 @@ router.post ("/institutions-list", async (req, res) => {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
+
+// Route to add a new institution
+router.post ('/add-institution', async (req, res) => { // Destructure the required fields from the request body
+    const {institution, logo, type} = req.body;
+
+    // Check if any of the required fields are missing
+    if (!institution || !logo || !type) {
+        return res.status (400).json ({message: 'Please provide all the required fields'});
+    }
+
+    try { // Create a new instance of the Institution model
+        const newInstitution = new Institutions ({institution, logo, type});
+
+        // Save the new institution to the database
+        await newInstitution.save ();
+
+        // Find all institutions and return them on success (status 200)
+        const institutions = await Institutions.find ({}).sort ({createdAt: "desc"});
+        res.status (201).send ({message: "Institution Added Successfully", institutions:institutions});
+
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: 'Internal Server Error', error});
+    }
+});
+
 
 router.post ("/add-scholarship", upload.single ("file"), async (req, res) => {
     if (!req.file) {
