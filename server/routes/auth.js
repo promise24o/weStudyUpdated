@@ -385,9 +385,10 @@ router.post ("/register", async (req, res) => {
 
 // Logout user
 router.post ("/logout", auth, async (req, res) => {
-    try { // Remove the token from the user's document
+    try {
         const user = req.user;
         user.token = null;
+        user.liveFeedSettings.onlineStatus = false; // Set onlineStatus to false
         await user.save ();
 
         res.status (200).send ({message: "Logout successful"});

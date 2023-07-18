@@ -30,6 +30,7 @@ const Agenda = require ("agenda");
 const MentorApplication = require ("../models/MentorApplication");
 const Notification = require ("../models/Notifications");
 const FriendRequest = require ("../models/FriendRequest");
+const Chat = require ("../models/Chat");
 
 // Configure Cloudinary credentials
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
@@ -2399,7 +2400,6 @@ router.get ("/mentor/chat-status/:userId/:mentorId", async (req, res) => {
 });
 
 
-
 /**
  * @swagger
  * /users/faculty/{id}:
@@ -2674,8 +2674,7 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
 
         // Check if there is an existing schedule with the same start time and end time
         const existingScheduleWithSameTime = await Schedule.findOne ({
-            mentorId,
-            session: selectedSession._id,
+            mentorId, session: selectedSession._id,
             // status: 'Pending',
             $and: [
                 {
@@ -3013,7 +3012,6 @@ router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
         return res.status (500).json ({message: "Server error"});
     }
 });
-
 
 
 /**
@@ -5537,6 +5535,64 @@ router.delete ('/unfriend/:requestId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for user-related operations
+ * 
+ * /users/count-mutual-friends/{user1Id}/{user2Id}:
+ *   get:
+ *     summary: Count Mutual Friends
+ *     description: Count the number of mutual friends between two users
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: user1Id
+ *         required: true
+ *         description: ID of the first user
+ *         schema:
+ *           type: string
+ *           example: 613d6d5c58d8e56094869ea2
+ *       - in: path
+ *         name: user2Id
+ *         required: true
+ *         description: ID of the second user
+ *         schema:
+ *           type: string
+ *           example: 613d6d5c58d8e56094869ea3
+ *     responses:
+ *       200:
+ *         description: Mutual friends count retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mutualFriendsCount:
+ *                   type: number
+ *                   description: Number of mutual friends between the two users
+ *                   example: 3
+ *       404:
+ *         description: One or both users not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message indicating which user was not found
+ *       500:
+ *         description: An error occurred while retrieving mutual friends count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 
 router.get ('/count-mutual-friends/:user1Id/:user2Id', async (req, res) => {
     try {
@@ -5572,6 +5628,55 @@ router.get ('/count-mutual-friends/:user1Id/:user2Id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for user-related operations
+ * 
+ * /users/check-username:
+ *   post:
+ *     summary: Check Username Availability
+ *     description: Check if the given username is available or suggest alternative usernames if it's already taken
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: The username to be checked
+ *                 example: john_doe
+ *     responses:
+ *       200:
+ *         description: Username availability checked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 taken:
+ *                   type: boolean
+ *                   description: Indicates if the username is taken or not
+ *                 suggestedUsernames:
+ *                   type: array
+ *                   description: Array of suggested alternative usernames (if the given username is taken)
+ *                   items:
+ *                     type: string
+ *                     example: john_doe_123, john_doe_456
+ *       500:
+ *         description: An error occurred while checking the username
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 
 router.post ('/check-username', async (req, res) => {
     try {
@@ -5605,11 +5710,60 @@ const generateSuggestedUsernames = (username) => {
     return suggestedUsernames;
 };
 
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing user friends
+ * 
+ * /user/friends/{userId}:
+ *   get:
+ *     summary: Get User Friends
+ *     description: Get all friends of a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved user friends
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 friends:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Friend'  # Replace with the correct schema reference for the Friend model
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
 
 router.get ('/friends/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        const user = await User.findById (userId).populate ('friends.userId', 'firstname lastname liveFeedSettings.username education.institution profilePhoto personal');
+        const user = await User.findById (userId).populate ('friends.userId', 'firstname lastname liveFeedSettings.username liveFeedSettings.onlineStatus education.institution profilePhoto personal');
 
         if (! user) {
             return res.status (404).json ({message: 'User not found'});
@@ -5622,5 +5776,299 @@ router.get ('/friends/:userId', async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing user messages
+ * 
+ * /users/messages/user/{userId}:
+ *   get:
+ *     summary: Get User Messages
+ *     description: Get all messages sent or received by a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Message'  # Replace with the correct schema reference for the Message model
+ *       500:
+ *         description: Failed to fetch messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+
+// Route to get all messages of a user
+router.get ('/messages/user/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const messages = await Chat.find ({
+            $or: [
+                {
+                    'sender': userId
+                }, {
+                    'receiver': userId
+                },
+            ]
+        }).sort ({timeSent: 1});
+        res.status (200).json (messages);
+    } catch (error) {
+        res.status (500).json ({error: 'Failed to fetch messages'});
+    }
+});
+
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing chat status
+ * 
+ * /users/chat-status/{userId}:
+ *   put:
+ *     summary: Update Chat Status
+ *     description: Update the chat status of a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: chatStatus
+ *         required: true
+ *         description: The new chat status value
+ *         schema:
+ *           type: object
+ *           properties:
+ *             chatStatus:
+ *               type: string
+ *               example: "online"  # Replace with possible chat status values
+ *     responses:
+ *       200:
+ *         description: Chat status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'  # Replace with the correct schema reference for the User model
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Failed to update chat status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Route to change the chat status of a user
+router.put ('/chat-status/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const {chatStatus} = req.body;
+        // Update the chat status of the user
+        const updatedUser = await User.findByIdAndUpdate (userId, {
+            'liveFeedSettings.onlineStatus': chatStatus
+        }, {new: true}).select ("-password -token").populate ('friends.userId', 'firstname lastname profilePhoto');
+
+        if (! updatedUser) {
+            return res.status (404).json ({error: 'User not found'});
+        }
+
+        res.status (200).json ({message: 'Chat status updated successfully', user: updatedUser});
+    } catch (error) {
+        console.log ('Error updating chat status:', error);
+        res.status (500).json ({error: 'Failed to update chat status'});
+    }
+});
+
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing chat status
+ * 
+ * /users/chat-status/{userId}:
+ *   get:
+ *     summary: Get Chat Status
+ *     description: Get the chat status of a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: ID of the user
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Chat status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 chatStatus:
+ *                   type: string
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Failed to retrieve chat status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+router.get ('/chat-status/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Retrieve the user's chat status
+        const user = await User.findById (userId).select ('liveFeedSettings.onlineStatus');
+
+        if (! user) {
+            return res.status (404).json ({error: 'User not found'});
+        }
+
+        const chatStatus = user.liveFeedSettings.onlineStatus;
+
+        res.status (200).json ({chatStatus});
+    } catch (error) {
+        console.log ('Error retrieving chat status:', error);
+        res.status (500).json ({error: 'Failed to retrieve chat status'});
+    }
+});
+
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing chat messages
+ * 
+ * /users/update-message-status/{receiverId}/{senderId}:
+ *   put:
+ *     summary: Update Message Status
+ *     description: Update the status of chat messages between two users
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: receiverId
+ *         required: true
+ *         description: ID of the receiver user
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: senderId
+ *         required: true
+ *         description: ID of the sender user
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: messages
+ *         required: true
+ *         description: Array of message objects containing messageId and status to update
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               messageId:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [sent, delivered, seen]
+ *     responses:
+ *       200:
+ *         description: Message statuses updated successfully
+ *       404:
+ *         description: Chat not found
+ *       500:
+ *         description: An error occurred while updating message statuses
+ */
+
+
+router.put ('/update-message-status/:receiverId/:senderId', async (req, res) => {
+
+    const {receiverId, senderId} = req.params;
+    const {messages} = req.body;
+
+    try {
+        const chat = await Chat.findOne ({
+            $or: [
+                {
+                    sender: senderId,
+                    receiver: receiverId
+                }, {
+                    sender: receiverId,
+                    receiver: senderId
+                }
+            ]
+        });
+
+        if (! chat) {
+            return res.status (404).json ({message: 'Chat not found'});
+        }
+
+        messages.forEach ( (update) => {
+            const message = chat.messages.find ( (msg) => msg._id.toString () === update.messageId);
+            if (message) { // Update the status of the corresponding message
+                message.status = update.status;
+            }
+        });
+
+        await chat.save ();
+
+        // Respond with a success message or status code (200 OK)
+        res.json ({message: 'Message statuses updated successfully'});
+    } catch (err) {
+        console.error (err);
+        res.status (500).json ({message: 'Error updating message statuses'});
+    }
+});
 
 module.exports = router;

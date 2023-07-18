@@ -7,6 +7,7 @@ const router = require ("express").Router ();
 const crypto = require ("crypto");
 const bcrypt = require ("bcrypt");
 const { User } = require("../models/Users");
+const Chat = require("../models/Chat");
 
 
 // Configure Cloudinary credentials
@@ -1499,8 +1500,53 @@ router.put ('/mentee/:mentorId/:menteeId', async (req, res) => {
     }
 });
 
+router.post ('/chat', async (req, res) => {
+    const {senderId, receiverId, content} = req.body;
 
+    try {
+        const chat = await Chat.findOneAndUpdate ({
+            sender: senderId,
+            receiver: receiverId
+        }, {
+            $push: {
+                messages: {
+                    sender: senderId,
+                    content
+                }
+            }
+        }, {
+            upsert: true,
+            new: true
+        });
 
+        res.json (chat);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: 'Server Error'});
+    }
+});
+
+// Get all chats for a user
+router.get ('/chats/:userId', async (req, res) => {
+    const {userId} = req.params;
+
+    try {
+        const chats = await Chat.find ({
+            $or: [
+                {
+                    sender: userId
+                }, {
+                    receiver: userId
+                }
+            ]
+        }).populate ('sender', 'firstname lastname').populate ('receiver', 'firstname lastname').exec ();
+
+        res.json (chats);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: 'Server Error'});
+    }
+});
 
 
 module.exports = router;

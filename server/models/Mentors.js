@@ -165,7 +165,11 @@ const mentorsSchema = new mongoose.Schema ({
             type: mongoose.ObjectId,
             ref: "MentorSessions"
         },
-    ]
+    ],
+    onlineStatus: {
+        type: Boolean,
+        default: false
+    }
 });
 
 mentorsSchema.set ("timestamps", true);

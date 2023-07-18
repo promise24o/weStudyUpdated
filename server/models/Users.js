@@ -174,6 +174,10 @@ const userSchema = new mongoose.Schema ({
         friends_list: {
             type: Boolean,
             default: true
+        },
+        onlineStatus: {
+            type: Boolean,
+            default: false
         }
     }
 });

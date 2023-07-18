@@ -1,5 +1,7 @@
 require ('dotenv').config ();
 const Notification = require ('./models/Notifications');
+const Chat = require ('./models/Chat');
+const moment = require ('moment');
 
 const io = require ('socket.io')({
     cors: {
@@ -9,6 +11,8 @@ const io = require ('socket.io')({
 });
 
 let clients = []; // Array to store connected clients
+let userHeartbeats = new Map (); // Map to store user heartbeats
+const userSockets = new Map ();
 
 io.on ('connection', (socket) => {
     console.log ('A client connected');
@@ -58,12 +62,136 @@ io.on ('connection', (socket) => {
         }
     });
 
+    socket.on ("joinChat", async ({userId, userType}) => {
+        socket.join (userId);
+        userSockets.set (userId, socket.id);
+        console.log (`Socket ${
+            socket.id
+        } joined chat room: ${userId}`);
+
+        try {
+            if (userType === "user") {
+                await User.findByIdAndUpdate (userId, {"liveFeedSettings.onlineStatus": true});
+            } else if (userType === "mentor") {
+                await Mentors.findByIdAndUpdate (userId, {onlineStatus: true});
+            }
+            console.log (`${userType} with ID ${userId} online status updated as true.`);
+        } catch (error) {
+            console.error ("Error updating online status:", error);
+        }
+
+        // Store the user's last heartbeat timestamp
+        userHeartbeats.set (userId, {userType, lastHeartbeatTime: moment ().valueOf ()});
+    });
+
+    socket.on ("leaveChat", async ({userId, userType}) => {
+        const socketId = userSockets.get (userId);
+        if (socketId) {
+            socket.leave (socketId);
+            console.log (`Socket ${socketId} leaves chat room: ${userId}`);
+
+            try {
+                if (userType === "user") {
+                    await User.findByIdAndUpdate (userId, {"liveFeedSettings.onlineStatus": false});
+                } else if (userType === "mentor") {
+                    await Mentors.findByIdAndUpdate (userId, {onlineStatus: false});
+                }
+                console.log (`${userType} with ID ${userId} online status updated as false.`);
+            } catch (error) {
+                console.error ("Error updating online status:", error);
+            }
+
+            // Remove the user's heartbeat timestamp
+            userHeartbeats.delete (userId);
+            userSockets.delete (userId);
+        }
+    });
+
+
+    socket.on ('sendMessage', async (message) => {
+        try { // Create a new message object
+            const newMessage = {
+                sender: message.sender._id,
+                receiver: message.receiver._id,
+                content: message.content,
+                timeSent: message.timeSent,
+                status: message.status
+            };
+
+            // Create a new emitted message object
+            const emittedMessage = {
+                sender: {
+                    model: message.sender.model,
+                    _id: message.sender._id
+                },
+                receiver: {
+                    model: message.receiver.model,
+                    _id: message.receiver._id
+                },
+                content: message.content,
+                timeSent: message.timeSent,
+                status: message.status
+            };
+
+
+            // Find the chat between sender A and receiver B
+            let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
+
+            if (! chat) { // Check if the reverse chat exists between sender B and receiver A
+                chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
+            }
+
+            if (! chat) { // Create a new chat if neither chat exists
+                chat = new Chat ({
+                    sender: message.sender._id,
+                    receiver: message.receiver._id,
+                    senderModel: message.sender.model,
+                    receiverModel: message.receiver.model,
+                    messages: [newMessage]
+                });
+            } else { // Add the new message to the messages array
+                chat.messages.push (newMessage);
+            }
+
+            // Save the chat document
+            await chat.save ();
+
+            // Emit the message to the chat room
+            io.to (message.receiver._id).emit ('message', emittedMessage);
+            console.log ("Message Sent to " + message.receiver._id)
+        } catch (error) {
+            console.error ('Error saving message:', error);
+        }
+    });
+
+    socket.on ("typing", (data) => {
+
+        // Generate a unique room name based on sender and receiver IDs
+        const roomName = `${
+            data.sender
+        }-${
+            data.receiver
+        }`;
+
+        // Join the room representing the conversation between sender and receiver
+        socket.join (roomName);
+
+        // Broadcast the "is typing" status to the receiver in the room
+        socket.broadcast.to (roomName).emit ("typing", {
+            userId: data.sender,
+            isTyping: data.isTyping
+        });
+    });
+
+
     socket.on ('disconnect', () => {
         console.log ('Client disconnected');
         // Remove the disconnected socket from the clients array
         clients = clients.filter ( (client) => client !== socket);
+
     });
 });
+
 
 // Close all client connections on server shutdown
 process.on ('SIGINT', () => {
@@ -74,7 +202,6 @@ process.on ('SIGINT', () => {
 });
 
 const server = io.listen (8801);
-
 
 const express = require ('express');
 const app = express ();
@@ -90,6 +217,8 @@ var useragent = require ('express-useragent');
 const swaggerUI = require ('swagger-ui-express');
 const swaggerJsDoc = require ('swagger-jsdoc');
 const path = require ('path');
+const Mentors = require ('./models/Mentors');
+const {User} = require ('./models/Users');
 
 // Database connection
 connection ();
@@ -153,9 +282,3 @@ app.get ('/otp', (req, res) => {
 const port = process.env.PORT || 8080;
 app.listen (port, () => console.log ('Express server is running on port ' + port));
 console.log ('WebSocket server is running on port 8801');
-
-
-// Start the WebSocket server
-// const socketPort = 8800;
-// io.listen (socketPort);
-// console.log ('WebSocket server is running on port ' + socketPort);
