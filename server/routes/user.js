@@ -3916,16 +3916,36 @@ router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
 
 
 // GET route to fetch all posts sorted by the latest
+// Function to shuffle the array randomly
+const shuffleArray = (array) => {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor (Math.random () * (i + 1));
+        [
+            array[i], array[j]
+        ] = [
+            array[j], array[i]
+        ];
+    }
+    return array;
+};
+
 router.get ("/posts", async (req, res) => {
-    try { // Retrieve all posts from the database, sort by 'createdAt' field in descending order, and populate the 'userId' field
+    try {
+        // Retrieve all posts from the database, sort by 'createdAt' field in descending order,
+        // and populate the 'userId' field
         const posts = await Post.find ().sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto personal");
 
-        res.status (200).json (posts);
+        // Shuffle the posts array randomly
+        const shuffledPosts = shuffleArray (posts);
+
+        res.status (200).json (shuffledPosts);
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: "Server error"});
     }
 });
+
+
 
 
 /**
@@ -6169,6 +6189,46 @@ router.post ('/send-message', async (req, res) => {
         res.status (500).json ({error: 'An error occurred while sending the message'});
     }
 });
+
+/**
+ * @swagger
+ * /users/mark-as-read/{userId}:
+ *   put:
+ *     tags:
+ *       - User
+ *     summary: Mark all notifications as read for a specific user
+ *     description: Mark all notifications as read for a user with the specified userId.
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: ID of the user whose notifications will be marked as read
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: All notifications marked as read successfully.
+ *       500:
+ *         description: An error occurred while marking notifications as read.
+ */
+// Route to mark all notifications of a particular user as read
+router.put ('/mark-as-read/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try { // Update all notifications where the recipient matches the userId
+        await Notification.updateMany ({
+            recipient: userId
+        }, {
+            $set: {
+                isRead: true
+            }
+        });
+        res.status (200).json ({message: 'All notifications marked as read successfully.'});
+    } catch (error) {
+        res.status (500).json ({error: 'An error occurred while marking notifications as read.'});
+    }
+});
+
 
 
 module.exports = router;
