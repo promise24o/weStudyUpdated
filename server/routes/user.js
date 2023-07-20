@@ -4962,12 +4962,12 @@ router.get ('/posts/media/:type/:userId', async (req, res) => {
  *                   example: Failed to submit mentor application
  */
 
-router.post ('/become-mentor/:userId', (req, res) => {
+router.post ('/become-mentor/:userId', async (req, res) => {
     const userId = req.params.userId;
 
-    // Check if the user exists
-    User.findById (userId).then ( (user) => {
-        if (!user) {
+    try { // Check if the user exists
+        const user = await User.findById (userId);
+        if (! user) {
             return res.status (404).json ({error: 'User not found'});
         }
 
@@ -4988,30 +4988,44 @@ router.post ('/become-mentor/:userId', (req, res) => {
             return res.status (400).json ({error: 'Please fill in all required fields.'});
         }
 
-        // Create a new mentor application instance
-        const mentorApplication = new MentorApplication ({
-            userId,
-            skills,
-            faculty,
-            about: briefDescription,
-            reason: mentorshipReason,
-            linkedin: linkedinProfile,
-            facebook: facebookUsername,
-            twitterHandle,
-            googleMeet
-        });
+        // Check if the user already has an application
+        let mentorApplication = await MentorApplication.findOne ({userId});
+
+        if (mentorApplication) { // If application exists, update it
+            mentorApplication.skills = skills;
+            mentorApplication.faculty = faculty;
+            mentorApplication.about = briefDescription;
+            mentorApplication.reason = mentorshipReason;
+            mentorApplication.linkedin = linkedinProfile;
+            mentorApplication.facebook = facebookUsername;
+            mentorApplication.twitterHandle = twitterHandle;
+            mentorApplication.googleMeet = googleMeet;
+        } else { // If application does not exist, create a new one
+            mentorApplication = new MentorApplication ({
+                userId,
+                skills,
+                faculty,
+                about: briefDescription,
+                reason: mentorshipReason,
+                linkedin: linkedinProfile,
+                facebook: facebookUsername,
+                twitterHandle,
+                googleMeet
+            });
+        }
 
         // Save the mentor application to the database
-        mentorApplication.save ().then ( () => {
-            res.json ({message: 'Mentor application submitted successfully'});
-        }).catch ( (error) => {
-            console.error (error);
-            res.status (500).json ({error: 'Failed to submit mentor application'});
-        });
-    }).catch ( (error) => {
+        await mentorApplication.save ();
+
+        // Update the isMentorStatus of the user to "Application Submitted"
+        user.isMentorStatus = "Application Submitted";
+        await user.save ();
+
+        res.json ({message: 'Mentor application submitted successfully'});
+    } catch (error) {
         console.error (error);
-        res.status (500).json ({error: 'Failed to check user existence'});
-    });
+        res.status (500).json ({error: 'Failed to submit mentor application'});
+    }
 });
 
 /**
@@ -6229,6 +6243,121 @@ router.put ('/mark-as-read/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/search/people/{query}:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: Search for users by firstname, lastname, or username
+ *     description: Retrieve a list of users that match the given search query.
+ *     parameters:
+ *       - name: query
+ *         in: path
+ *         description: The search query to find users by firstname, lastname, or username
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success response with the list of users matching the search query.
+ *         schema:
+ *           type: array
+ *           items:
+ *             $ref: "#/definitions/User"
+ *       500:
+ *         description: An error occurred while searching for users.
+ */
+
+router.get ('/search/people/:query', async (req, res) => {
+    const {query} = req.params;
+
+    try {
+        const searchResults = await User.find ({
+            $or: [
+                {
+                    $or: [
+                        {
+                            firstname: {
+                                $regex: query,
+                                $options: 'i'
+                            }
+                        }, {
+                            lastname: {
+                                $regex: query,
+                                $options: 'i'
+                            }
+                        },
+                    ]
+                }, { // Case-insensitive search for both firstname and lastname
+                    'liveFeedSettings.username': {
+                        $regex: query,
+                        $options: 'i'
+                    }
+                }, // Case-insensitive search for username
+            ]
+        }).select ('-password -token');
+
+        res.json (searchResults);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while searching for users'});
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/search/posts/{query}:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: Search for posts by content or comments
+ *     description: Retrieve a list of posts that match the given search query in their content or comments.
+ *     parameters:
+ *       - name: query
+ *         in: path
+ *         description: The search query to find posts by content or comments
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success response with the list of posts matching the search query.
+ *         schema:
+ *           type: array
+ *           items:
+ *             $ref: "#/definitions/Post"
+ *       500:
+ *         description: An error occurred while searching for posts.
+ */
+
+router.get ('/search/posts/:query', async (req, res) => {
+    const {query} = req.params;
+
+    try {
+        const posts = await Post.find ({
+            $or: [
+                {
+                    content: {
+                        $regex: query,
+                        $options: 'i'
+                    }
+                }, { // Case-insensitive search for content
+                    'comments.text': {
+                        $regex: query,
+                        $options: 'i'
+                    }
+                }, // Case-insensitive search for comments
+            ]
+        }).populate ('userId', 'firstname lastname profilePhoto');
+
+        res.json (posts);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while searching for posts'});
+    }
+});
 
 
 module.exports = router;
