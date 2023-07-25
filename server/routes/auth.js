@@ -491,7 +491,7 @@ router.get("/user/:token", auth, async (req, res) => {
  *   get:
  *     summary: Get Donor by Token
  *     tags:
- *       - Donors
+ *       - Authentication
  *     parameters:
  *       - in: path
  *         name: token
@@ -1372,6 +1372,40 @@ router.post("/verify-mentor-otp", async (req, res) => {
   }
 });
 
+
+/**
+ * @swagger
+ * /auth/verify-donor-otp:
+ *   post:
+ *     summary: Verify Donor OTP
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: The email address of the donor
+ *               otp:
+ *                 type: string
+ *                 description: The OTP to be verified
+ *             required:
+ *               - email
+ *               - otp
+ *     responses:
+ *       '200':
+ *         description: OTP verified successfully, donor status updated to Active
+ *       '400':
+ *         description: Invalid OTP or OTP has expired
+ *       '404':
+ *         description: Donor not found
+ *       '500':
+ *         description: An error occurred while verifying the OTP
+ */
 
 router.post ("/verify-donor-otp", async (req, res) => {
     try {
