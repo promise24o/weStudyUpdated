@@ -3916,7 +3916,6 @@ router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
 
 
 // GET route to fetch all posts sorted by the latest
-// Function to shuffle the array randomly
 const shuffleArray = (array) => {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor (Math.random () * (i + 1));
@@ -3935,8 +3934,32 @@ router.get ("/posts", async (req, res) => {
         // and populate the 'userId' field
         const posts = await Post.find ().sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto personal");
 
-        // Shuffle the posts array randomly
-        const shuffledPosts = shuffleArray (posts);
+        // Separate new posts from older posts
+        const newPosts = [];
+        const olderPosts = [];
+        const currentTime = new Date ();
+
+        posts.forEach ( (post) => { // Define a threshold duration to consider a post as new (e.g., 24 hours)
+            const thresholdDuration = 24 * 60 * 60 * 1000;
+            // 24 hours in milliseconds
+
+            // Check if the post is newer than the threshold
+            const timeDifference = currentTime - post.createdAt;
+            if (timeDifference < thresholdDuration) {
+                newPosts.push (post);
+            } else {
+                olderPosts.push (post);
+            }
+        });
+
+        // Shuffle the older posts array randomly
+        const shuffledOlderPosts = shuffleArray (olderPosts);
+
+        // Concatenate the new posts at the beginning of the shuffled older posts array
+        const shuffledPosts = [
+            ... newPosts,
+            ... shuffledOlderPosts
+        ];
 
         res.status (200).json (shuffledPosts);
     } catch (error) {
@@ -3945,7 +3968,51 @@ router.get ("/posts", async (req, res) => {
     }
 });
 
+router.get ("/posts-by-type", async (req, res) => {
+    const page = req.query.page || 1; // Get the page number from the query parameter (default to page 1 if not provided)
+    const limit = 10; // Define the number of posts to return per page
+    const skip = (page - 1) * limit; // Calculate the number of posts to skip based on the page number
 
+    const type = req.query.type || 'video'; // Get the media type from the query parameter (default to 'video' if not provided)
+
+    try {
+        // Retrieve posts from the database based on the media type,
+        // sort by 'createdAt' field in descending order, and populate the 'userId' field
+        const posts = await Post.find ({'media.type': type}).sort ({createdAt: -1}).populate ('userId', 'firstname lastname profilePhoto personal').limit (limit).skip (skip);
+
+        // Separate new posts from older posts
+        const newPosts = [];
+        const olderPosts = [];
+        const currentTime = new Date ();
+
+        posts.forEach ( (post) => { // Define a threshold duration to consider a post as new (e.g., 24 hours)
+            const thresholdDuration = 24 * 60 * 60 * 1000;
+            // 24 hours in milliseconds
+
+            // Check if the post is newer than the threshold
+            const timeDifference = currentTime - post.createdAt;
+            if (timeDifference < thresholdDuration) {
+                newPosts.push (post);
+            } else {
+                olderPosts.push (post);
+            }
+        });
+
+        // Shuffle the older posts array randomly
+        const shuffledOlderPosts = shuffleArray (olderPosts);
+
+        // Concatenate the new posts at the beginning of the shuffled older posts array
+        const shuffledPosts = [
+            ... newPosts,
+            ... shuffledOlderPosts
+        ];
+
+        res.status (200).json (shuffledPosts);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'Server error'});
+    }
+});
 
 
 /**
@@ -5851,23 +5918,66 @@ router.get ('/friends/:userId', async (req, res) => {
 
 
 // Route to get all messages of a user
+// router.get ('/messages/user/:userId', async (req, res) => {
+//     try {
+//         const userId = req.params.userId;
+//         const messages = await Chat.find ({
+//             $or: [
+//                 {
+//                     'sender': userId
+//                 }, {
+//                     'receiver': userId
+//                 },
+//             ]
+//         }).sort ({timeSent: 1});
+//         res.status (200).json (messages);
+//     } catch (error) {
+//         res.status (500).json ({error: 'Failed to fetch messages'});
+//     }
+// });
+
+
 router.get ('/messages/user/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
+
+        // Find all chat messages where the user is either the sender or receiver
         const messages = await Chat.find ({
             $or: [
                 {
-                    'sender': userId
+                    sender: userId
                 }, {
-                    'receiver': userId
-                },
+                    receiver: userId
+                }
             ]
         }).sort ({timeSent: 1});
-        res.status (200).json (messages);
+
+        // Create an array to store promises for populating sender and receiver details
+        const populatePromises = messages.map (async (message) => { // Determine the model type (user or mentor) for both sender and receiver
+            const senderModel = message.senderModel;
+            const receiverModel = message.receiverModel;
+
+            // Find the sender details based on the senderModel
+            const senderDetails = senderModel === 'user' ? await User.findById (message.sender, 'firstname lastname profilePhoto') : await Mentors.findById (message.sender, 'fullname avatar');
+
+            // Find the receiver details based on the receiverModel
+            const receiverDetails = receiverModel === 'user' ? await User.findById (message.receiver, 'firstname lastname profilePhoto') : await Mentors.findById (message.receiver, 'fullname avatar');
+
+            // Update the message object with populated sender and receiver details
+            message.sender = senderDetails;
+            message.receiver = receiverDetails;
+            return message;
+        });
+
+        // Wait for all the populate promises to resolve
+        const populatedMessages = await Promise.all (populatePromises);
+
+        res.status (200).json (populatedMessages);
     } catch (error) {
         res.status (500).json ({error: 'Failed to fetch messages'});
     }
 });
+
 
 /**
  * @swagger
