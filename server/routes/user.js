@@ -3961,12 +3961,24 @@ router.get ("/posts", async (req, res) => {
             ... shuffledOlderPosts
         ];
 
-        res.status (200).json (shuffledPosts);
+        // Check if the userId in each post is valid before sending the response
+        const populatedPosts = await Promise.all (shuffledPosts.map (async (post) => {
+            if (mongoose.isValidObjectId (post.userId)) {
+                return post;
+            }
+            return null; // Return null for posts with userId: null
+        }));
+
+        const filteredPosts = populatedPosts.filter ( (post) => post !== null);
+        
+        res.status (200).json (filteredPosts);
+
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: "Server error"});
     }
 });
+
 
 router.get ("/posts-by-type", async (req, res) => {
     const page = req.query.page || 1; // Get the page number from the query parameter (default to page 1 if not provided)
@@ -4006,8 +4018,17 @@ router.get ("/posts-by-type", async (req, res) => {
             ... newPosts,
             ... shuffledOlderPosts
         ];
+         const populatedPosts = await Promise.all (shuffledPosts.map (async (post) => {
+            if (mongoose.isValidObjectId (post.userId)) {
+                return post;
+            }
+            return null; // Return null for posts with userId: null
+        }));
 
-        res.status (200).json (shuffledPosts);
+        const filteredPosts = populatedPosts.filter ( (post) => post !== null);
+        
+        res.status (200).json (filteredPosts);
+
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'Server error'});
@@ -5562,8 +5583,17 @@ router.get ('/all-friend-requests/:userId', async (req, res) => {
     try {
         const {userId} = req.params;
 
-        // Find all friend requests where the user is the receiver and the status is 'pending'
-        const friendRequests = await FriendRequest.find ({receiver: userId, status: 'pending'}).populate ('sender', 'firstname lastname profilePhoto personal')
+        // Find all friend requests where the user is either the receiver or the sender and the status is 'pending'
+        const friendRequests = await FriendRequest.find ({
+            $or: [
+                {
+                    receiver: userId
+                }, {
+                    sender: userId
+                }
+            ],
+            status: 'pending'
+        }).populate ('sender', 'firstname lastname profilePhoto personal').populate ('receiver', 'firstname lastname profilePhoto personal');
 
         res.status (200).json ({friendRequests});
     } catch (error) {

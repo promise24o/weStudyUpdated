@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models/Users');
 const { Mentors } = require('../models/Mentors');
 const Admin = require('../models/Admin');
+const Donors = require('../models/Donors');
 
 const auth = async (req, res, next) => {
     try { // Get token from header
@@ -20,12 +21,17 @@ const auth = async (req, res, next) => {
         // Find user with token and token value in User schema
         user = await User.findOne ({_id: decoded._id, token});
 
-        // If user not found, search in Mentor schema
+        // If user not found, search in Mentors schema
         if (! user) {
             user = await Mentors.findOne ({_id: decoded._id, token});
         }
 
-        // If user or mentor not found, throw error
+        // If user still not found, search in Donors schema
+        if (! user) {
+            user = await Donors.findOne ({_id: decoded._id, token});
+        }
+
+        // If user or mentor or donor not found, throw error
         if (! user) {
             throw new Error ();
         }
@@ -38,6 +44,7 @@ const auth = async (req, res, next) => {
         res.status (401).send ({error: 'Authentication Failed'});
     }
 };
+
 
 
 const auth2 = async(req, res, next) => { // Get the token from the request headers

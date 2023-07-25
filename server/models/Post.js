@@ -67,6 +67,26 @@ const postSchema = new mongoose.Schema ({
     }
 });
 
+// Add pre and post middleware to cascade nullify userId reference in Post schema when a user is deleted
+// postSchema.pre ('findOneAndRemove', async function (next) {
+//     const post = this;
+//     try { // Check if the post has a userId
+//         if (post.userId) { // Use the userId to find the corresponding user
+//             const user = await mongoose.model ('Users').findOne ({_id: post.userId});
+
+//             // If the user is found, remove the post reference from their posts array
+//             if (user) {
+//                 user.posts.pull (post._id);
+//                 await user.save ();
+//             }
+//         }
+//         next ();
+//     } catch (error) {
+//         next (error);
+//     }
+// });
+
+
 const Post = mongoose.model ('Post', postSchema);
 
 module.exports = Post;

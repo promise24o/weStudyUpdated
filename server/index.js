@@ -93,7 +93,8 @@ io.on ('connection', (socket) => {
             } else if (userType === "mentor") {
                 await Mentors.findByIdAndUpdate (userId, {onlineStatus: true});
             }
-            console.log (`${userType} with ID ${userId} online status updated as true.`);
+            socket.broadcast.emit ("userOnline", {userId});
+            console.log (`${userType} with ID ${userId} is online.`);
         } catch (error) {
             console.error ("Error updating online status:", error);
         }
@@ -107,14 +108,14 @@ io.on ('connection', (socket) => {
         if (socketId) {
             socket.leave (socketId);
             console.log (`Socket ${socketId} leaves chat room: ${userId}`);
-
             try {
                 if (userType === "user") {
                     await User.findByIdAndUpdate (userId, {"liveFeedSettings.onlineStatus": false});
                 } else if (userType === "mentor") {
                     await Mentors.findByIdAndUpdate (userId, {onlineStatus: false});
                 }
-                console.log (`${userType} with ID ${userId} online status updated as false.`);
+                socket.broadcast.emit ("userOffline", {userId});
+                console.log (`${userType} with ID ${userId} is offline.`);
             } catch (error) {
                 console.error ("Error updating online status:", error);
             }
@@ -182,9 +183,7 @@ io.on ('connection', (socket) => {
         }
     });
 
-    socket.on ("typing", (data) => {
-
-        // Generate a unique room name based on sender and receiver IDs
+    socket.on ("typing", (data) => { // Generate a unique room name based on sender and receiver IDs
         const roomName = `${
             data.sender
         }-${

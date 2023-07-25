@@ -1230,7 +1230,7 @@ router.post("/mentor-login", async (req, res) => {
  *                         phoneNumber:
  *                           type: string
  *                           description: The phone number of the donor
- *                         // Add other properties of the donor here
+ *                          
  *                 message:
  *                   type: string
  *                   description: A success message indicating successful login
