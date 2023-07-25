@@ -484,6 +484,140 @@ router.get("/user/:token", auth, async (req, res) => {
   }
 });
 
+
+/**
+ * @swagger
+ * /auth/donor/{token}:
+ *   get:
+ *     summary: Get Donor by Token
+ *     tags:
+ *       - Donors
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The authentication token of the donor
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Successful operation. Returns the donor details.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DonorResponse'
+ *       '404':
+ *         description: Donor not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: The error message.
+ *       '500':
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: The error message.
+ * components:
+ *   schemas:
+ *     DonorResponse:
+ *       type: object
+ *       properties:
+ *         fullname:
+ *           type: string
+ *           description: The fullname of the donor.
+ *         gender:
+ *           type: string
+ *           description: The gender of the donor.
+ *         avatar:
+ *           type: string
+ *           description: The avatar of the donor.
+ *         bio:
+ *           type: string
+ *           description: The bio of the donor.
+ *         email:
+ *           type: string
+ *           description: The email of the donor.
+ *         phone:
+ *           type: string
+ *           description: The phone number of the donor.
+ *         city:
+ *           type: string
+ *           description: The city of the donor.
+ *         country:
+ *           type: string
+ *           description: The country of the donor.
+ *         linkedin:
+ *           type: string
+ *           description: The LinkedIn profile of the donor.
+ *         twitter:
+ *           type: string
+ *           description: The Twitter profile of the donor.
+ *         facebook:
+ *           type: string
+ *           description: The Facebook profile of the donor.
+ *         status:
+ *           type: string
+ *           enum: [Pending, Active, Suspended]
+ *           description: The status of the donor.
+ *         rating:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               review:
+ *                 type: string
+ *                 description: The review of the donor.
+ *               rating:
+ *                 type: number
+ *                 description: The rating given by the user.
+ *               user:
+ *                 $ref: '#/components/schemas/User'
+ *                 description: The user who provided the rating.
+ *               createdAt:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The date and time when the rating was created.
+ *     User:
+ *       type: object
+ *       properties:
+ *         firstname:
+ *           type: string
+ *           description: The firstname of the user.
+ *         lastname:
+ *           type: string
+ *           description: The lastname of the user.
+ *         profilePhoto:
+ *           type: string
+ *           description: The profile photo of the user.
+ */
+
+
+router.get ("/donor/:token", auth, async (req, res) => {
+    try {
+        const donor = await Donors.findOne ({token: req.params.token}).select ("-password -token").populate ("rating.user", "firstname lastname profilePhoto");
+
+        if (! donor) {
+            return res.status (404).json ({message: "Donor not found"});
+        }
+
+        res.status (200).json (donor);
+    } catch (error) {
+        res.status (500).json ({message: error.message});
+    }
+});
+
+
 /**
  * @swagger
  * /auth/mentor/{token}:
@@ -733,6 +867,67 @@ router.post("/register-mentor", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /register-donor:
+ *   post:
+ *     summary: Register a new Donor
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullname:
+ *                 type: string
+ *                 description: The full name of the donor
+ *               email:
+ *                 type: string
+ *                 description: The email address of the donor
+ *               password:
+ *                 type: string
+ *                 description: The password for the donor's account
+ *             required:
+ *               - fullname
+ *               - email
+ *               - password
+ *     responses:
+ *       '200':
+ *         description: Donor registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A success message indicating that the donor's account has been created successfully
+ *       '400':
+ *         description: Invalid input data or email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating the cause of the failure
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating the cause of the failure
+ */
+
+
 // Route: /register-donor
 router.post("/register-donor", async (req, res) => {
   try {
@@ -979,6 +1174,88 @@ router.post("/mentor-login", async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /auth/donor-login:
+ *   post:
+ *     summary: Donor Login
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: The email address of the donor
+ *               password:
+ *                 type: string
+ *                 description: The password of the donor
+ *             required:
+ *               - email
+ *               - password
+ *     responses:
+ *       '200':
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                       description: The JWT token for the donor
+ *                     accountType:
+ *                       type: string
+ *                       description: The account type (e.g., "donor")
+ *                     donor:
+ *                       type: object
+ *                       description: The donor details excluding the password and token
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                           description: The unique ID of the donor
+ *                         email:
+ *                           type: string
+ *                           description: The email address of the donor
+ *                         name:
+ *                           type: string
+ *                           description: The name of the donor
+ *                         phoneNumber:
+ *                           type: string
+ *                           description: The phone number of the donor
+ *                         // Add other properties of the donor here
+ *                 message:
+ *                   type: string
+ *                   description: A success message indicating successful login
+ *       '400':
+ *         description: Invalid email address or password
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating the cause of the failure
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating the cause of the failure
+ */
+
 
 router.post ("/donor-login", async (req, res) => {
     try {
@@ -1211,6 +1488,59 @@ router.post("/mentor-request-otp", async (req, res) => {
       .json({ message: "An error occurred while requesting the OTP" });
   }
 });
+
+
+/**
+ * @swagger
+ * /auth/donor-request-otp:
+ *   post:
+ *     summary: Request OTP for Donor
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: The email address of the donor
+ *             required:
+ *               - email
+ *     responses:
+ *       '200':
+ *         description: OTP request successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A success message indicating that a new OTP has been sent successfully
+ *       '400':
+ *         description: Invalid email or email not found in Donors collection
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating the cause of the failure
+ *       '500':
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message indicating the cause of the failure
+ */
 
 router.post ("/donor-request-otp", async (req, res) => {
     try {
