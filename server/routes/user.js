@@ -3970,7 +3970,7 @@ router.get ("/posts", async (req, res) => {
         }));
 
         const filteredPosts = populatedPosts.filter ( (post) => post !== null);
-        
+
         res.status (200).json (filteredPosts);
 
     } catch (error) {
@@ -4018,7 +4018,7 @@ router.get ("/posts-by-type", async (req, res) => {
             ... newPosts,
             ... shuffledOlderPosts
         ];
-         const populatedPosts = await Promise.all (shuffledPosts.map (async (post) => {
+        const populatedPosts = await Promise.all (shuffledPosts.map (async (post) => {
             if (mongoose.isValidObjectId (post.userId)) {
                 return post;
             }
@@ -4026,7 +4026,7 @@ router.get ("/posts-by-type", async (req, res) => {
         }));
 
         const filteredPosts = populatedPosts.filter ( (post) => post !== null);
-        
+
         res.status (200).json (filteredPosts);
 
     } catch (error) {
@@ -5725,39 +5725,36 @@ router.delete ('/unfriend/:requestId', async (req, res) => {
  *                   type: string
  */
 
-router.get ('/count-mutual-friends/:user1Id/:user2Id', async (req, res) => {
+router.get ('/count-mutual-friends/:requestId', async (req, res) => {
     try {
-        const {user1Id, user2Id} = req.params;
+        const {requestId} = req.params;
 
-        // Find user1
-        const user1 = await User.findById (user1Id).populate ('friends.userId');
+        // Find the friend request
+        const friendRequest = await FriendRequest.findById (requestId);
 
-        if (! user1) {
-            return res.status (404).json ({error: 'User1 not found'});
+        if (! friendRequest) {
+            return res.status (404).json ({error: 'Friend request not found'});
         }
 
-        // Find user2
-        const user2 = await User.findById (user2Id).populate ('friends.userId');
+        // Find the receiver and sender of the friend request and populate their friends field
+        const receiver = await User.findById (friendRequest.receiver).populate ('friends');
+        const sender = await User.findById (friendRequest.sender).populate ('friends');
 
-        if (! user2) {
-            return res.status (404).json ({error: 'User2 not found'});
-        }
+        // Get the list of sender's friend userIds
+        const senderFriendIds = sender.friends.map ( (friend) => friend.userId.toString ());
 
-        // Get the list of user1's friend userIds
-        const user1FriendIds = user1.friends.map ( (friend) => friend.userId.toString ());
-
-        // Get the list of user2's friend userIds
-        const user2FriendIds = user2.friends.map ( (friend) => friend.userId.toString ());
+        // Get the list of receiver's friend userIds
+        const receiverFriendIds = receiver.friends.map ( (friend) => friend.userId.toString ());
 
         // Calculate the mutual friends count
-        const mutualFriendsCount = user1FriendIds.filter ( (friendId) => user2FriendIds.includes (friendId)).length;
-
+        const mutualFriendsCount = senderFriendIds.filter ( (friendId) => receiverFriendIds.includes (friendId)).length;
         res.status (200).json ({mutualFriendsCount});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred while retrieving mutual friends count'});
     }
 });
+
 
 /**
  * @swagger
@@ -6385,7 +6382,7 @@ router.put ('/mark-as-read/:userId', async (req, res) => {
 
 /**
  * @swagger
- * /users/search/people/{query}:
+ * /users/search/people-app/{query}:
  *   get:
  *     tags:
  *       - User
@@ -6437,6 +6434,42 @@ router.get ('/search/people/:query', async (req, res) => {
                 }, // Case-insensitive search for username
             ]
         }).select ('-password -token');
+
+        res.json (searchResults);
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while searching for users'});
+    }
+});
+
+router.get ('/search/people-app/:query', async (req, res) => {
+    const {query} = req.params;
+
+    try {
+        const searchResults = await User.find ({
+            $or: [
+                {
+                    $or: [
+                        {
+                            firstname: {
+                                $regex: query,
+                                $options: 'i'
+                            }
+                        }, {
+                            lastname: {
+                                $regex: query,
+                                $options: 'i'
+                            }
+                        },
+                    ]
+                }, { // Case-insensitive search for both firstname and lastname
+                    'liveFeedSettings.username': {
+                        $regex: query,
+                        $options: 'i'
+                    }
+                }, // Case-insensitive search for username
+            ]
+        }).select ('firstname lastname profilePhoto'); // Only select the specified fields
 
         res.json (searchResults);
     } catch (error) {
