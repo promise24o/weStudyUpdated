@@ -285,11 +285,11 @@ router.post("/login", async (req, res) => {
 
 router.post("/register", async (req, res) => {
   try {
-    // const { error } = validate(req.body);
-    // if (error)
-    //     return res.status(400).send({ message: error.details[0].message });
+    const fullname = req.body.firstname + " " + req.body.lastname;
+    const email = req.body.email;
 
     let user = await User.findOne({ email: req.body.email });
+
     if (user)
       return res
         .status(409)
@@ -303,29 +303,27 @@ router.post("/register", async (req, res) => {
       password: hashPassword,
       accountType: "user",
     }).save();
-    const token = await new Token({
-      userId: user._id,
-      token: crypto.randomBytes(32).toString("hex"),
-    }).save();
 
     // construct the file path using the path.join() method
-    const filePath = path.join(__dirname, "..", "emails", "verify_email.ejs");
+    const filePath = path.join(__dirname, "..", "emails", "otp_user.ejs");
 
     // read the HTML content from a file
     let template = fs.readFileSync(filePath, "utf8");
 
-    const urlLink = `${process.env.CLIENT_BASE_URL}/users/${user._id}/verify/${token.token}`;
+    // Generate a 6-digit random number as OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    const otpData = new OTP({ email, otp });
+    await otpData.save();
 
     // compile the EJS template with the url variable
-    let html = ejs.render(template, { url: urlLink });
+    let html = ejs.render(template, { otp, fullname });
 
-    await sendEmail(user.email, "Verify Email", html);
+    await sendEmail(user.email, "Verify Account", html);
 
-    res
-      .status(201)
-      .send({
-        message: "Account Created Successfully! Visit Email to Verify Account",
-      });
+    res.status(201).send({
+      message: "Account Created Successfully! Visit Email for OTP Verification",
+    });
   } catch (error) {
     res.status(500).send({ message: "Internal Server Error", error: error });
   }
@@ -484,7 +482,6 @@ router.get("/user/:token", auth, async (req, res) => {
   }
 });
 
-
 /**
  * @swagger
  * /auth/donor/{token}:
@@ -602,21 +599,21 @@ router.get("/user/:token", auth, async (req, res) => {
  *           description: The profile photo of the user.
  */
 
+router.get("/donor/:token", auth, async (req, res) => {
+  try {
+    const donor = await Donors.findOne({ token: req.params.token })
+      .select("-password -token")
+      .populate("rating.user", "firstname lastname profilePhoto");
 
-router.get ("/donor/:token", auth, async (req, res) => {
-    try {
-        const donor = await Donors.findOne ({token: req.params.token}).select ("-password -token").populate ("rating.user", "firstname lastname profilePhoto");
-
-        if (! donor) {
-            return res.status (404).json ({message: "Donor not found"});
-        }
-
-        res.status (200).json (donor);
-    } catch (error) {
-        res.status (500).json ({message: error.message});
+    if (!donor) {
+      return res.status(404).json({ message: "Donor not found" });
     }
-});
 
+    res.status(200).json(donor);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 /**
  * @swagger
@@ -817,11 +814,9 @@ router.post("/register-mentor", async (req, res) => {
     // Check if the email already exists in Mentors collection
     const existingMentor = await Mentors.findOne({ email });
     if (existingMentor) {
-      return res
-        .status(400)
-        .json({
-          message: "Email already exists. Please choose a different email.",
-        });
+      return res.status(400).json({
+        message: "Email already exists. Please choose a different email.",
+      });
     }
 
     // Check if the email already exists in User collection
@@ -927,7 +922,6 @@ router.post("/register-mentor", async (req, res) => {
  *                   description: An error message indicating the cause of the failure
  */
 
-
 // Route: /register-donor
 router.post("/register-donor", async (req, res) => {
   try {
@@ -945,11 +939,9 @@ router.post("/register-donor", async (req, res) => {
     // Check if the email already exists in Mentors collection
     const existingDonor = await Donors.findOne({ email });
     if (existingDonor) {
-      return res
-        .status(400)
-        .json({
-          message: "Email already exists. Please choose a different email.",
-        });
+      return res.status(400).json({
+        message: "Email already exists. Please choose a different email.",
+      });
     }
 
     // // Check if the email already exists in User collection
@@ -1173,7 +1165,6 @@ router.post("/mentor-login", async (req, res) => {
   }
 });
 
-
 /**
  * @swagger
  * /auth/donor-login:
@@ -1230,7 +1221,7 @@ router.post("/mentor-login", async (req, res) => {
  *                         phoneNumber:
  *                           type: string
  *                           description: The phone number of the donor
- *                          
+ *
  *                 message:
  *                   type: string
  *                   description: A success message indicating successful login
@@ -1256,45 +1247,45 @@ router.post("/mentor-login", async (req, res) => {
  *                   description: An error message indicating the cause of the failure
  */
 
+router.post("/donor-login", async (req, res) => {
+  try {
+    const { error } = validate(req.body);
+    if (error)
+      return res.status(400).send({ message: error.details[0].message });
 
-router.post ("/donor-login", async (req, res) => {
-    try {
-        const {error} = validate (req.body);
-        if (error) 
-            return res.status (400).send ({message: error.details[0].message});
-        
+    const donor = await Donors.findOne({ email: req.body.email });
 
-        const donor = await Donors.findOne ({email: req.body.email});
+    if (!donor)
+      return res.status(400).send({ message: "Invalid Email Address" });
 
-        if (! donor) 
-            return res.status (400).send ({message: "Invalid Email Address"});
-        
+    const validPassword = await bcrypt.compare(
+      req.body.password,
+      donor.password
+    );
 
-        const validPassword = await bcrypt.compare (req.body.password, donor.password);
+    if (!validPassword)
+      return res.status(400).send({ message: "Invalid Password" });
 
-        if (! validPassword) 
-            return res.status (400).send ({message: "Invalid Password"});
-        
+    const token = await donor.generateAuthToken();
 
-        const token = await donor.generateAuthToken ();
+    // Update donorWithoutPassword object to include the status property
+    const donorWithoutPassword = await Donors.findOne({
+      _id: donor._id,
+    }).select("-password -token");
 
-        // Update donorWithoutPassword object to include the status property
-        const donorWithoutPassword = await Donors.findOne ({_id: donor._id}).select ("-password -token");
-
-        res.status (200).send ({
-            data: {
-                token: token,
-                accountType: "donor",
-                donor: donorWithoutPassword
-            },
-            message: "Login Successfully!"
-        });
-    } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
-        console.error (error);
-    }
+    res.status(200).send({
+      data: {
+        token: token,
+        accountType: "donor",
+        donor: donorWithoutPassword,
+      },
+      message: "Login Successfully!",
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error", error: error });
+    console.error(error);
+  }
 });
-
 
 /**
  * @swagger
@@ -1348,14 +1339,6 @@ router.post("/verify-mentor-otp", async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // Check if the OTP is expired
-    const currentTime = new Date();
-    if (otpRecord.expiryTime < currentTime) {
-      // Remove the expired OTP record
-      await OTP.deleteOne({ email, otp });
-      return res.status(400).json({ message: "OTP has expired" });
-    }
-
     // Update the mentor's status to Profile Pending
     mentor.status = "Profile Pending";
     await mentor.save();
@@ -1370,6 +1353,71 @@ router.post("/verify-mentor-otp", async (req, res) => {
       .status(500)
       .json({ message: "An error occurred while verifying the OTP" });
   }
+});
+
+/**
+ * @swagger
+ * /auth/verify-user-otp:
+ *   post:
+ *     summary: Verify User OTP
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: The email address of the user
+ *               otp:
+ *                 type: string
+ *                 description: The OTP to be verified
+ *             required:
+ *               - email
+ *               - otp
+ *     responses:
+ *       '200':
+ *         description: OTP verified successfully
+ *       '400':
+ *         description: Invalid OTP or user not found
+ *       '500':
+ *         description: An error occurred while verifying the OTP
+ */
+
+
+router.post ("/verify-user-otp", async (req, res) => {
+    try {
+        const {email, otp} = req.body;
+
+        // Find the user by email
+        const user = await User.findOne ({email});
+
+        if (! user) {
+            return res.status (404).json ({message: "User not found"});
+        }
+
+        // Find the OTP record in the OTP schema
+        const otpRecord = await OTP.findOne ({email, otp});
+
+        if (! otpRecord) {
+            return res.status (400).json ({message: "Invalid OTP"});
+        }
+
+        // Update the user's status to Profile Pending (or any other status as needed)
+        user.verified = true;
+        await user.save ();
+
+        // Remove the verified OTP record
+        await OTP.deleteOne ({email, otp});
+
+        res.status (200).json ({message: "OTP verified successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: "An error occurred while verifying the OTP"});
+    }
 });
 
 
@@ -1407,45 +1455,39 @@ router.post("/verify-mentor-otp", async (req, res) => {
  *         description: An error occurred while verifying the OTP
  */
 
-router.post ("/verify-donor-otp", async (req, res) => {
-    try {
-        const {email, otp} = req.body;
+router.post("/verify-donor-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
 
-        // Find the donor by email
-        const donor = await Donors.findOne ({email});
+    // Find the donor by email
+    const donor = await Donors.findOne({ email });
 
-        if (! donor) {
-            return res.status (404).json ({message: "Donor not found"});
-        }
-
-        // Find the OTP record in the OTP schema
-        const otpRecord = await OTP.findOne ({email, otp});
-
-        if (! otpRecord) {
-            return res.status (400).json ({message: "Invalid OTP"});
-        }
-
-        // Check if the OTP is expired
-        const currentTime = new Date ();
-        if (otpRecord.expiryTime < currentTime) { // Remove the expired OTP record
-            await OTP.deleteOne ({email, otp});
-            return res.status (400).json ({message: "OTP has expired"});
-        }
-
-        // Update the donor's status to Active
-        donor.status = "Active";
-        await donor.save ();
-
-        // Remove the verified OTP record
-        await OTP.deleteOne ({email, otp});
-
-        res.status (200).json ({message: "OTP verified successfully"});
-    } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: "An error occurred while verifying the OTP"});
+    if (!donor) {
+      return res.status(404).json({ message: "Donor not found" });
     }
-});
 
+    // Find the OTP record in the OTP schema
+    const otpRecord = await OTP.findOne({ email, otp });
+
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Update the donor's status to Active
+    donor.status = "Active";
+    await donor.save();
+
+    // Remove the verified OTP record
+    await OTP.deleteOne({ email, otp });
+
+    res.status(200).json({ message: "OTP verified successfully" });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "An error occurred while verifying the OTP" });
+  }
+});
 
 /**
  * @swagger
@@ -1523,6 +1565,77 @@ router.post("/mentor-request-otp", async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /auth/user-request-otp:
+ *   post:
+ *     summary: Request User OTP
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: The email address of the user
+ *             required:
+ *               - email
+ *     responses:
+ *       '200':
+ *         description: New OTP sent successfully
+ *       '400':
+ *         description: Email does not exist or is invalid
+ *       '500':
+ *         description: An error occurred while requesting the OTP
+ */
+router.post ("/user-request-otp", async (req, res) => {
+    try {
+        const {email} = req.body;
+
+        // Check if the email exists in the Users collection
+        const existingUser = await User.findOne ({email});
+        if (! existingUser) {
+            return res.status (400).json ({message: "Email does not exist. Please enter a valid email."});
+        }
+
+        // Find the OTP document for the email
+        let otpDocument = await OTP.findOne ({email});
+
+        if (! otpDocument) { // If OTP document doesn't exist, create a new one
+            otpDocument = new OTP ({email});
+        }
+
+        // Generate a new 6-digit random number as OTP
+        const otp = Math.floor (100000 + Math.random () * 900000);
+
+        // Update the OTP in the OTP document
+        otpDocument.otp = otp;
+        await otpDocument.save ();
+
+        // construct the file path using the path.join() method
+        const filePath = path.join (__dirname, "..", "emails", "otp_user.ejs");
+
+        // read the HTML content from a file
+        let template = fs.readFileSync (filePath, "utf8");
+
+        const fullname =  existingUser.firstname + " " + existingUser.lastname
+
+        // compile the EJS template with the otp and fullname variables
+        let html = ejs.render (template, {otp, fullname});
+
+        await sendEmail (email, "Verify Account", html);
+
+        res.status (200).json ({message: "New OTP sent successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: "An error occurred while requesting the OTP"});
+    }
+});
+
 
 /**
  * @swagger
@@ -1576,48 +1689,52 @@ router.post("/mentor-request-otp", async (req, res) => {
  *                   description: An error message indicating the cause of the failure
  */
 
-router.post ("/donor-request-otp", async (req, res) => {
-    try {
-        const {email} = req.body;
+router.post("/donor-request-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
 
-        // Check if the email exists in the Donors collection
-        const existingDonor = await Donors.findOne ({email});
-        if (! existingDonor) {
-            return res.status (400).json ({message: "Email does not exist. Please enter a valid email."});
-        }
-
-        // Find the OTP document for the email
-        let otpDocument = await OTP.findOne ({email});
-
-        if (! otpDocument) { // If OTP document doesn't exist, create a new one
-            otpDocument = new OTP ({email});
-        }
-
-        // Generate a new 6-digit random number as OTP
-        const otp = Math.floor (100000 + Math.random () * 900000);
-
-        // Update the OTP in the OTP document
-        otpDocument.otp = otp;
-        await otpDocument.save ();
-
-        // construct the file path using the path.join() method
-        const filePath = path.join (__dirname, "..", "emails", "otp_donor.ejs");
-
-        // read the HTML content from a file
-        let template = fs.readFileSync (filePath, "utf8");
-
-        // compile the EJS template with the otp and fullname variables
-        let html = ejs.render (template, {otp, fullname: existingDonor.fullname});
-
-        await sendEmail (email, "Account Verification", html);
-
-        res.status (200).json ({message: "New OTP sent successfully"});
-    } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: "An error occurred while requesting the OTP"});
+    // Check if the email exists in the Donors collection
+    const existingDonor = await Donors.findOne({ email });
+    if (!existingDonor) {
+      return res
+        .status(400)
+        .json({ message: "Email does not exist. Please enter a valid email." });
     }
-});
 
+    // Find the OTP document for the email
+    let otpDocument = await OTP.findOne({ email });
+
+    if (!otpDocument) {
+      // If OTP document doesn't exist, create a new one
+      otpDocument = new OTP({ email });
+    }
+
+    // Generate a new 6-digit random number as OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    // Update the OTP in the OTP document
+    otpDocument.otp = otp;
+    await otpDocument.save();
+
+    // construct the file path using the path.join() method
+    const filePath = path.join(__dirname, "..", "emails", "otp_donor.ejs");
+
+    // read the HTML content from a file
+    let template = fs.readFileSync(filePath, "utf8");
+
+    // compile the EJS template with the otp and fullname variables
+    let html = ejs.render(template, { otp, fullname: existingDonor.fullname });
+
+    await sendEmail(email, "Account Verification", html);
+
+    res.status(200).json({ message: "New OTP sent successfully" });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "An error occurred while requesting the OTP" });
+  }
+});
 
 // Route to reset mentor password
 router.post("/reset-mentor-password", async (req, res) => {

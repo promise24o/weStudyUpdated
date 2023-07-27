@@ -270,7 +270,7 @@ app.set ('view engine', 'ejs');
 app.use (express.static (path.join (__dirname, 'public')));
 
 app.get ('/otp', (req, res) => {
-    res.render ('otp', {title: 'My Website'});
+    res.render ('otp_user', {title: 'My Website'});
 });
 
 // Connection Port
