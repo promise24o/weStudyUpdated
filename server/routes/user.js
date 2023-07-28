@@ -37,6 +37,7 @@ cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_sec
 
 // Configure Multer to use Cloudinary as the storage engine
 const randomString = crypto.randomBytes (8).toString ('hex');
+
 const storage = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
@@ -3932,7 +3933,13 @@ router.get ("/posts", async (req, res) => {
     try {
         // Retrieve all posts from the database, sort by 'createdAt' field in descending order,
         // and populate the 'userId' field
-        const posts = await Post.find ().sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto personal");
+        const posts = await Post.find ().sort ({createdAt: -1}).populate ({
+            path: "userId", select: "firstname lastname profilePhoto personal verification", // Include the verification field in the populated user data
+            populate: {
+                path: "verification", // Populate the verification field within the user data
+                model: "VerificationBadge", // Replace "VerificationBadge" with the correct model name if different
+            }
+        });
 
         // Separate new posts from older posts
         const newPosts = [];
@@ -4376,13 +4383,27 @@ router.post ("/posts/:postId/comments", async (req, res) => {
 
 router.get ("/posts/:postId", async (req, res) => {
     try {
-        let post = await Post.findById (req.params.postId).populate ("userId", "firstname lastname profilePhoto").populate ({
+        let post = await Post.findById (req.params.postId).populate ({
+            path: "userId", select: "firstname lastname profilePhoto personal verification", // Include the verification field in the populated user data
+            populate: {
+                path: "verification", // Populate the verification field within the user data
+                model: "VerificationBadge", // Replace "VerificationBadge" with the correct model name if different
+            }
+        }).populate ({
+
             path: "comments",
             populate: {
                 path: "user",
                 select: "firstname lastname profilePhoto"
             }
-        }).populate ({path: "comments.replies.user", select: "firstname lastname profilePhoto"});
+        }).populate ({
+            path: "comments.replies.user",
+            select: "firstname lastname profilePhoto",
+            populate: {
+                path: "verification", // Populate the verification field within the user data
+                model: "VerificationBadge", // Replace "VerificationBadge" with the correct model name if different
+            }
+        });
 
         if (! post) {
             return res.status (400).send ({message: "No Post Found"});
@@ -4400,7 +4421,14 @@ router.get ("/user-posts/:userId", async (req, res) => {
         // Retrieve posts of a particular user from the database,
         // sort by 'createdAt' field in descending order,
         // and populate the 'userId' field with 'firstname', 'lastname', and 'profilePhoto'
-        const posts = await Post.find ({userId}).sort ({createdAt: -1}).populate ("userId", "firstname lastname profilePhoto");
+        const posts = await Post.find ({userId}).sort ({createdAt: -1}).populate ({
+            path: "userId", select: "firstname lastname profilePhoto personal verification", // Include the verification field in the populated user data
+            populate: {
+                path: "verification", // Populate the verification field within the user data
+                model: "VerificationBadge", // Replace "VerificationBadge" with the correct model name if different
+            }
+        });
+
 
         res.status (200).json (posts);
     } catch (error) {
@@ -4878,7 +4906,7 @@ router.get ('/author/:id', async (req, res) => {
     const {id} = req.params;
 
     try {
-        const author = await User.findById (id).select ('-token -password').populate ("friends.userId", "firstname lastname profilePhoto");
+        const author = await User.findById (id).select ('-token -password').populate ("friends.userId", "firstname lastname profilePhoto").populate ("verification");
 
         if (! author) {
             return res.status (404).json ({error: 'Author not found'});
@@ -5181,6 +5209,18 @@ router.get ('/notifications/:userId', async (req, res) => {
 
     try {
         const notifications = await Notification.find ({recipient: userId}).populate ("sender", "firstname lastname profilePhoto").sort ({date: -1});
+        res.json ({notifications});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({message: error.message});
+    }
+});
+
+router.get ('/notifications-short/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        const notifications = await Notification.find ({recipient: userId}).populate ("sender", "firstname lastname profilePhoto").sort ({date: -1}).limit (5);
         res.json ({notifications});
     } catch (error) {
         console.error (error);
@@ -6433,7 +6473,7 @@ router.get ('/search/people/:query', async (req, res) => {
                     }
                 }, // Case-insensitive search for username
             ]
-        }).select ('-password -token');
+        }).select ('-password -token').populate ("verification");
 
         res.json (searchResults);
     } catch (error) {

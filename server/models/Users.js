@@ -186,6 +186,10 @@ const userSchema = new mongoose.Schema ({
             type: Boolean,
             default: false
         }
+    },
+    verification: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'VerificationBadge'
     }
 });
 

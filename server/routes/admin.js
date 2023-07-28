@@ -4,11 +4,12 @@ const cloudinary = require ("cloudinary").v2;
 const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const multer = require ("multer");
 
+
 // Models
-const {User, validate} = require ("../models/Users");
+const {User} = require ("../models/Users");
 const {ScholarshipCategory, Scholarship} = require ("../models/Scholarships");
 const {CourseCategory, Course} = require ("../models/Courses");
-const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
+const {MentorFaculty, Mentors} = require ("../models/Mentors");
 const {CommunityCategory, CommunityCenter} = require ("../models/CommunityCenter");
 const Advert = require ("../models/Adverts");
 const gpaSchema = require ("../models/Gpa");
@@ -18,6 +19,7 @@ const Admin = require ("../models/Admin");
 const Institutions = require ("../models/Institutions");
 const MentorApplication = require ("../models/MentorApplication");
 const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMentor");
+const VerificationBadge = require ("../models/VerificationBadge");
 
 // Configure Cloudinary credentials
 cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
@@ -27,8 +29,8 @@ const storage = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/scholarships",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `scholarship-${
+        format: async () => "png",
+        public_id: () => `scholarship-${
             Date.now ()
         }`
     }
@@ -48,8 +50,8 @@ const storage2 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/mentors",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `mentors-${
+        format: async () => "png",
+        public_id: () => `mentors-${
             Date.now ()
         }`
     }
@@ -60,8 +62,8 @@ const storage4 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/community-categories",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `categories-${
+        format: async () => "png",
+        public_id: () => `categories-${
             Date.now ()
         }`
     }
@@ -72,8 +74,8 @@ const storage5 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/community-center",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `community-${
+        format: async () => "png",
+        public_id: () => `community-${
             Date.now ()
         }`
     }
@@ -84,12 +86,13 @@ const storage6 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/adverts",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `adverts-${
+        format: async () => "png",
+        public_id: () => `adverts-${
             Date.now ()
         }`
     }
 });
+// Configure Multer to use Cloudinary as the storage engine
 
 // Create a multer instance with the storage engine and limits (if necessary)
 const upload4 = multer ({
@@ -124,8 +127,8 @@ const storage3 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
         folder: "/courses",
-        format: async (req, file) => "png",
-        public_id: (req, file) => `courses-${
+        format: async () => "png",
+        public_id: () => `courses-${
             Date.now ()
         }`
     }
@@ -172,6 +175,21 @@ const upload6 = multer ({
         height: 800
     }
 });
+
+// Create a multer instance with the storage engine and limits (if necessary)
+const uploadVerification = multer ({
+    storage: storage6,
+    limits: {
+        fileSize: 800 * 800 * 5,
+        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+    },
+    // Resize the uploaded image to 800x800
+    resize: {
+        width: 800,
+        height: 800
+    }
+});
+
 
 router.get ("/", function (req, res) {
     res.send ("Admin Routes");
@@ -423,7 +441,6 @@ router.put ("/update-school-summary/:id", async (req, res) => {
         }
 
         institution.summary = editorContent;
-        const updatedInstitution = await institution.save ();
 
         res.status (201).send ({message: "School Summary Updated Successfully"});
     } catch (err) {
@@ -500,7 +517,6 @@ router.put ("/update-mentor/:id", upload2.single ("file"), async (req, res) => {
             new: true
         }; // return the updated document
 
-        const updated = await Mentors.findByIdAndUpdate (filter, updatedMentor, options);
 
         res.status (201).send ({message: "Mentor Details Updated Successfully"});
     } catch (err) {
@@ -535,7 +551,7 @@ router.post ('/add-institution', async (req, res) => { // Destructure the requir
 
         // Find all institutions and return them on success (status 200)
         const institutions = await Institutions.find ({}).sort ({createdAt: "desc"});
-        res.status (201).send ({message: "Institution Added Successfully", institutions:institutions});
+        res.status (201).send ({message: "Institution Added Successfully", institutions: institutions});
 
     } catch (error) {
         console.error (error);
@@ -604,7 +620,6 @@ router.put ("/update-scholarship/:id", upload.single ("file"), async (req, res) 
             new: true
         }; // return the updated document
 
-        const updated = await Scholarship.findByIdAndUpdate (filter, updatedScholarship, options);
 
         res.status (201).send ({message: "Scholarship Details Updated Successfully"});
     } catch (err) {
@@ -778,7 +793,6 @@ router.put ("/update-course/:id", upload3.single ("file"), async (req, res) => {
             new: true
         }; // return the updated document
 
-        const updated = await Course.findByIdAndUpdate (filter, updatedCourseWithImage, options);
 
         res.status (201).send ({message: "Course Details Updated Successfully"});
     } catch (err) {
@@ -863,7 +877,6 @@ router.put ("/update-community-center-post/:id", upload5.single ("file"), async 
         const options = {
             new: true
         };
-        const updated = await CommunityCenter.findByIdAndUpdate (filter, updatedPost, options);
 
         res.status (200).send ({message: "Post Updated Successfully"});
     } catch (error) {
@@ -1001,6 +1014,16 @@ router.get ("/mentor/:id", async (req, res) => {
     }
 });
 
+router.get ("/user/:id", async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await User.findOne ({_id: userId}).populate ("verification");
+        res.status (200).json ({user});
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
+});
+
 router.get ("/mentors-applications", async (req, res) => {
     try {
         const mentorApplications = await MentorApplication.find ().populate ("userId", "firstname lastname profilePhoto").populate ("faculty");
@@ -1053,7 +1076,6 @@ router.put ('/update-application-status/:id', async (req, res) => {
         mentorApplication.status = status;
         mentorApplication.lastUpdated.push ({admin: adminId, action: `Status updated to ${status}`, dateUpdated: new Date ()});
 
-        const updatedMentorApplication = await mentorApplication.save ();
 
         if (mentorApplication instanceof MentorApplication) {
             const user = await User.findOne ({_id: mentorApplication.userId});
@@ -1185,5 +1207,123 @@ router.delete ('/courses/category', async (req, res) => {
         res.status (500).json ({error: 'An error occurred while deleting category for Courses.'});
     }
 });
+
+
+// Route to add a new VerificationBadge
+router.post ("/verification/add", uploadVerification.single ("logo"), async (req, res) => {
+    try {
+        const {title, description} = req.body;
+        const logo = req.file;
+        // The file object contains the uploaded logo
+
+        // Upload the logo to Cloudinary
+        const result = await cloudinary.uploader.upload (logo.path);
+
+        // Create a new VerificationBadge document
+        const newBadge = new VerificationBadge ({
+            title, description, logo: result.secure_url, // Save the Cloudinary URL in the logo property
+        });
+
+        // Save the new badge to the database
+        await newBadge.save ();
+
+        res.status (201).json ({message: "VerificationBadge added successfully"});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "An error occurred while adding the VerificationBadge"});
+    }
+});
+
+
+// Route to edit a VerificationBadge
+router.put ("/verification/edit/:id", async (req, res) => {
+
+    try {
+        const {id} = req.params;
+        const {title, description, logo} = req.body;
+
+        // Find the VerificationBadge by ID
+        const badge = await VerificationBadge.findById (id);
+
+        if (! badge) {
+            return res.status (404).json ({error: "VerificationBadge not found"});
+        }
+
+        // Update the badge properties
+        badge.title = title;
+        badge.description = description;
+        badge.logo = logo;
+
+        // Save the updated badge to the database
+        await badge.save ();
+
+        res.json ({message: "VerificationBadge updated successfully", badge});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "An error occurred while updating the VerificationBadge"});
+    }
+});
+
+// Route to delete a VerificationBadge
+router.delete ("/verification/delete/:id", async (req, res) => {
+    try {
+        const {id} = req.params;
+
+        // Find the VerificationBadge by ID and remove it
+        const deletedBadge = await VerificationBadge.findByIdAndRemove (id);
+
+        if (! deletedBadge) {
+            return res.status (404).json ({error: "VerificationBadge not found"});
+        }
+
+        res.json ({message: "VerificationBadge deleted successfully", badge: deletedBadge});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "An error occurred while deleting the VerificationBadge"});
+    }
+});
+
+
+// Route to get all VerificationBadges
+router.get ("/verification/all", async (req, res) => {
+    try { // Retrieve all verification badges from the database
+        const badges = await VerificationBadge.find ();
+
+        res.status (200).json ({badges});
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: "An error occurred while fetching the verification badges"});
+    }
+});
+
+
+// Route to update the verification badge of a user
+router.put ('/update-verification-badge/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const {badge} = req.body;
+
+        // Check if the verification badge is empty
+        if (!badge) { // If empty, delete the verification badge from the user
+            await User.findByIdAndUpdate (userId, {
+                $unset: {
+                    verification: 1
+                }
+            });
+            res.status (200).json ({message: 'Verification badge removed successfully'});
+        } else { // If not empty, create or update the verification badge
+            await User.findByIdAndUpdate (userId, {
+                $set: {
+                    verification: badge
+                }
+            });
+            res.status (200).json ({message: 'Verification badge updated successfully'});
+        }
+    } catch (error) {
+        console.error (error);
+        res.status (500).json ({error: 'An error occurred while updating the verification badge'});
+    }
+});
+
 
 module.exports = router;
