@@ -28,6 +28,9 @@ const userSchema = new mongoose.Schema ({
     token: {
         type: String
     },
+    accountType: {
+        type: String,
+    },
     isMentor: {
         type: Boolean,
         default: false
@@ -54,6 +57,9 @@ const userSchema = new mongoose.Schema ({
     verified: {
         type: Boolean,
         default: false
+    },
+    dateAccountVerified: {
+       type: Date,
     },
     education: {
         institution_type: {
@@ -190,7 +196,10 @@ const userSchema = new mongoose.Schema ({
     verification: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'VerificationBadge'
-    }
+    },
+     dateBadgeVerified: {
+       type: Date,
+    },
 });
 
 

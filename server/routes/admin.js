@@ -197,7 +197,7 @@ router.get ("/", function (req, res) {
 
 router.get ("/users-list", auth2, async (req, res) => {
     try { // check if user exists
-        let users = await User.find ().sort ({createdAt: "desc"});
+        let users = await User.find ().sort ({createdAt: "desc"}).populate("verification");
         if (! users) {
             return res.status (400).send ({message: "No Users Found"});
         }
@@ -206,6 +206,31 @@ router.get ("/users-list", auth2, async (req, res) => {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
 });
+
+
+router.get ("/campus-ambassadors", auth2, async (req, res) => {
+    try { // Select users with verification.title equal to "Campus Ambassador"
+        let users = await User.find ().populate ({
+            path: "verification",
+            match: {
+                title: "Campus Ambassador"
+            }
+        });
+
+        if (! users || users.length === 0) {
+            return res.status (400).send ({message: "No Campus Ambassadors Found"});
+        }
+
+        // Filter out users with empty verification (users without "Campus Ambassador" title)
+        users = users.filter ( (user) => user.verification !== null);
+
+        res.status (200).send ({users: users});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+    }
+});
+
+
 
 router.get ("/schedules-list", auth2, async (req, res) => {
     try { // check if scheuldes exists
@@ -1314,7 +1339,8 @@ router.put ('/update-verification-badge/:userId', async (req, res) => {
         } else { // If not empty, create or update the verification badge
             await User.findByIdAndUpdate (userId, {
                 $set: {
-                    verification: badge
+                    verification: badge, 
+                    dateBadgeVerified: new Date()
                 }
             });
             res.status (200).json ({message: 'Verification badge updated successfully'});

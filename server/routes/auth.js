@@ -10,15 +10,19 @@ const { auth, auth2 } = require("../middleware/auth");
 var express = require("express");
 var app = express();
 var useragent = require("express-useragent");
+const axios = require ("axios");
+
 
 const Token = require("../models/Token");
 const sendEmail = require("../utils/sendEmail");
+const toTitleCase = require ("../utils/helper");
 const crypto = require("crypto");
 
 const ejs = require("ejs");
 const fs = require("fs");
 const path = require("path");
 const Donors = require("../models/Donors");
+const VerificationBadge = require("../models/VerificationBadge");
 
 app.use(useragent.express());
 
@@ -283,9 +287,38 @@ router.post("/login", async (req, res) => {
  *         confirmPassword: password123
  */
 
+
+async function validateHuman (token) {
+    const secret = process.env.RECAPTCHA_SECRET_KEY;
+    const options = {
+        url: `https://www.google.com/recaptcha/api/siteverify`,
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        data: `secret=${secret}&response=${token}`
+    };
+
+    try {
+        const response = await axios (options);
+        return response.data.success;
+    } catch (error) {
+        return false;
+    }
+}
+
+
 router.post("/register", async (req, res) => {
   try {
-    const fullname = req.body.firstname + " " + req.body.lastname;
+    const human = await validateHuman (req.body.recaptchaValue);
+
+    if (!human) {
+        res.status(400).send({ message: "Confirm you are a human"});
+        return;
+    }
+    
+    const fullname =  req.body.firstname + " " + req.body.lastname;
+
     const email = req.body.email;
 
     let user = await User.findOne({ email: req.body.email });
@@ -297,11 +330,13 @@ router.post("/register", async (req, res) => {
 
     const salt = await bcrypt.genSalt(Number(process.env.SALT));
     const hashPassword = await bcrypt.hash(req.body.password, salt);
+    const verificationBadge = await VerificationBadge.findOne ({title: "Acadaboo Neutral"});
 
-    user = await new User({
+   user = await new User({
       ...req.body,
       password: hashPassword,
       accountType: "user",
+      verification: verificationBadge._id,
     }).save();
 
     // construct the file path using the path.join() method
@@ -1406,14 +1441,22 @@ router.post ("/verify-user-otp", async (req, res) => {
             return res.status (400).json ({message: "Invalid OTP"});
         }
 
+        const verificationBadge = await VerificationBadge.findOne ({title: "Acadaboo Gold"});
+        const currentDate = new Date();
+
         // Update the user's status to Profile Pending (or any other status as needed)
         user.verified = true;
+        user.dateAccountVerified = currentDate ;
+        user.dateBadgeVerified = currentDate ;
+        user.verification = verificationBadge._id;
         await user.save ();
 
         // Remove the verified OTP record
         await OTP.deleteOne ({email, otp});
 
-        res.status (200).json ({message: "OTP verified successfully"});
+        const userWithoutPassword = await User.findOne ({_id: user._id}).select ("-password -token");
+
+        res.status (200).json ({message: "OTP verified successfully", user:userWithoutPassword});
     } catch (error) {
         console.error (error);
         res.status (500).json ({message: "An error occurred while verifying the OTP"});
@@ -1776,6 +1819,58 @@ router.post("/reset-mentor-password", async (req, res) => {
     res.status(500).send({ message: "Internal Server Error", error: error });
   }
 });
+
+// Route to reset mentor password
+// router.post ("/update-user-verification", async (req, res) => {
+//     try { // Find all users and populate their verification field
+//         const users = await User.find ().populate ("verification");
+
+//         // Loop through each user and update their verification property
+//         for (const user of users) {
+//             const verified = user.verified;
+//             const verificationTitle = verified ? "Acadaboo Gold" : "Acadaboo Neutral";
+
+//             // Find the corresponding verification badge based on the title
+//             const verificationBadge = await VerificationBadge.findOne ({title: verificationTitle});
+
+//             if (verificationBadge) { 
+//                 user.verification = verificationBadge._id;
+//                 await user.save ();
+//             }
+//         }
+//         res.status(201).send({ message: "Update Successfully." });
+//     } catch (error) {
+//          res.status(500).send({ message: "Internal Server Error", error: error });
+//     }
+
+// });
+
+
+// router.put ("/update-date-verified", async (req, res) => {
+//     try { // Find all users with verified === true
+//         const users = await User.find ({verified: true});
+
+//         if (! users || users.length === 0) {
+//             return res.status (404).json ({message: "No verified users found"});
+//         }
+
+//         // Update the dateVerified field of each user to the current date
+//         const currentDate = new Date ();
+//         const updatePromises = users.map ( (user) => User.findByIdAndUpdate (user._id, {
+//             dateAccountVerified: currentDate,
+//             dateBadgeVerified: currentDate
+//         }));
+
+
+//         await Promise.all (updatePromises);
+
+//         res.status (200).json ({message: "DateVerified updated for all verified users"});
+//     } catch (error) {
+//         console.error (error);
+//         res.status (500).json ({error: "An error occurred while updating dateVerified"});
+//     }
+// });
+
 
 const validate = (data) => {
   const schema = Joi.object({
