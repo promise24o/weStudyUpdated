@@ -22,7 +22,7 @@ const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMen
 const VerificationBadge = require ("../models/VerificationBadge");
 
 // Configure Cloudinary credentials
-cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
+cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
 
 // Configure Multer to use Cloudinary as the storage engine
 const storage = new CloudinaryStorage ({

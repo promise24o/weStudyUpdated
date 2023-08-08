@@ -13,6 +13,7 @@ const connection = require ('./lib/mongoose');
 const userRoutes = require ('./routes/user');
 const authRoutes = require ('./routes/auth');
 const mentorRoutes = require ('./routes/mentor');
+const testRoutes = require ('./routes/test');
 const adminRoutes = require ('./routes/admin');
 const publicRoutes = require ('./routes/public');
 const AIRoutes = require ('./routes/acadabooai');
@@ -237,6 +238,7 @@ app.use ('/api/admin/', adminRoutes);
 app.use ('/api/public/', publicRoutes);
 app.use ('/api/ai/', AIRoutes);
 app.use ('/api/mentor/', mentorRoutes);
+app.use ('/api/test/', testRoutes);
 
 // Swagger Definition
 const options = {

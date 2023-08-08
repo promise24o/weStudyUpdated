@@ -3,7 +3,7 @@ const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const router = require ("express").Router ();
 const bcrypt = require ("bcrypt");
 const mongoose = require ('mongoose');
-const axios = require ('axios');
+
 
 
 const Token = require ("../models/Token");
@@ -31,9 +31,10 @@ const MentorApplication = require ("../models/MentorApplication");
 const Notification = require ("../models/Notifications");
 const FriendRequest = require ("../models/FriendRequest");
 const Chat = require ("../models/Chat");
+const Reels = require("../models/Reels");
 
 // Configure Cloudinary credentials
-cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
+cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
 
 // Configure Multer to use Cloudinary as the storage engine
 const randomString = crypto.randomBytes (8).toString ('hex');
@@ -65,7 +66,7 @@ const storage3 = new CloudinaryStorage ({
     params: (req, file) => {
         let format;
         let resourceType;
-        console.log (file);
+        
 
         if (file.mimetype.includes ("image")) {
             format = "jpg";
@@ -146,6 +147,43 @@ const upload4 = multer ({
         fieldSize: 12 * 1024 * 1024, // 10MB field size limit (adjust as needed)
     }
 });
+
+const storage5 = new CloudinaryStorage ({
+    cloudinary: cloudinary,
+    params: () => {
+        let format;
+        let resourceType;
+
+        format = "mp4";
+        resourceType = "video";
+
+        const randomString = crypto.randomBytes (8).toString ('hex');
+        const params = {
+            folder: "/reels",
+            format: format,
+            public_id: `${randomString}`,
+            resource_type: resourceType
+        };
+
+        params.transformation = [{
+                duration: 25
+            },]; // Set the maximum duration to 25 seconds for videos
+        params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
+
+        return params;
+    }
+});
+
+
+
+const upload5 = multer ({
+    storage: storage5,
+    limits: {
+        fileSize: 20 * 1024 * 1024, // 10MB file size limit
+        fieldSize: 20 * 1024 * 1024, // 10MB field size limit (adjust as needed)
+    }
+});
+
 
 
 router.get ("/", function (req, res) {
@@ -2708,7 +2746,6 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
         });
 
         // Save the new schedule document to the database
-        const savedSchedule = await newSchedule.save ();
 
         // Return the saved schedule to the client
         res.status (200).json ({message: 'Session booked successfully'});
@@ -3003,7 +3040,6 @@ router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
         mentor.mentees.push ({user: userId, dateAdded: Date.now ()});
 
         const updatedUser = await user.save ();
-        const updatedMentor = await mentor.save ();
 
         const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
 
@@ -3105,7 +3141,6 @@ router.delete ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
         }
 
         const updatedUser = await user.save ();
-        const updatedMentor = await mentor.save ();
 
         const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
 
@@ -3599,6 +3634,89 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
         res.status (500).json ({error: "Internal Server Error"});
     }
 });
+
+
+router.post("/create-reels/:user", upload5.single("file"), async (req, res) => {
+    const userId = req.params.userId;
+    try {
+        const {
+            description
+        } = JSON.parse(req.body.data);
+
+        const reels = await Reels.create({
+            user: userId,
+            video: req.file.path,
+            description
+        });
+
+        res.status(200).send({ message: "Reels Posted Successfully!" });
+
+    } catch (error) {
+        console.error("Error", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+
+router.get('/reels', async (req, res) => {
+    try {
+        const reels = await Reels.find()
+            .populate({
+                path: 'user',
+                select: 'firstname lastname profilePhoto liveFeedSettings',
+            })
+            .populate({
+                path: 'comments.user',  
+                select: 'firstname lastname profilePhoto liveFeedSettings',
+            })
+            .exec();
+
+        res.json(reels);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+
+router.put('/update-reel-view/:reelId', async (req, res) => {
+    const { reelId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const reel = await Reels.findById(reelId);
+
+        if (!reel) {
+            return res.status(404).json({ message: 'Reel not found' });
+        }
+
+        if (!reel.views.some((view) => view.user.equals(userId))) {
+            reel.views.push({ user: userId });
+            reel.save();
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred' });
+    }
+});
+
+router.delete('/delete-reel/:reelId', async (req, res) => {
+    const { reelId } = req.params;
+
+    try {
+        const deleteReel = await Reels.findByIdAndDelete(reelId);
+
+        if (!deleteReel) {
+            return res.status(404).json({ message: 'Reel not found' });
+        }
+
+        return res.json({ message: 'Reel deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred' });
+    }
+});
+
 
 /**
  * @swagger
@@ -5220,7 +5338,7 @@ router.get ('/notifications-short/:userId', async (req, res) => {
     const userId = req.params.userId;
 
     try {
-        const notifications = await Notification.find ({recipient: userId}).populate ("sender", "firstname lastname profilePhoto").sort ({date: -1}).limit (5);
+        const notifications = await Notification.find ({recipient: userId}).populate ("sender", "firstname lastname profilePhoto").sort ({date: -1}).limit (3);
         res.json ({notifications});
     } catch (error) {
         console.error (error);
@@ -5521,7 +5639,7 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
 
         // Add receiver as a friend of the sender
         await User.findByIdAndUpdate (friendRequest.sender, {
-            $push: {
+            $addToSet: { // Use $addToSet instead of $push
                 friends: {
                     userId: friendRequest.receiver
                 }
@@ -5530,7 +5648,7 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
 
         // Add sender as a friend of the receiver
         await User.findByIdAndUpdate (friendRequest.receiver, {
-            $push: {
+            $addToSet: { // Use $addToSet instead of $push
                 friends: {
                     userId: friendRequest.sender
                 }
@@ -5538,7 +5656,6 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
         });
 
         // Create a notification for the friend request acceptance
-        const senderUser = await User.findById (friendRequest.sender);
         const receiverUser = await User.findById (friendRequest.receiver);
         const fullName = `${
             receiverUser.firstname
@@ -5635,12 +5752,17 @@ router.get ('/all-friend-requests/:userId', async (req, res) => {
             status: 'pending'
         }).populate ('sender', 'firstname lastname profilePhoto personal').populate ('receiver', 'firstname lastname profilePhoto personal');
 
-        res.status (200).json ({friendRequests});
+        // Filter out friend requests without populated sender or receiver
+        const filteredFriendRequests = friendRequests.filter (request => request.sender && request.receiver);
+
+        res.status (200).json ({friendRequests: filteredFriendRequests});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred while retrieving friend requests'});
     }
 });
+
+
 
 
 /**
@@ -5936,8 +6058,10 @@ router.get ('/friends/:userId', async (req, res) => {
         if (! user) {
             return res.status (404).json ({message: 'User not found'});
         }
+        // Filter out friends where userId wasn't successfully populated
+        const filteredFriends = user.friends.filter (friend => friend.userId);
 
-        res.json ({friends: user.friends});
+        res.json ({friends: filteredFriends});
     } catch (err) {
         console.error (err);
         res.status (500).json ({message: 'Server Error'});
@@ -6569,6 +6693,81 @@ router.get ('/search/posts/:query', async (req, res) => {
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred while searching for posts'});
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/update-account-type/{userId}:
+ *   post:
+ *     tags:
+ *       - User
+ *     summary: Update user's account type
+ *     description: Update the account type of a user.
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: The ID of the user to update the account type for.
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: selectedAccountType
+ *         in: body
+ *         description: The selected account type to update.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             selectedAccountType:
+ *               type: string
+ *               enum: [undergraduate, highschool, jambite] 
+ *               description: The selected account type to update to.
+ *     responses:
+ *       200:
+ *         description: Success response with updated user and message.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             message:
+ *               type: string
+ *             user:
+ *               $ref: "#/definitions/User"  # Define User schema here
+ *       400:
+ *         description: Invalid input or missing parameters.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             message:
+ *               type: string
+ *       500:
+ *         description: An error occurred while updating the account type.
+ *         schema:
+ *           type: object
+ *           properties:
+ *             message:
+ *               type: string
+ */
+
+
+router.post('/update-account-type/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const selectedAccountType = req.body.type;
+        // Update the user's account type in the database
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { accountType: selectedAccountType },
+            { new: true }  
+        ).select ("-password -token").populate('friends.userId', 'firstname lastname profilePhoto');
+
+        return res.status(200).json({
+            message: 'Account type updated successfully',
+            user: updatedUser,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 

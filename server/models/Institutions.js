@@ -13,6 +13,17 @@ const institutionsSchema = new mongoose.Schema ({
         type: String,
         required: true
     },
+    region: {
+        type: String,
+        required: true
+    },
+    country: {
+        type: String,
+        required: true
+    },
+    state: {
+        type: String,
+    },
     summary: {
         type: String,
     },

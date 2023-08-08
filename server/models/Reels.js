@@ -1,8 +1,8 @@
-const mongoose = require ('mongoose');
+const mongoose = require('mongoose');
 
-const commentSchema = new mongoose.Schema ({
+const commentSchema = new mongoose.Schema({
     user: {
-        type:mongoose.ObjectId,
+        type: mongoose.ObjectId,
         ref: 'user'
     },
     text: {
@@ -16,7 +16,7 @@ const commentSchema = new mongoose.Schema ({
     replies: [
         {
             user: {
-                type:mongoose.ObjectId,
+                type: mongoose.ObjectId,
                 ref: 'user'
             },
             text: {
@@ -31,26 +31,26 @@ const commentSchema = new mongoose.Schema ({
     ]
 });
 
-const postSchema = new mongoose.Schema ({
-    userId: {
+const reelSchema = new mongoose.Schema({
+    user: {
         type: mongoose.ObjectId,
-        ref: 'user',
+        required: true,
+        ref: "user"
+    },
+    video: {
+        type: String,
         required: true
     },
-    content: {
-        type: String
+    description: {
+        type: String,
     },
-    media: [
+    views: [
         {
-            url: {
-                type: String,
-                required: true
-            },
-            type: {
-                type: String,
-                required: true
+            user: {
+                type: mongoose.ObjectId,
+                ref: 'user'
             }
-        },
+        }
     ],
     likes: [
         {
@@ -67,6 +67,6 @@ const postSchema = new mongoose.Schema ({
     }
 });
 
-const Post = mongoose.model ('Post', postSchema);
+const Reels = mongoose.model('Reels', reelSchema);
 
-module.exports = Post;
+module.exports = Reels;

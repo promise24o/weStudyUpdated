@@ -11,7 +11,7 @@ const Chat = require("../models/Chat");
 
 
 // Configure Cloudinary credentials
-cloudinary.config ({cloud_name: "dbb2dkawt", api_key: "474957451451999", api_secret: "yWE3adlqWuUOG0l3JjqSoIPSI-Q"});
+cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET });
 
 // Configure Multer to use Cloudinary as the storage engine
 const randomString = crypto.randomBytes (8).toString ('hex');
@@ -281,13 +281,13 @@ router.post ("/upload-avatar/:mentorId", upload.single ("file"), async (req, res
 
         // Update the mentor's photo in the database
 
-        const result = await cloudinary.uploader.upload (req.file.path);
+        // const result = await cloudinary.uploader.upload (req.file.path);
 
         const updatedMentor = await Mentors.findOneAndUpdate ({
             _id: mentorId
         }, {
             $set: {
-                avatar: result.secure_url
+                avatar: req.file.path
             }
         }, {new: true}).select ("-password -token");
 
@@ -594,12 +594,16 @@ router.get ('/schedules/:mentorId', async (req, res) => {
 
         const schedules = await Schedule.find ({mentorId}).sort ({createdAt: -1}).populate ('userId', 'firstname lastname profilePhoto personal').populate ('session', 'date startTime endTime slots');
 
-        res.status (200).json ({schedules});
+        // Filter out any null or undefined values from userId field
+        const filteredSchedules = schedules.filter (schedule => schedule.userId);
+
+        res.status (200).json ({schedules: filteredSchedules});
     } catch (error) {
         console.error (error);
         res.status (500).json ({error: 'An error occurred'});
     }
 });
+
 
 
 router.get ('/schedule/:id', async (req, res) => {
@@ -1287,6 +1291,9 @@ router.get ('/mentees/:mentorId', async (req, res) => {
             return res.status (404).json ({message: 'Mentor not found'});
         }
 
+        // Filter out any null or undefined values from the mentees array
+        mentor.mentees = mentor.mentees.filter ( (mentee) => mentee.user);
+
         res.status (200).json ({mentees: mentor.mentees});
     } catch (error) {
         console.error (error);
@@ -1395,6 +1402,9 @@ router.get ('/mentee/:mentorId/:id', async (req, res) => {
         if (! mentor) {
             return res.status (404).json ({message: 'Mentor not found'});
         }
+
+        // Filter out mentees without associated user data
+        mentor.mentees = mentor.mentees.filter ( (mentee) => mentee.user);
 
         const mentee = mentor.mentees.find ( (mentee) => mentee._id.toString () === id);
 
@@ -1541,12 +1551,14 @@ router.get ('/chats/:userId', async (req, res) => {
             ]
         }).populate ('sender', 'firstname lastname').populate ('receiver', 'firstname lastname').exec ();
 
-        res.json (chats);
+        // Filter out any null or undefined values from sender and receiver fields
+        const filteredChats = chats.filter (chat => chat.sender && chat.receiver);
+
+        res.json (filteredChats);
     } catch (error) {
         console.error (error);
         res.status (500).json ({message: 'Server Error'});
     }
 });
-
 
 module.exports = router;

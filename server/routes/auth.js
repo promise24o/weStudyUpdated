@@ -2,7 +2,6 @@ const router = require("express").Router();
 const { User } = require("../models/Users");
 const Admin = require("../models/Admin");
 const OTP = require("../models/Otp");
-const Activity = require("../models/Activities");
 const { Mentors } = require("../models/Mentors");
 const Joi = require("joi");
 const bcrypt = require("bcrypt");
@@ -10,13 +9,11 @@ const { auth, auth2 } = require("../middleware/auth");
 var express = require("express");
 var app = express();
 var useragent = require("express-useragent");
-const axios = require ("axios");
+const axios = require("axios");
 
 
-const Token = require("../models/Token");
 const sendEmail = require("../utils/sendEmail");
-const toTitleCase = require ("../utils/helper");
-const crypto = require("crypto");
+const toTitleCase = require("../utils/helper");
 
 const ejs = require("ejs");
 const fs = require("fs");
@@ -288,55 +285,53 @@ router.post("/login", async (req, res) => {
  */
 
 
-async function validateHuman (token) {
-    const secret = process.env.RECAPTCHA_SECRET_KEY;
-    const options = {
-        url: `https://www.google.com/recaptcha/api/siteverify`,
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        data: `secret=${secret}&response=${token}`
-    };
+async function validateHuman(token) {
+  const secret = process.env.RECAPTCHA_SECRET_KEY;
+  const options = {
+    url: `https://www.google.com/recaptcha/api/siteverify`,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    data: `secret=${secret}&response=${token}`
+  };
 
-    try {
-        const response = await axios (options);
-        return response.data.success;
-    } catch (error) {
-        return false;
-    }
+  try {
+    const response = await axios(options);
+    return response.data.success;
+  } catch (error) {
+    return false;
+  }
 }
 
 
 router.post("/register", async (req, res) => {
   try {
-    const human = await validateHuman (req.body.recaptchaValue);
+    const human = await validateHuman(req.body.recaptchaValue);
 
     if (!human) {
-        res.status(400).send({ message: "Confirm you are a human"});
-        return;
+      res.status(400).send({ message: "Confirm you are a human" });
+      return;
     }
-    
-    const fullname =  req.body.firstname + " " + req.body.lastname;
 
-    const email = req.body.email;
+    const fullname = (req.body.firstname + " " + req.body.lastname);
+
+    const email = req.body.email.toLowerCase();
 
     let user = await User.findOne({ email: req.body.email });
 
     if (user)
-      return res
-        .status(409)
-        .send({ message: "A User with that email already exists!" });
+      return res.status(409).send({ message: "A User with that email already exists!" });
+
 
     const salt = await bcrypt.genSalt(Number(process.env.SALT));
     const hashPassword = await bcrypt.hash(req.body.password, salt);
-    const verificationBadge = await VerificationBadge.findOne ({title: "Acadaboo Neutral"});
+    const verificationBadge = await VerificationBadge.findOne({ title: "Acadaboo Neutral" });
 
-   user = await new User({
+    user = await new User({
       ...req.body,
       password: hashPassword,
-      accountType: "user",
-      verification: verificationBadge._id,
+      verification: verificationBadge._id
     }).save();
 
     // construct the file path using the path.join() method
@@ -356,12 +351,23 @@ router.post("/register", async (req, res) => {
 
     await sendEmail(user.email, "Verify Account", html);
 
+    // Log the user in after successful registration
+    const token = await user.generateAuthToken();
+    const userWithoutPassword = await User.findOne({ email: email }).select("-password -token");
+
     res.status(201).send({
-      message: "Account Created Successfully! Visit Email for OTP Verification",
+      data: {
+        token: token,
+        accountType: "user",
+        user: userWithoutPassword,
+      },
+      message: "Account Created and Logged In Successfully!"
     });
+
   } catch (error) {
     res.status(500).send({ message: "Internal Server Error", error: error });
   }
+
 });
 
 /**
@@ -871,7 +877,6 @@ router.post("/register-mentor", async (req, res) => {
       source: "Registration", // Source as "Registration"
     });
 
-    const savedMentor = await mentor.save();
 
     // Save the OTP in the OTP schema
     const otpData = new OTP({ email, otp });
@@ -988,12 +993,6 @@ router.post("/register-donor", async (req, res) => {
     const salt = await bcrypt.genSalt(Number(process.env.SALT));
     const hashPassword = await bcrypt.hash(password, salt);
 
-    const donors = new Donors({
-      fullname,
-      email,
-      password: hashPassword,
-      status: "Pending", // Default status for new donors
-    }).save();
 
     // Save the OTP in the OTP schema
     const otpData = new OTP({ email, otp });
@@ -1423,44 +1422,44 @@ router.post("/verify-mentor-otp", async (req, res) => {
  */
 
 
-router.post ("/verify-user-otp", async (req, res) => {
-    try {
-        const {email, otp} = req.body;
+router.post("/verify-user-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
 
-        // Find the user by email
-        const user = await User.findOne ({email});
+    // Find the user by email
+    const user = await User.findOne({ email });
 
-        if (! user) {
-            return res.status (404).json ({message: "User not found"});
-        }
-
-        // Find the OTP record in the OTP schema
-        const otpRecord = await OTP.findOne ({email, otp});
-
-        if (! otpRecord) {
-            return res.status (400).json ({message: "Invalid OTP"});
-        }
-
-        const verificationBadge = await VerificationBadge.findOne ({title: "Acadaboo Gold"});
-        const currentDate = new Date();
-
-        // Update the user's status to Profile Pending (or any other status as needed)
-        user.verified = true;
-        user.dateAccountVerified = currentDate ;
-        user.dateBadgeVerified = currentDate ;
-        user.verification = verificationBadge._id;
-        await user.save ();
-
-        // Remove the verified OTP record
-        await OTP.deleteOne ({email, otp});
-
-        const userWithoutPassword = await User.findOne ({_id: user._id}).select ("-password -token");
-
-        res.status (200).json ({message: "OTP verified successfully", user:userWithoutPassword});
-    } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: "An error occurred while verifying the OTP"});
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+
+    // Find the OTP record in the OTP schema
+    const otpRecord = await OTP.findOne({ email, otp });
+
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    const verificationBadge = await VerificationBadge.findOne({ title: "Acadaboo Gold" });
+    const currentDate = new Date();
+
+    // Update the user's status to Profile Pending (or any other status as needed)
+    user.verified = true;
+    user.dateAccountVerified = currentDate;
+    user.dateBadgeVerified = currentDate;
+    user.verification = verificationBadge._id;
+    await user.save();
+
+    // Remove the verified OTP record
+    await OTP.deleteOne({ email, otp });
+
+    const userWithoutPassword = await User.findOne({ _id: user._id }).select("-password -token");
+
+    res.status(200).json({ message: "OTP verified successfully", user: userWithoutPassword });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "An error occurred while verifying the OTP" });
+  }
 });
 
 
@@ -1635,48 +1634,48 @@ router.post("/mentor-request-otp", async (req, res) => {
  *       '500':
  *         description: An error occurred while requesting the OTP
  */
-router.post ("/user-request-otp", async (req, res) => {
-    try {
-        const {email} = req.body;
+router.post("/user-request-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
 
-        // Check if the email exists in the Users collection
-        const existingUser = await User.findOne ({email});
-        if (! existingUser) {
-            return res.status (400).json ({message: "Email does not exist. Please enter a valid email."});
-        }
-
-        // Find the OTP document for the email
-        let otpDocument = await OTP.findOne ({email});
-
-        if (! otpDocument) { // If OTP document doesn't exist, create a new one
-            otpDocument = new OTP ({email});
-        }
-
-        // Generate a new 6-digit random number as OTP
-        const otp = Math.floor (100000 + Math.random () * 900000);
-
-        // Update the OTP in the OTP document
-        otpDocument.otp = otp;
-        await otpDocument.save ();
-
-        // construct the file path using the path.join() method
-        const filePath = path.join (__dirname, "..", "emails", "otp_user.ejs");
-
-        // read the HTML content from a file
-        let template = fs.readFileSync (filePath, "utf8");
-
-        const fullname =  existingUser.firstname + " " + existingUser.lastname
-
-        // compile the EJS template with the otp and fullname variables
-        let html = ejs.render (template, {otp, fullname});
-
-        await sendEmail (email, "Verify Account", html);
-
-        res.status (200).json ({message: "New OTP sent successfully"});
-    } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: "An error occurred while requesting the OTP"});
+    // Check if the email exists in the Users collection
+    const existingUser = await User.findOne({ email });
+    if (!existingUser) {
+      return res.status(400).json({ message: "Email does not exist. Please enter a valid email." });
     }
+
+    // Find the OTP document for the email
+    let otpDocument = await OTP.findOne({ email });
+
+    if (!otpDocument) { // If OTP document doesn't exist, create a new one
+      otpDocument = new OTP({ email });
+    }
+
+    // Generate a new 6-digit random number as OTP
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    // Update the OTP in the OTP document
+    otpDocument.otp = otp;
+    await otpDocument.save();
+
+    // construct the file path using the path.join() method
+    const filePath = path.join(__dirname, "..", "emails", "otp_user.ejs");
+
+    // read the HTML content from a file
+    let template = fs.readFileSync(filePath, "utf8");
+
+    const fullname = existingUser.firstname + " " + existingUser.lastname
+
+    // compile the EJS template with the otp and fullname variables
+    let html = ejs.render(template, { otp, fullname });
+
+    await sendEmail(email, "Verify Account", html);
+
+    res.status(200).json({ message: "New OTP sent successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "An error occurred while requesting the OTP" });
+  }
 });
 
 
@@ -1789,7 +1788,7 @@ router.post("/reset-mentor-password", async (req, res) => {
         .send({ message: "A mentor with this email does not exist!" });
 
     const characters =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!?";
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     const randomPassword = Array.from(
       {
         length: 12,
@@ -1820,7 +1819,6 @@ router.post("/reset-mentor-password", async (req, res) => {
   }
 });
 
-// Route to reset mentor password
 // router.post ("/update-user-verification", async (req, res) => {
 //     try { // Find all users and populate their verification field
 //         const users = await User.find ().populate ("verification");
@@ -1869,6 +1867,21 @@ router.post("/reset-mentor-password", async (req, res) => {
 //         console.error (error);
 //         res.status (500).json ({error: "An error occurred while updating dateVerified"});
 //     }
+// });
+
+// router.put('/change-account-type', async (req, res) => {
+//   try {
+//     // Update all users to have the accountType "undergraduate"
+//     const updateResult = await User.updateMany({}, { $set: { accountType: 'undergraduate' } });
+
+//     if (updateResult.nModified > 0) {
+//       res.status(200).send({ message: "Account types updated successfully!" });
+//     } else {
+//       res.status(404).send({ message: "No users found to update." });
+//     }
+//   } catch (error) {
+//     res.status(500).send({ message: "Internal Server Error", error: error });
+//   }
 // });
 
 

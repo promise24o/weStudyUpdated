@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema ({
     },
     accountType: {
         type: String,
+        required: true
     },
     isMentor: {
         type: Boolean,
@@ -49,7 +50,14 @@ const userSchema = new mongoose.Schema ({
         ],
         default: "Pending"
     },
-
+    accountStatus: {
+        type: String,
+        enum: [
+            "Active",
+            "Suspended",
+        ],
+        default: "Active"
+    },
     isDonor: {
         type: Boolean,
         default: false
@@ -81,6 +89,38 @@ const userSchema = new mongoose.Schema ({
             type: String
         },
         study_mode: {
+            type: String
+        }
+    },
+    highSchoolEducation: {
+        highSchool: {
+            type: String
+        },
+       graduationYear: {
+            type: String
+        },
+        subjectMajor: {
+            type: String
+        },
+        pJambYear: {
+            type: String
+        },
+        pInstitutionType: {
+            type: String
+        },
+        pInstitution: {
+            type: String
+        },
+        pFaculty: {
+            type: String
+        },
+        pDepartment: {
+            type: String
+        },
+        pCourse: {
+            type: String
+        },
+        pStudyMode: {
             type: String
         }
     },
