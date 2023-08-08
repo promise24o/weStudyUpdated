@@ -3636,6 +3636,48 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/create-reels/{user}:
+ *   post:
+ *     tags:
+ *       - User
+ *     summary: Create a new reel
+ *     description: Upload a video reel along with a description for a user.
+ *     parameters:
+ *       - name: user
+ *         in: path
+ *         description: The user ID for which the reel will be created.
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: file
+ *         in: formData
+ *         description: The video file to be uploaded.
+ *         required: true
+ *         type: file
+ *       - name: data
+ *         in: formData
+ *         description: JSON data including description.
+ *         required: true
+ *         type: string
+ *         example: '{"description": "A cool video reel"}'
+ *     consumes:
+ *       - multipart/form-data
+ *     responses:
+ *       200:
+ *         description: Reel posted successfully.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Reels Posted Successfully!
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: Internal Server Error
+ */
 router.post("/create-reels/:user", upload5.single("file"), async (req, res) => {
     const userId = req.params.userId;
     try {
@@ -3658,6 +3700,50 @@ router.post("/create-reels/:user", upload5.single("file"), async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/reels:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: Get all reels
+ *     description: Retrieve a list of all video reels along with user and comment information.
+ *     responses:
+ *       200:
+ *         description: Success response with the list of reels.
+ *         content:
+ *           application/json:
+ *             example:
+ *               - _id: 617a8c0d0540a289f76d857a
+ *                 user: {
+ *                   _id: 617a8c0d0540a289f76d8579,
+ *                   firstname: "John",
+ *                   lastname: "Doe",
+ *                   profilePhoto: "profile.jpg",
+ *                   liveFeedSettings: true
+ *                 }
+ *                 video: "uploads/video.mp4",
+ *                 description: "A cool video reel",
+ *                 comments: [
+ *                   {
+ *                     _id: 617a8c0d0540a289f76d857b,
+ *                     user: {
+ *                       _id: 617a8c0d0540a289f76d8579,
+ *                       firstname: "Jane",
+ *                       lastname: "Smith",
+ *                       profilePhoto: "profile.jpg",
+ *                       liveFeedSettings: true
+ *                     },
+ *                     comment: "Awesome video!"
+ *                   }
+ *                 ]
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Server Error
+ */
 router.get('/reels', async (req, res) => {
     try {
         const reels = await Reels.find()
@@ -3678,7 +3764,50 @@ router.get('/reels', async (req, res) => {
     }
 });
 
-
+/**
+ * @swagger
+ * /users/update-reel-view/{reelId}:
+ *   put:
+ *     tags:
+ *       - User
+ *     summary: Update reel views
+ *     description: Update the views of a reel by adding the user who viewed it.
+ *     parameters:
+ *       - name: reelId
+ *         in: path
+ *         description: The ID of the reel to update views for
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: userId
+ *         in: body
+ *         description: The ID of the user who viewed the reel
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             userId:
+ *               type: string
+ *     responses:
+ *       200:
+ *         description: Reel views updated successfully.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Reel views updated successfully.
+ *       404:
+ *         description: Reel not found.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Reel not found.
+ *       500:
+ *         description: An error occurred.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: An error occurred.
+ */
 router.put('/update-reel-view/:reelId', async (req, res) => {
     const { reelId } = req.params;
     const { userId } = req.body;
@@ -3700,6 +3829,41 @@ router.put('/update-reel-view/:reelId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/delete-reel/{reelId}:
+ *   delete:
+ *     tags:
+ *       - User
+ *     summary: Delete a reel
+ *     description: Delete a reel by its ID.
+ *     parameters:
+ *       - name: reelId
+ *         in: path
+ *         description: The ID of the reel to delete
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Reel deleted successfully.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Reel deleted successfully.
+ *       404:
+ *         description: Reel not found.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: Reel not found.
+ *       500:
+ *         description: An error occurred.
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: An error occurred.
+ */
 router.delete('/delete-reel/:reelId', async (req, res) => {
     const { reelId } = req.params;
 
