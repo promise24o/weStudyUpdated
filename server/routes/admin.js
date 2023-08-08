@@ -455,21 +455,28 @@ router.get ("/mentors", auth2, async (req, res) => {
 });
 
 
-router.put ("/update-school-summary/:id", async (req, res) => {
+router.put('/update-school-summary/:id', async (req, res) => {
     try {
         const institutionId = req.params.id;
-        const {editorContent} = req.body;
+        const { editorContent } = req.body;
 
-        const institution = await Institutions.findById (institutionId);
-        if (! institution) {
-            return res.status (404).json ({error: 'Institution not found'});
+        const institution = await Institutions.findById(institutionId);
+        if (!institution) {
+            return res.status(404).json({ error: 'Institution not found' });
         }
 
         institution.summary = editorContent;
+        await institution.save(); // Save the updated institution
 
-        res.status (201).send ({message: "School Summary Updated Successfully"});
+        // Fetch the updated list of institutions
+        const updatedInstitutions = await Institutions.find();
+
+        res.status(201).json({
+            message: 'School Summary Updated Successfully',
+            institutions: updatedInstitutions,
+        });
     } catch (err) {
-        res.status (500).json ({message: err.message});
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -483,6 +490,28 @@ router.put ("/update-institution/:id", async (req, res) => {
         res.status (500).json ({message: err.message});
     }
 });
+
+router.delete('/delete-institution/:institutionId', async (req, res) => {
+    const { institutionId } = req.params;
+
+    try {
+        const deletedInstitution = await Institutions.findByIdAndDelete(institutionId);
+
+        if (!deletedInstitution) {
+            return res.status(404).json({ message: 'Institution not found' });
+        }
+
+        const updatedInstitutionsList = await Institutions.find(); // Fetch updated list
+        res.status(200).json({
+            message: 'Institution deleted successfully',
+            institutions: updatedInstitutionsList,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred while deleting the institution' });
+    }
+});
+
 
 router.put ("/update-category/:id", async (req, res) => {
     try {
@@ -561,7 +590,7 @@ router.post ("/institutions-list", async (req, res) => {
 
 // Route to add a new institution
 router.post ('/add-institution', async (req, res) => { // Destructure the required fields from the request body
-    const {institution, logo, type} = req.body;
+    const {institution, logo, type,  country, state, region} = req.body;
 
     // Check if any of the required fields are missing
     if (!institution || !logo || !type) {
@@ -569,7 +598,7 @@ router.post ('/add-institution', async (req, res) => { // Destructure the requir
     }
 
     try { // Create a new instance of the Institution model
-        const newInstitution = new Institutions ({institution, logo, type});
+        const newInstitution = new Institutions({ institution, logo, type, country, state, region});
 
         // Save the new institution to the database
         await newInstitution.save ();

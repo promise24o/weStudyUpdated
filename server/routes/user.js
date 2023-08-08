@@ -397,7 +397,7 @@ router.get ("/institutions", async (req, res) => {
  *               error: <error message>
  */
 
-router.post ("/update-education-info", async (req, res) => {
+router.post("/update-education-info", async (req, res) => {
     try {
         const {
             type,
@@ -407,27 +407,67 @@ router.post ("/update-education-info", async (req, res) => {
             department,
             course_of_study,
             study_mode,
-            userId
+            userId,
+            accountType
         } = req.body;
-        const updatedUser = await User.findOneAndUpdate ({
-            _id: userId
-        }, {
-            $set: {
-                "education.institution_type": type,
-                "education.institution": institution,
-                "education.current_level": current_level,
-                "education.faculty": faculty,
-                "education.department": department,
-                "education.course_of_study": course_of_study,
-                "education.study_mode": study_mode
-            }
-        }, {new: true}).select ("-password -token");
+        
+        let updatedUser;
 
-        res.status (200).send ({user: updatedUser, message: "Updated Successfully!"});
+        if (accountType === "high-school") {
+            const {
+                highSchool,
+                graduationYear,
+                subjectMajor,
+                pJambYear,
+                pInstitutionType,
+                pInstitution,
+                pFaculty,
+                pDepartment,
+                pCourse,
+                pStudyMode
+            } = req.body;
+            updatedUser = await User.findOneAndUpdate(
+                { _id: userId },
+                {
+                    $set: {
+                        "highSchoolEducation.highSchool": highSchool,
+                        "highSchoolEducation.graduationYear": graduationYear,
+                        "highSchoolEducation.subjectMajor": subjectMajor,
+                        "highSchoolEducation.pJambYear": pJambYear,
+                        "highSchoolEducation.pInstitutionType": pInstitutionType,
+                        "highSchoolEducation.pInstitution": pInstitution,
+                        "highSchoolEducation.pFaculty": pFaculty,
+                        "highSchoolEducation.pDepartment": pDepartment,
+                        "highSchoolEducation.pCourse": pCourse,
+                        "highSchoolEducation.pStudyMode": pStudyMode
+                    }
+                },
+                { new: true }
+            ).select("-password -token");
+        } else {
+            updatedUser = await User.findOneAndUpdate(
+                { _id: userId },
+                {
+                    $set: {
+                        "education.institution_type": type,
+                        "education.institution": institution,
+                        "education.current_level": current_level,
+                        "education.faculty": faculty,
+                        "education.department": department,
+                        "education.course_of_study": course_of_study,
+                        "education.study_mode": study_mode
+                    }
+                },
+                { new: true }
+            ).select("-password -token");
+        }
+
+        res.status(200).send({ user: updatedUser, message: "Updated Successfully!" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
 
 /**
  * @swagger

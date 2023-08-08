@@ -306,14 +306,18 @@ async function validateHuman(token) {
 
 
 router.post("/register", async (req, res) => {
+  const byPass = req.body.byPassRecaptcha; 
   try {
-    const human = await validateHuman(req.body.recaptchaValue);
 
-    if (!human) {
-      res.status(400).send({ message: "Confirm you are a human" });
-      return;
+    if(!byPass) {
+      const human = await validateHuman(req.body.recaptchaValue);
+
+      if (!human) {
+        res.status(400).send({ message: "Confirm you are a human" });
+        return;
+      }
     }
-
+    
     const fullname = (req.body.firstname + " " + req.body.lastname);
 
     const email = req.body.email.toLowerCase();
