@@ -2209,26 +2209,31 @@ router.get ("/get-user-gpa/:userId/:institutionType", async (req, res) => {
 });
 
 
-router.get("/get-user-gpa/:userId/:accountType/:institutionType", async (req, res) => {
-  const userId = req.params.userId;
-  const accountType = req.params.accountType;
-  const institutionType = req.params.institutionType;
+router.get("/get-user-result/:userId/:institutionType/:accountType", async (req, res) => {
+    const userId = req.params.userId;
+    const institutionType = req.params.institutionType;
+    const accountType = req.params.accountType;
 
-  try {
-    let gpa = await gpaSchema.find({
-      userId: userId,
-      accountType: accountType,
-      institution: institutionType
-    });
+    try {
+        let query = {
+            userId: userId,
+            accountType: accountType
+        };
 
-    if (!gpa || gpa.length === 0) {
-      return res.status(400).send({ message: "No GPA Found" });
+        if (accountType === "undergraduate") {
+            query.institution = institutionType;
+        }
+
+        let gpa = await gpaSchema.find(query);
+
+        if (!gpa || gpa.length === 0) {
+            return res.status(400).send({ message: "No GPA Found" });
+        }
+
+        res.status(200).send({ gpa: gpa });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
-
-    res.status(200).send({ gpa: gpa });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error });
-  }
 });
 
 /**
