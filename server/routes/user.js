@@ -410,10 +410,41 @@ router.post("/update-education-info", async (req, res) => {
             userId,
             accountType
         } = req.body;
-        
+
         let updatedUser;
 
         if (accountType === "high-school") {
+            const {
+                highSchool,
+                currentClass,
+                subjectMajor,
+                pJambYear,
+                pInstitutionType,
+                pInstitution,
+                pFaculty,
+                pDepartment,
+                pCourse,
+                pStudyMode
+            } = req.body;
+            updatedUser = await User.findOneAndUpdate(
+                { _id: userId },
+                {
+                    $set: {
+                        "highSchoolEducation.highSchool": highSchool,
+                        "highSchoolEducation.currentClass": currentClass,
+                        "highSchoolEducation.subjectMajor": subjectMajor,
+                        "highSchoolEducation.pJambYear": pJambYear,
+                        "highSchoolEducation.pInstitutionType": pInstitutionType,
+                        "highSchoolEducation.pInstitution": pInstitution,
+                        "highSchoolEducation.pFaculty": pFaculty,
+                        "highSchoolEducation.pDepartment": pDepartment,
+                        "highSchoolEducation.pCourse": pCourse,
+                        "highSchoolEducation.pStudyMode": pStudyMode
+                    }
+                },
+                { new: true }
+            ).select("-password -token");
+        } else if (accountType === "jambite") {
             const {
                 highSchool,
                 graduationYear,
@@ -430,16 +461,16 @@ router.post("/update-education-info", async (req, res) => {
                 { _id: userId },
                 {
                     $set: {
-                        "highSchoolEducation.highSchool": highSchool,
-                        "highSchoolEducation.graduationYear": graduationYear,
-                        "highSchoolEducation.subjectMajor": subjectMajor,
-                        "highSchoolEducation.pJambYear": pJambYear,
-                        "highSchoolEducation.pInstitutionType": pInstitutionType,
-                        "highSchoolEducation.pInstitution": pInstitution,
-                        "highSchoolEducation.pFaculty": pFaculty,
-                        "highSchoolEducation.pDepartment": pDepartment,
-                        "highSchoolEducation.pCourse": pCourse,
-                        "highSchoolEducation.pStudyMode": pStudyMode
+                        "jambiteEducation.highSchool": highSchool,
+                        "jambiteEducation.graduationYear": graduationYear,
+                        "jambiteEducation.subjectMajor": subjectMajor,
+                        "jambiteEducation.pJambYear": pJambYear,
+                        "jambiteEducation.pInstitutionType": pInstitutionType,
+                        "jambiteEducation.pInstitution": pInstitution,
+                        "jambiteEducation.pFaculty": pFaculty,
+                        "jambiteEducation.pDepartment": pDepartment,
+                        "jambiteEducation.pCourse": pCourse,
+                        "jambiteEducation.pStudyMode": pStudyMode
                     }
                 },
                 { new: true }
@@ -467,7 +498,6 @@ router.post("/update-education-info", async (req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
-
 
 /**
  * @swagger
@@ -1874,13 +1904,14 @@ router.post ("/add-gpa", async (req, res) => {
             symbol,
             creditUnit,
             user,
+            accountType,
             semester,
             institution,
             level
         } = req.body;
-
+        
         // Search for a document that matches the semester, level, and userId
-        gpa = await gpaSchema.findOne ({semester, level, userId: user});
+        gpa = await gpaSchema.findOne({ semester, institution, level, userId: user, accountType});
 
         if (gpa) { // If a document is found, update the courses array
             await gpaSchema.updateOne ({
@@ -1903,6 +1934,7 @@ router.post ("/add-gpa", async (req, res) => {
                 userId: user,
                 level,
                 semester,
+                accountType,
                 institution,
                 courses: [
                     {
@@ -2004,7 +2036,9 @@ router.post ("/add-gpa", async (req, res) => {
 // Get User GPA
 router.get ("/user-gpa", async (req, res) => {
     try {
-        let gpa = await gpaSchema.findOne ({userId: req.query.user_id, level: req.query.level, semester: req.query.semester});
+        let gpa = await gpaSchema.findOne ({userId: req.query.user_id, level: req.query.level, 
+            semester: req.query.semester, accountType: req.query.accountType});
+
         if (! gpa) {
             return res.status (400).send ({message: "No GPA Found"});
         }
@@ -2174,6 +2208,29 @@ router.get ("/get-user-gpa/:userId/:institutionType", async (req, res) => {
     }
 });
 
+
+router.get("/get-user-gpa/:userId/:accountType/:institutionType", async (req, res) => {
+  const userId = req.params.userId;
+  const accountType = req.params.accountType;
+  const institutionType = req.params.institutionType;
+
+  try {
+    let gpa = await gpaSchema.find({
+      userId: userId,
+      accountType: accountType,
+      institution: institutionType
+    });
+
+    if (!gpa || gpa.length === 0) {
+      return res.status(400).send({ message: "No GPA Found" });
+    }
+
+    res.status(200).send({ gpa: gpa });
+  } catch (error) {
+    res.status(500).send({ message: "Internal Server Error", error: error });
+  }
+});
+
 /**
  * @swagger
  * /users/user-institution:
@@ -2322,24 +2379,7 @@ router.get ("/mentors", async (req, res) => {
     }
 });
 
-// router.put("/mentors/approve-all", async (req, res) => {
-// try {
-//     const updateResult = await Mentors.updateMany(
-//       { bio: { $ne: null, $ne: "" } },
-//       { status: "Approved" }
-//     );
 
-//     if (updateResult.nModified === 0) {
-//       return res.status(404).send({ message: "No mentors with bio found" });
-//     }
-
-//     res.status(200).send({
-//       message: `Status updated to 'Approved' for ${updateResult.nModified} mentors`,
-//     });
-// } catch (error) {
-//     res.status(500).send({ message: "Internal Server Error", error: error });
-// }
-// });
 
 /**
  * @swagger
@@ -3754,36 +3794,32 @@ router.post("/create-reels/:user", upload5.single("file"), async (req, res) => {
  *         content:
  *           application/json:
  *             example:
- *               - _id: 617a8c0d0540a289f76d857a
- *                 user: {
- *                   _id: 617a8c0d0540a289f76d8579,
- *                   firstname: "John",
- *                   lastname: "Doe",
- *                   profilePhoto: "profile.jpg",
+ *               - _id: "617a8c0d0540a289f76d857a"
+ *                 user:
+ *                   _id: "617a8c0d0540a289f76d8579"
+ *                   firstname: "John"
+ *                   lastname: "Doe"
+ *                   profilePhoto: "profile.jpg"
  *                   liveFeedSettings: true
- *                 }
- *                 video: "uploads/video.mp4",
- *                 description: "A cool video reel",
- *                 comments: [
- *                   {
- *                     _id: 617a8c0d0540a289f76d857b,
- *                     user: {
- *                       _id: 617a8c0d0540a289f76d8579,
- *                       firstname: "Jane",
- *                       lastname: "Smith",
- *                       profilePhoto: "profile.jpg",
+ *                 video: "uploads/video.mp4"
+ *                 description: "A cool video reel"
+ *                 comments:
+ *                   - _id: "617a8c0d0540a289f76d857b"
+ *                     user:
+ *                       _id: "617a8c0d0540a289f76d8579"
+ *                       firstname: "Jane"
+ *                       lastname: "Smith"
+ *                       profilePhoto: "profile.jpg"
  *                       liveFeedSettings: true
- *                     },
  *                     comment: "Awesome video!"
- *                   }
- *                 ]
  *       500:
  *         description: Internal server error.
  *         content:
  *           application/json:
  *             example:
- *               message: Server Error
+ *               message: "Server Error"
  */
+
 router.get('/reels', async (req, res) => {
     try {
         const reels = await Reels.find()
@@ -6974,6 +7010,7 @@ router.post('/update-account-type/:userId', async (req, res) => {
         return res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 
 
 module.exports = router;

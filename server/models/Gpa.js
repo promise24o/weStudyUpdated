@@ -6,6 +6,9 @@ const gpaSchema = new mongoose.Schema({
         required: true,
         ref: "users"
     },
+    accountType: {
+        type: String
+    },
     level: {
         type: String
     },

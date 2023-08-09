@@ -96,7 +96,39 @@ const userSchema = new mongoose.Schema ({
         highSchool: {
             type: String
         },
-       graduationYear: {
+        currentClass: {
+            type: String
+        },
+        subjectMajor: {
+            type: String
+        },
+        pJambYear: {
+            type: String
+        },
+        pInstitutionType: {
+            type: String
+        },
+        pInstitution: {
+            type: String
+        },
+        pFaculty: {
+            type: String
+        },
+        pDepartment: {
+            type: String
+        },
+        pCourse: {
+            type: String
+        },
+        pStudyMode: {
+            type: String
+        }
+    },
+    jambiteEducation: {
+        highSchool: {
+            type: String
+        },
+        graduationYear: {
             type: String
         },
         subjectMajor: {
