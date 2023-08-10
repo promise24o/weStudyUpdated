@@ -32,13 +32,31 @@ const Notification = require ("../models/Notifications");
 const FriendRequest = require ("../models/FriendRequest");
 const Chat = require ("../models/Chat");
 const Reels = require("../models/Reels");
-const { EventCategory } = require("../models/Events");
+const { EventCategory, Event } = require("../models/Events");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
 
 // Configure Multer to use Cloudinary as the storage engine
 const randomString = crypto.randomBytes (8).toString ('hex');
+
+const storage6 = new CloudinaryStorage ({
+    cloudinary: cloudinary,
+    params: {
+        folder: "/events",
+        format: async () => "jpg",
+        public_id: () => randomString
+    }
+});
+
+// Create a multer instance with the storage engine and limits (if necessary)
+const upload6 = multer ({
+    storage: storage6,
+    limits: {
+        fileSize: 1024 * 1024 * 5,
+        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
+    }
+});
 
 const storage = new CloudinaryStorage ({
     cloudinary: cloudinary,
@@ -7110,6 +7128,51 @@ router.post('/update-account-type/:userId', async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * tags:
+ *   name: Events
+ *   description: APIs for managing events
+ * 
+ * /event-categories:
+ *   get:
+ *     summary: Get Event Categories
+ *     description: Get all event categories
+ *     tags: [Events]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved event categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 categories:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/EventCategory'  # Replace with the correct schema reference for the EventCategory model
+ *       400:
+ *         description: No Categories Found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Failed to fetch event categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 error:
+ *                   type: object
+ */
+
 router.get ("/event-categories", async (req, res) => {
     try { // check if user exists
         let eventCategories = await EventCategory.find ().sort ({createdAt: "desc"});
@@ -7119,6 +7182,80 @@ router.get ("/event-categories", async (req, res) => {
         res.status (200).send ({categories: eventCategories});
     } catch (error) {
         res.status (500).send ({message: "Internal Server Error", error: error});
+    }
+});
+
+/**
+ * @swagger
+ * tags:
+ *   name: Events
+ *   description: APIs for managing events
+ * 
+ * /users/create-event:
+ *   post:
+ *     summary: Create Event
+ *     description: Create a new event
+ *     tags: [Events]
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: formData
+ *         name: file
+ *         type: file
+ *         required: true
+ *         description: Event banner image
+ *       - in: formData
+ *         name: data
+ *         type: string
+ *         required: true
+ *         description: JSON data containing event details
+ *     responses:
+ *       201:
+ *         description: Event created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Failed to create event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+router.post('/create-event', upload6.single('file'), async (req, res) => {
+    try {
+        const eventData = JSON.parse(req.body.data); // Parse the JSON data
+        const { user, title, details, category, startDate, startTime, endDate, endTime, location } = eventData;
+
+        // Create a new Event object
+        const event = new Event({
+            user,
+            banner_image: req.file.path,  
+            title,
+            details,
+            category,
+            startDate,
+            startTime,
+            endDate,
+            endTime,
+            location,
+        });
+
+        // Save the event to the database
+        const savedEvent = await event.save();
+
+        res.status(201).json({ message: 'Event created successfully'});
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 
