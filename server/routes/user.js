@@ -32,6 +32,7 @@ const Notification = require ("../models/Notifications");
 const FriendRequest = require ("../models/FriendRequest");
 const Chat = require ("../models/Chat");
 const Reels = require("../models/Reels");
+const { EventCategory } = require("../models/Events");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
@@ -3484,6 +3485,8 @@ router.post ("/generate-pdf-result", async (req, res) => {
         const {userId, inputs} = req.body;
         const level = inputs.level;
         const semester = inputs.semester;
+        const institution = "";
+
         let gpa;
 
         if (semester === "all") {
@@ -3496,16 +3499,42 @@ router.post ("/generate-pdf-result", async (req, res) => {
             return res.status (404).send ({message: "You do not have a Result for this Level and Semester"});
         }
 
-        const {education, firstname, lastname, profilePhoto} = await User.findById (userId);
-
-        const {logo} = await Institutions.findOne ({
-            institution: education.institution
-        }, {logo: 1});
-
-        const html = await ejs.renderFile (path.join (__dirname, "..", "views", "result_mockup.ejs"), {
+        const {
+            education,
+            highSchoolEducation,
+            jambiteEducation,
             firstname,
             lastname,
-            education,
+            profilePhoto,
+            accountType
+        } = await User.findById(userId);
+
+        let educationDetails = null;
+        if (accountType === "undergraduate") {
+            educationDetails = education;
+        } else if (accountType === "high-school") {
+            educationDetails = highSchoolEducation;
+        } else if (accountType === "jambite") {
+            educationDetails = jambiteEducation;
+        }
+
+        let institutionProperty = "institution";
+
+        if (accountType === "high-school" || accountType === "jambite") {
+            institutionProperty = "pInstitution";
+        }
+
+        // Use bracket notation to access the property dynamically
+        const { logo } = await Institutions.findOne({
+            institution: educationDetails[institutionProperty]
+        }, { logo: 1 });
+
+
+        const html = await ejs.renderFile(path.join(__dirname, "..", "views", "result_mockup.ejs"), {
+            firstname,
+            lastname,
+            accountType,
+            education: educationDetails,
             profilePhoto,
             logo,
             level,
@@ -6414,6 +6443,70 @@ router.get ('/messages/user/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: Chat
+ *   description: APIs for managing chat messages
+ * 
+ * /chat/{id}/messages:
+ *   get:
+ *     summary: Get Chat Messages
+ *     description: Get all messages of a chat
+ *     tags: [Chat]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID of the chat
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Message'  # Replace with the correct schema reference for the Message model
+ *       404:
+ *         description: Chat not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Failed to fetch messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+router.get('/chat/:id/messages', async (req, res) => {
+    const chatId = req.params.id;
+
+    try {
+        const chat = await Chat.findById(chatId);
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found' });
+        }
+
+        const messages = chat.messages;
+
+        res.status(200).json(messages);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
 
 /**
  * @swagger
@@ -7016,6 +7109,18 @@ router.post('/update-account-type/:userId', async (req, res) => {
     }
 });
 
+
+router.get ("/event-categories", async (req, res) => {
+    try { // check if user exists
+        let eventCategories = await EventCategory.find ().sort ({createdAt: "desc"});
+        if (! eventCategories) {
+            return res.status (400).send ({message: "No Categories Found"});
+        }
+        res.status (200).send ({categories: eventCategories});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+    }
+});
 
 
 module.exports = router;

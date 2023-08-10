@@ -146,13 +146,27 @@
                                 <h3 class="text-dark fw-bolder">
                                     <%= firstname + ' ' + lastname %>
                                 </h3>
-                                <p>
-                                    <%= education.institution %>
-                                </p>
-                                <h6>Department:
-                                    <%= education.department %> | Course:
-                                        <%= education.course_of_study %>
-                                </h6>
+                                    <% if (accountType === "undergraduate") { %>
+                                        <p><%= education.institution %></p>
+                                        <h6>Department:
+                                            <%= education.department %>
+                                            | Course:
+                                            <%= education.course_of_study %></h6>
+                                    <% } else if (accountType === "high-school") { %>
+                                        <p><%= education.pInstitution %></p>
+                                        <h6>Department:
+                                            <%= education.pDepartment %>
+                                            | Course:
+                                            <%= education.pCourse %></h6>
+                                    <% } else if (accountType === "jambite") { %>
+                                        <p><%= education.pInstitution %></p>
+                                        <h6>Department:
+                                            <%= education.pDepartment %>
+                                            | Course:
+                                            <%= education.pCourse %></h6>
+                                    <% } %>
+
+
                                 <div class="skills">
                                     <h6>Result Details</h6>
                                     <ul>

@@ -9,6 +9,7 @@ const multer = require ("multer");
 const {User} = require ("../models/Users");
 const {ScholarshipCategory, Scholarship} = require ("../models/Scholarships");
 const {CourseCategory, Course} = require ("../models/Courses");
+const {EventCategory, Event} = require ("../models/Events");
 const {MentorFaculty, Mentors} = require ("../models/Mentors");
 const {CommunityCategory, CommunityCenter} = require ("../models/CommunityCenter");
 const Advert = require ("../models/Adverts");
@@ -61,7 +62,7 @@ const storage2 = new CloudinaryStorage ({
 const storage4 = new CloudinaryStorage ({
     cloudinary: cloudinary,
     params: {
-        folder: "/community-categories",
+        folder: "/events-categories",
         format: async () => "png",
         public_id: () => `categories-${
             Date.now ()
@@ -303,13 +304,13 @@ router.get ("/course-categories", auth2, async (req, res) => {
     }
 });
 
-router.get ("/community-categories", auth2, async (req, res) => {
+router.get ("/event-categories", auth2, async (req, res) => {
     try { // check if user exists
-        let communityCategories = await CommunityCategory.find ().sort ({createdAt: "desc"});
-        if (! communityCategories) {
+        let eventCategories = await EventCategory.find ().sort ({createdAt: "desc"});
+        if (! eventCategories) {
             return res.status (400).send ({message: "No Categories Found"});
         }
-        res.status (200).send ({categories: communityCategories});
+        res.status (200).send ({categories: eventCategories});
     } catch (error) {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
@@ -768,7 +769,7 @@ router.delete ("/advert/:adsId", async (req, res) => {
 });
 
 
-router.post ("/add-community-category", upload4.single ("file"), async (req, res) => {
+router.post ("/add-event-category", upload4.single ("file"), async (req, res) => {
     if (!req.file) {
         return res.status (400).json ({error: "No photo uploaded"});
     }
@@ -778,13 +779,13 @@ router.post ("/add-community-category", upload4.single ("file"), async (req, res
 
     // Upload the banner_image to cloudinary
     const result = await cloudinary.uploader.upload (req.file.path);
-    console.log (result);
+
     try { // Create a new category
-        const category = new CommunityCategory ({title: data.title, banner_image: result.url});
+        const category = new EventCategory ({title: data.title, banner_image: result.url});
         // Save the scholarship to the database
         await category.save ();
         // Send a response with the saved category
-        const categories = await CommunityCategory.find ({}).sort ({createdAt: "desc"});
+        const categories = await EventCategory.find ({}).sort ({createdAt: "desc"});
         res.status (201).send ({categories: categories, message: "Category Created Successfully"});
     } catch (error) {
         res.status (500).send ({message: "Internal Server Error", error});
