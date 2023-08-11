@@ -6464,7 +6464,7 @@ router.get ('/messages/user/:userId', async (req, res) => {
 /**
  * @swagger
  * tags:
- *   name: Chat
+ *   name: User
  *   description: APIs for managing chat messages
  * 
  * /chat/{id}/messages:
@@ -7131,7 +7131,7 @@ router.post('/update-account-type/:userId', async (req, res) => {
 /**
  * @swagger
  * tags:
- *   name: Events
+ *   name: User
  *   description: APIs for managing events
  * 
  * /event-categories:
@@ -7188,7 +7188,7 @@ router.get ("/event-categories", async (req, res) => {
 /**
  * @swagger
  * tags:
- *   name: Events
+ *   name: User
  *   description: APIs for managing events
  * 
  * /users/create-event:
@@ -7259,5 +7259,140 @@ router.post('/create-event', upload6.single('file'), async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing events
+ * 
+ * /users/events:
+ *   get:
+ *     summary: Get All Events
+ *     description: Get all events with populated fields
+ *     tags: [Events]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved events
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Event'  # Replace with the correct schema reference for the Event model
+ *       500:
+ *         description: Failed to fetch events
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ * 
+ * components:
+ *   schemas:
+ *     Event:  # Define the schema for the Event model
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         title:
+ *           type: string
+ *         banner_image:
+ *           type: string
+ *         category:
+ *           $ref: '#/components/schemas/EventCategory'
+ *         details:
+ *           type: string
+ *         startDate:
+ *           type: string
+ *           format: date-time
+ *         startTime:
+ *           type: string
+ *         endDate:
+ *           type: string
+ *           format: date-time
+ *         endTime:
+ *           type: string
+ *         location:
+ *           type: string
+ *         interestedParticipants:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/InterestedParticipant'
+ *         goingParticipants:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/GoingParticipant'
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         visibility:
+ *           type: boolean
+ *         comments:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Comment'
+ *     EventCategory:  # Define the schema for the EventCategory model
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         title:
+ *           type: string
+ *         banner_image:
+ *           type: string
+ *     InterestedParticipant:  # Define the schema for the InterestedParticipant model
+ *       type: object
+ *       properties:
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ *     GoingParticipant:  # Define the schema for the GoingParticipant model
+ *       type: object
+ *       properties:
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         dateAdded:
+ *           type: string
+ *           format: date-time
+ *     Comment:  # Define the schema for the Comment model
+ *       type: object
+ *       properties:
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         text:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ */
+
+
+router.get('/events', async (req, res) => {
+    try {
+        const events = await Event.find()
+            .populate('category')
+            .populate({
+                path: 'user',
+                select: 'firstname lastname profilePhoto',
+            })
+            .populate({
+                path: 'interestedParticipants.user',
+                select: 'firstname lastname profilePhoto',
+            })
+            .populate({
+                path: 'goingParticipants.user',
+                select: 'firstname lastname profilePhoto',
+            })
+            .exec();
+
+        res.status(200).json(events);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
 
 module.exports = router;

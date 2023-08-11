@@ -90,7 +90,7 @@ const eventSchema = new mongoose.Schema({
         required: true
     },
     interestedParticipants: [interestedParticipantsSchema],
-    favoriteMentors: [
+    goingParticipants: [
         {
             user: {
                 type: mongoose.Schema.Types.ObjectId,
