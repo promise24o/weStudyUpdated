@@ -179,10 +179,42 @@ const reportSchema = new mongoose.Schema({
 });
 
 
+const eventNotificationSchema = new mongoose.Schema({
+    recipient: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    sender: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    event: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'events'
+    },
+    action: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Date,
+        default: Date.now
+    },
+    isRead: {
+        type: Boolean,
+        default: false
+    },
+    isSystemNotification: {
+        type: Boolean,
+        default: false
+    }
+});
+
 module.exports = {
     EventCategory: mongoose.model('EventCategory', eventCategorySchema),
     Event: mongoose.model('Event', eventSchema),
     EventBookmark: mongoose.model('EventBookmark', bookmarkSchema)  ,
-    ReportEvent: mongoose.model('ReportEvent', reportSchema)
+    ReportEvent: mongoose.model('ReportEvent', reportSchema),
+    EventNotification: mongoose.model('EventNotification', eventNotificationSchema),
 };
 

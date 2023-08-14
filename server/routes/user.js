@@ -7718,7 +7718,7 @@ router.post('/add-going/:eventId', async (req, res) => {
  *   post:
  *     summary: Add or Remove Event Bookmark
  *     description: Add or remove an event from bookmarks for a user
- *     tags: Events
+ *     tags: User
  *     parameters:
  *       - in: path
  *         name: eventId
@@ -7796,7 +7796,7 @@ router.post('/event/bookmark/:eventId', async (req, res) => {
  *   get:
  *     summary: Check if Event is Bookmarked
  *     description: Check if an event is bookmarked by a user
- *     tags: Events
+ *     tags: User
  *     parameters:
  *       - in: path
  *         name: eventId
@@ -7952,7 +7952,7 @@ router.post('/event/report', async (req, res) => {
  *   get:
  *     summary: Get user's bookmarked events
  *     description: Get a list of events bookmarked by the user.
- *     tags: [User]
+ *     tags: User
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8010,7 +8010,7 @@ router.get('/event/bookmarks/:userId', async (req, res) => {
  *   get:
  *     summary: Get events user is interested in
  *     description: Get a list of events that the user is interested in based on user ID.
- *     tags: [User]
+ *     tags: User
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8082,7 +8082,7 @@ router.get('/events/interested/:userId', async (req, res) => {
  *   get:
  *     summary: Get events user is going to
  *     description: Get a list of events that the user is going to based on user ID.
- *     tags: [User]
+ *     tags: User
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8154,7 +8154,7 @@ router.get('/events/going/:userId', async (req, res) => {
  *   get:
  *     summary: Get events hosted by a user
  *     description: Get a list of events that are hosted by the user based on user ID.
- *     tags: [User]
+ *     tags: User
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8223,7 +8223,7 @@ router.get('/events/hosted/:userId', async (req, res) => {
  *   get:
  *     summary: Get events under a specific category
  *     description: Get a list of events that belong to a specific category.
- *     tags: [Events]
+ *     tags: User
  *     parameters:
  *       - in: path
  *         name: category
@@ -8277,13 +8277,89 @@ router.get('/events/category/:category', async (req, res) => {
         }
 
         const eventsUnderCategory = await Event.find({ category: categoryExists._id });
-        
+
         res.json({ events: eventsUnderCategory });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+
+/**
+ * @swagger
+ * /users/events/filter:
+ *   get:
+ *     summary: Get events filtered by location and/or startDate
+ *     description: Get a list of events filtered by location and/or startDate.
+ *     tags: Events
+ *     parameters:
+ *       - name: location
+ *         in: query
+ *         description: Filter events by location
+ *         schema:
+ *           type: string
+ *       - name: startDate
+ *         in: query
+ *         description: Filter events by startDate (format: YYYY-MM-DD)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved filtered events
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Event'  # Reference to your Event schema
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+
+// Route to get events filtered by location and startDate
+router.get('/events/filter', async (req, res) => {
+    const { location, startDate } = req.query;
+    
+    try {
+        let query = {};
+
+        if (location) {
+            // Use a regular expression to perform a partial match on the location
+            query.location = { $regex: new RegExp(location, 'i') };
+        }
+
+        if (startDate) {
+            query.startDate = { $gte: new Date(startDate) };
+        }
+
+        let filteredEvents;
+
+        if (Object.keys(query).length === 0) {
+            filteredEvents = await Event.find();
+        } else {
+            filteredEvents = await Event.find(query);
+        }
+
+        res.json({ events: filteredEvents });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 
 module.exports = router;
