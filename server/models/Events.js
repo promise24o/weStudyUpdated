@@ -12,6 +12,25 @@ const eventCategorySchema = new mongoose.Schema({
 });
 eventCategorySchema.set('timestamps', true);
 
+
+const bookmarkSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
+    },
+    event: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Event',
+        required: true
+    },
+    dateAdded: {
+        type: Date,
+        default: Date.now()
+    },
+});
+
+
 const commentSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -85,9 +104,15 @@ const eventSchema = new mongoose.Schema({
     endTime: {
         type: String,
     },
-    location: {
+    attendanceType: {
         type: String,
         required: true
+    },
+    location: {
+        type: String,
+    },
+    eventLink: {
+        type: String,
     },
     interestedParticipants: [interestedParticipantsSchema],
     goingParticipants: [
@@ -115,7 +140,49 @@ const eventSchema = new mongoose.Schema({
 });
 eventSchema.set('timestamps', true);
 
+
+const reportSchema = new mongoose.Schema({
+    event: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'events',
+        required: true
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
+    },
+    reason: {
+        type: String,
+        required: true
+    },
+    explanation: {
+        type: String,
+        required: true
+    },
+    action: {
+        type: String,
+        enum: ['pending', 'hide', 'rejected'],
+        default: 'pending'
+    },
+    dateReported: {
+        type: Date,  
+        default: Date.now
+    },
+    dateActionCarriedOut: {
+        type: Date
+    },
+    admin: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'admins'  
+    }
+});
+
+
 module.exports = {
     EventCategory: mongoose.model('EventCategory', eventCategorySchema),
     Event: mongoose.model('Event', eventSchema),
+    EventBookmark: mongoose.model('EventBookmark', bookmarkSchema)  ,
+    ReportEvent: mongoose.model('ReportEvent', reportSchema)
 };
+

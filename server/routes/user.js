@@ -1,46 +1,46 @@
-const cloudinary = require ("cloudinary").v2;
-const {CloudinaryStorage} = require ("multer-storage-cloudinary");
-const router = require ("express").Router ();
-const bcrypt = require ("bcrypt");
-const mongoose = require ('mongoose');
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const router = require("express").Router();
+const bcrypt = require("bcrypt");
+const mongoose = require('mongoose');
 
 
 
-const Token = require ("../models/Token");
-const sendEmail = require ("../utils/sendEmail");
-const crypto = require ("crypto");
+const Token = require("../models/Token");
+const sendEmail = require("../utils/sendEmail");
+const crypto = require("crypto");
 
-const ejs = require ("ejs");
-const fs = require ("fs");
-const path = require ("path");
-const puppeteer = require ("puppeteer");
-const {PDFDocument, StandardFonts, rgb} = require ("pdf-lib");
+const ejs = require("ejs");
+const fs = require("fs");
+const path = require("path");
+const puppeteer = require("puppeteer");
+const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
 
 // Models
-const {User} = require ("../models/Users");
-const Post = require ("../models/Post");
-const Activity = require ("../models/Activities");
-const Institutions = require ("../models/Institutions");
-const gpaSchema = require ("../models/Gpa");
-const Story = require ("../models/Story");
-const {MentorFaculty, Mentors, Schedule} = require ("../models/Mentors");
-const Advert = require ("../models/Adverts");
-const multer = require ("multer");
-const Agenda = require ("agenda");
-const MentorApplication = require ("../models/MentorApplication");
-const Notification = require ("../models/Notifications");
-const FriendRequest = require ("../models/FriendRequest");
-const Chat = require ("../models/Chat");
+const { User } = require("../models/Users");
+const Post = require("../models/Post");
+const Activity = require("../models/Activities");
+const Institutions = require("../models/Institutions");
+const gpaSchema = require("../models/Gpa");
+const Story = require("../models/Story");
+const { MentorFaculty, Mentors, Schedule } = require("../models/Mentors");
+const Advert = require("../models/Adverts");
+const multer = require("multer");
+const Agenda = require("agenda");
+const MentorApplication = require("../models/MentorApplication");
+const Notification = require("../models/Notifications");
+const FriendRequest = require("../models/FriendRequest");
+const Chat = require("../models/Chat");
 const Reels = require("../models/Reels");
-const { EventCategory, Event } = require("../models/Events");
+const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent } = require("../models/Events");
 
 // Configure Cloudinary credentials
-cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
+cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET });
 
 // Configure Multer to use Cloudinary as the storage engine
-const randomString = crypto.randomBytes (8).toString ('hex');
+const randomString = crypto.randomBytes(8).toString('hex');
 
-const storage6 = new CloudinaryStorage ({
+const storage6 = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: "/events",
@@ -50,7 +50,7 @@ const storage6 = new CloudinaryStorage ({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload6 = multer ({
+const upload6 = multer({
     storage: storage6,
     limits: {
         fileSize: 1024 * 1024 * 5,
@@ -58,7 +58,7 @@ const upload6 = multer ({
     }
 });
 
-const storage = new CloudinaryStorage ({
+const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: "/users",
@@ -68,7 +68,7 @@ const storage = new CloudinaryStorage ({
 });
 
 // Create a multer instance with the storage engine and limits (if necessary)
-const upload = multer ({
+const upload = multer({
     storage: storage,
     limits: {
         fileSize: 1024 * 1024 * 5,
@@ -80,17 +80,17 @@ const upload = multer ({
 
 // Create a multer instance with the storage engine and limits (if necessary)
 
-const storage3 = new CloudinaryStorage ({
+const storage3 = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: (req, file) => {
         let format;
         let resourceType;
-        
 
-        if (file.mimetype.includes ("image")) {
+
+        if (file.mimetype.includes("image")) {
             format = "jpg";
             resourceType = "image";
-        } else if (file.mimetype.includes ("video")) {
+        } else if (file.mimetype.includes("video")) {
             format = "mp4";
             resourceType = "video";
         }
@@ -98,7 +98,7 @@ const storage3 = new CloudinaryStorage ({
         //     throw new Error ("Invalid file type");
         // }
 
-        const randomString = crypto.randomBytes (8).toString ('hex');
+        const randomString = crypto.randomBytes(8).toString('hex');
         const params = {
             folder: "/stories",
             format: format,
@@ -108,15 +108,15 @@ const storage3 = new CloudinaryStorage ({
 
         if (format === "mp4") {
             params.transformation = [{
-                    duration: 25
-                },]; // Set the maximum duration to 25 seconds for videos
+                duration: 25
+            },]; // Set the maximum duration to 25 seconds for videos
             params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
         }
         return params;
     }
 });
 
-const upload3 = multer ({
+const upload3 = multer({
     storage: storage3,
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB file size limit
@@ -124,16 +124,16 @@ const upload3 = multer ({
     }
 });
 
-const storage4 = new CloudinaryStorage ({
+const storage4 = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: (req, file) => {
         let format;
         let resourceType;
 
-        if (file.mimetype.includes ("image")) {
+        if (file.mimetype.includes("image")) {
             format = "jpg";
             resourceType = "image";
-        } else if (file.mimetype.includes ("video")) {
+        } else if (file.mimetype.includes("video")) {
             format = "mp4";
             resourceType = "video";
         }
@@ -141,7 +141,7 @@ const storage4 = new CloudinaryStorage ({
         //     throw new Error ("Invalid file type");
         // }
 
-        const randomString = crypto.randomBytes (8).toString ('hex'); // Generate a random string (8 characters)
+        const randomString = crypto.randomBytes(8).toString('hex'); // Generate a random string (8 characters)
         const fileName = `${randomString}`; // Combine the random string
 
         const params = {
@@ -159,7 +159,7 @@ const storage4 = new CloudinaryStorage ({
     }
 });
 
-const upload4 = multer ({
+const upload4 = multer({
     storage: storage4,
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB file size limit
@@ -167,7 +167,7 @@ const upload4 = multer ({
     }
 });
 
-const storage5 = new CloudinaryStorage ({
+const storage5 = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: () => {
         let format;
@@ -176,7 +176,7 @@ const storage5 = new CloudinaryStorage ({
         format = "mp4";
         resourceType = "video";
 
-        const randomString = crypto.randomBytes (8).toString ('hex');
+        const randomString = crypto.randomBytes(8).toString('hex');
         const params = {
             folder: "/reels",
             format: format,
@@ -185,8 +185,8 @@ const storage5 = new CloudinaryStorage ({
         };
 
         params.transformation = [{
-                duration: 25
-            },]; // Set the maximum duration to 25 seconds for videos
+            duration: 25
+        },]; // Set the maximum duration to 25 seconds for videos
         params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
 
         return params;
@@ -195,7 +195,7 @@ const storage5 = new CloudinaryStorage ({
 
 
 
-const upload5 = multer ({
+const upload5 = multer({
     storage: storage5,
     limits: {
         fileSize: 20 * 1024 * 1024, // 10MB file size limit
@@ -205,8 +205,8 @@ const upload5 = multer ({
 
 
 
-router.get ("/", function (req, res) {
-    res.send ("User API");
+router.get("/", function (req, res) {
+    res.send("User API");
 });
 
 // router.post("/admin", async(req, res) => {
@@ -226,72 +226,69 @@ router.get ("/", function (req, res) {
 //     }
 // });
 
-router.get ("/:id/verify/:token", async (req, res) => {
+router.get("/:id/verify/:token", async (req, res) => {
     try {
-        const user = await User.findOne ({_id: req.params.id});
-        if (! user) {
-            return res.status (404).send ({message: "This User Does not Exists"});
+        const user = await User.findOne({ _id: req.params.id });
+        if (!user) {
+            return res.status(404).send({ message: "This User Does not Exists" });
         }
 
-        const token = await Token.findOne ({userId: user._id, token: req.params.token});
-        if (! token) {
-            return res.status (404).send ({message: "Error: Invalid Link"});
+        const token = await Token.findOne({ userId: user._id, token: req.params.token });
+        if (!token) {
+            return res.status(404).send({ message: "Error: Invalid Link" });
         }
 
-        await User.updateOne ({
+        await User.updateOne({
             _id: user._id
-        }, {verified: true});
-        await token.deleteOne ();
+        }, { verified: true });
+        await token.deleteOne();
 
-        const updatedUser = await User.findOne ({_id: user._id});
+        const updatedUser = await User.findOne({ _id: user._id });
 
-        res.status (200).send ({user: updatedUser, message: "Email Verified Successfully"});
+        res.status(200).send({ user: updatedUser, message: "Email Verified Successfully" });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status (400).send ({message: "You have already verified your email"});
+            return res.status(400).send({ message: "You have already verified your email" });
         }
 
-        console.error (error);
-        res.status (500).send ({message: "Internal Server Error"});
+        console.error(error);
+        res.status(500).send({ message: "Internal Server Error" });
     }
 });
 
-router.post ("/resend-verify-email-link", async (req, res) => {
+router.post("/resend-verify-email-link", async (req, res) => {
     try {
-        let user = await User.findOne ({email: req.body.email});
+        let user = await User.findOne({ email: req.body.email });
 
-        const token = await Token.findOneAndUpdate ({
+        const token = await Token.findOneAndUpdate({
             userId: user._id
         }, {
-            token: crypto.randomBytes (32).toString ("hex"),
-            createdAt: Date.now ()
+            token: crypto.randomBytes(32).toString("hex"),
+            createdAt: Date.now()
         }, {
             upsert: true,
             new: true
         });
 
         // construct the file path using the path.join() method
-        const filePath = path.join (__dirname, "..", "emails", "verify_email.ejs");
+        const filePath = path.join(__dirname, "..", "emails", "verify_email.ejs");
 
         // read the HTML content from a file
-        let template = fs.readFileSync (filePath, "utf8");
+        let template = fs.readFileSync(filePath, "utf8");
 
-        const urlLink = `${
-            process.env.CLIENT_BASE_URL
-        }/users/${
-            user._id
-        }/verify/${
-            token.token
-        }`;
+        const urlLink = `${process.env.CLIENT_BASE_URL
+            }/users/${user._id
+            }/verify/${token.token
+            }`;
 
         // compile the EJS template with the url variable
-        let html = ejs.render (template, {url: urlLink});
+        let html = ejs.render(template, { url: urlLink });
 
-        await sendEmail (user.email, "Verify Email", html);
+        await sendEmail(user.email, "Verify Email", html);
 
-        res.status (201).send ({message: "Verification Email Sent Successfully"});
+        res.status(201).send({ message: "Verification Email Sent Successfully" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -338,12 +335,12 @@ router.post ("/resend-verify-email-link", async (req, res) => {
  *               error: <error message>
  */
 
-router.get ("/institutions", async (req, res) => {
+router.get("/institutions", async (req, res) => {
     try {
-        let institutions = await Institutions.find ({type: req.query.type});
-        res.status (201).send ({institutions: institutions});
+        let institutions = await Institutions.find({ type: req.query.type });
+        res.status(201).send({ institutions: institutions });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -584,7 +581,7 @@ router.post("/update-education-info", async (req, res) => {
  *               error: <error message>
  */
 
-router.post ("/update-personal-info", async (req, res) => {
+router.post("/update-personal-info", async (req, res) => {
     try {
         const {
             city,
@@ -594,7 +591,7 @@ router.post ("/update-personal-info", async (req, res) => {
             dob,
             userId
         } = req.body;
-        const updatedUser = await User.findOneAndUpdate ({
+        const updatedUser = await User.findOneAndUpdate({
             _id: userId
         }, {
             $set: {
@@ -604,11 +601,11 @@ router.post ("/update-personal-info", async (req, res) => {
                 "personal.gender": gender,
                 "personal.dob": dob
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "Updated Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "Updated Successfully!" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -668,28 +665,28 @@ router.post ("/update-personal-info", async (req, res) => {
  *       - bearerAuth: []
  */
 
-router.post ("/change-password", async (req, res) => {
+router.post("/change-password", async (req, res) => {
     try {
-        const user = await User.findOne ({_id: req.body.user._id});
-        const isPasswordCorrect = await bcrypt.compare (req.body.password, user.password);
+        const user = await User.findOne({ _id: req.body.user._id });
+        const isPasswordCorrect = await bcrypt.compare(req.body.password, user.password);
 
         // Compare Passwords
-        if (! isPasswordCorrect) {
-            return res.status (400).send ({message: "Current password is incorrect"});
+        if (!isPasswordCorrect) {
+            return res.status(400).send({ message: "Current password is incorrect" });
         }
 
         // Check Confirm Password
         if (req.body.newPassword !== req.body.confirmPassword) {
-            return res.status (400).send ({message: "New password and confirm password do not match"});
+            return res.status(400).send({ message: "New password and confirm password do not match" });
         }
 
-        const salt = await bcrypt.genSalt (Number (process.env.SALT));
-        user.password = await bcrypt.hash (req.body.newPassword, salt);
-        await user.save ();
+        const salt = await bcrypt.genSalt(Number(process.env.SALT));
+        user.password = await bcrypt.hash(req.body.newPassword, salt);
+        await user.save();
 
-        res.status (200).send ({message: "Password Change Successfully!"});
+        res.status(200).send({ message: "Password Change Successfully!" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -747,28 +744,28 @@ router.post ("/change-password", async (req, res) => {
  */
 
 // Route to upload user avatar
-router.post ("/upload-avatar/:userId", upload.single ("file"), async (req, res) => {
+router.post("/upload-avatar/:userId", upload.single("file"), async (req, res) => {
     const userId = req.params.userId;
     try {
         if (!req.file) {
-            return res.status (400).json ({error: "No photo uploaded"});
+            return res.status(400).json({ error: "No photo uploaded" });
         }
 
         // Update the user's photo in the database
 
-        const result = await cloudinary.uploader.upload (req.file.path);
+        const result = await cloudinary.uploader.upload(req.file.path);
 
-        const updatedUser = await User.findOneAndUpdate ({
+        const updatedUser = await User.findOneAndUpdate({
             _id: userId
         }, {
             $set: {
                 profilePhoto: result.secure_url
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "Photo Uploaded Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "Photo Uploaded Successfully!" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -874,27 +871,27 @@ router.post ("/upload-avatar/:userId", upload.single ("file"), async (req, res) 
  *                       description: Error stack trace
  */
 
-router.post ("/enable-twofa", async (req, res) => {
+router.post("/enable-twofa", async (req, res) => {
     try {
-        const user = await User.findOne ({_id: req.body.user._id});
+        const user = await User.findOne({ _id: req.body.user._id });
 
-        const isPasswordCorrect = await bcrypt.compare (req.body.password, user.password);
+        const isPasswordCorrect = await bcrypt.compare(req.body.password, user.password);
 
         // Compare Passwords
-        if (! isPasswordCorrect) {
-            return res.status (400).send ({message: "Current password is incorrect"});
+        if (!isPasswordCorrect) {
+            return res.status(400).send({ message: "Current password is incorrect" });
         }
-        const updatedUser = await User.findOneAndUpdate ({
+        const updatedUser = await User.findOneAndUpdate({
             _id: user._id
         }, {
             $set: {
                 twofa: true
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "2FA Enabled Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "2FA Enabled Successfully!" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -964,20 +961,20 @@ router.post ("/enable-twofa", async (req, res) => {
  *                       description: Error stack trace
  */
 
-router.post ("/disable-twofa", async (req, res) => {
+router.post("/disable-twofa", async (req, res) => {
     try {
-        const user = await User.findOne ({_id: req.body.user._id});
-        const updatedUser = await User.findOneAndUpdate ({
+        const user = await User.findOne({ _id: req.body.user._id });
+        const updatedUser = await User.findOneAndUpdate({
             _id: user._id
         }, {
             $set: {
                 twofa: false
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "2FA Disabled Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "2FA Disabled Successfully!" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -1043,22 +1040,22 @@ router.post ("/disable-twofa", async (req, res) => {
  *                       description: Error stack trace
  */
 
-router.post ("/update-preset-parameter", async (req, res) => {
+router.post("/update-preset-parameter", async (req, res) => {
     try {
-        const {preset_para} = req.body;
+        const { preset_para } = req.body;
 
-        const user = await User.findOne ({_id: req.body.user});
-        const updatedUser = await User.findOneAndUpdate ({
+        const user = await User.findOne({ _id: req.body.user });
+        const updatedUser = await User.findOneAndUpdate({
             _id: user._id
         }, {
             $set: {
                 "preset_param.status": preset_para
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "Preset Parameter Updated Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "Preset Parameter Updated Successfully!" });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -1142,24 +1139,24 @@ router.post ("/update-preset-parameter", async (req, res) => {
  */
 
 // Update user preset_param status
-router.patch ("/:userId/presetParam", async (req, res) => {
+router.patch("/:userId/presetParam", async (req, res) => {
     try {
         const userId = req.params.userId;
         const status = req.body.preset_param.status;
 
-        const user = await User.findOne ({_id: userId});
-        const updatedUser = await User.findOneAndUpdate ({
+        const user = await User.findOne({ _id: userId });
+        const updatedUser = await User.findOneAndUpdate({
             _id: user._id
         }, {
             $set: {
                 "preset_param.status": status
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "Preset Parameter Updated Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "Preset Parameter Updated Successfully!" });
     } catch (err) {
-        console.error (err.message);
-        res.status (500).send ("Server error");
+        console.error(err.message);
+        res.status(500).send("Server error");
     }
 });
 
@@ -1248,24 +1245,24 @@ router.patch ("/:userId/presetParam", async (req, res) => {
  */
 
 // Update user preset_param scale
-router.patch ("/:userId/preset-scale", async (req, res) => {
+router.patch("/:userId/preset-scale", async (req, res) => {
     try {
         const userId = req.params.userId;
         const scale = req.body.preset_param.scale;
 
-        const user = await User.findOne ({_id: userId});
-        const updatedUser = await User.findOneAndUpdate ({
+        const user = await User.findOne({ _id: userId });
+        const updatedUser = await User.findOneAndUpdate({
             _id: user._id
         }, {
             $set: {
                 "preset_param.scale": scale
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "Grading Scale Updated Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "Grading Scale Updated Successfully!" });
     } catch (err) {
-        console.error (err.message);
-        res.status (500).send ("Server error");
+        console.error(err.message);
+        res.status(500).send("Server error");
     }
 });
 
@@ -1344,24 +1341,24 @@ router.patch ("/:userId/preset-scale", async (req, res) => {
  */
 
 // Update user Target GPA
-router.patch ("/:userId/target-cgpa", async (req, res) => {
+router.patch("/:userId/target-cgpa", async (req, res) => {
     try {
         const userId = req.params.userId;
         const target = req.body.data.target;
 
-        const user = await User.findOne ({_id: userId});
-        const updatedUser = await User.findOneAndUpdate ({
+        const user = await User.findOne({ _id: userId });
+        const updatedUser = await User.findOneAndUpdate({
             _id: user._id
         }, {
             $set: {
                 targetCGPA: target
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: updatedUser, message: "Target CGPA  Updated Successfully!"});
+        res.status(200).send({ user: updatedUser, message: "Target CGPA  Updated Successfully!" });
     } catch (err) {
-        console.error (err.message);
-        res.status (500).send ("Server error");
+        console.error(err.message);
+        res.status(500).send("Server error");
     }
 });
 
@@ -1418,21 +1415,21 @@ router.patch ("/:userId/target-cgpa", async (req, res) => {
  */
 
 // User Delete scale
-router.delete ("/:userId/preset_param/scale", async (req, res) => {
+router.delete("/:userId/preset_param/scale", async (req, res) => {
     try {
         const userId = req.params.userId;
-        const user = await User.findById (userId).select ("-password -token");
+        const user = await User.findById(userId).select("-password -token");
 
-        if (! user) {
-            return res.status (404).json ({message: "User not found"});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
         user.preset_param.scale = undefined;
-        await user.save ();
+        await user.save();
 
-        res.status (200).send ({user: user, message: "Grading Scale Deleted Successfully!"});
+        res.status(200).send({ user: user, message: "Grading Scale Deleted Successfully!" });
     } catch (err) {
-        console.error (err);
-        res.status (500).json ({message: "Server Error"});
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -1494,17 +1491,17 @@ router.delete ("/:userId/preset_param/scale", async (req, res) => {
  */
 
 // Delete User Result
-router.delete ("/:userId/remove-result/:resultId", async (req, res) => {
-    const {userId, resultId} = req.params;
+router.delete("/:userId/remove-result/:resultId", async (req, res) => {
+    const { userId, resultId } = req.params;
     try {
-        const gpa = await gpaSchema.findOneAndDelete ({userId: userId, _id: resultId});
-        if (! gpa) {
-            return res.status (404).send ({message: "GPA not found"});
+        const gpa = await gpaSchema.findOneAndDelete({ userId: userId, _id: resultId });
+        if (!gpa) {
+            return res.status(404).send({ message: "GPA not found" });
         }
-        res.send ({message: "Result Deleted successfully"});
+        res.send({ message: "Result Deleted successfully" });
     } catch (error) {
-        console.error (error);
-        res.status (500).send ({message: "Server error"});
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
     }
 });
 
@@ -1568,10 +1565,10 @@ router.delete ("/:userId/remove-result/:resultId", async (req, res) => {
  */
 
 // Delete User Grades
-router.delete ("/:userId/remove-grade/:gradeId", async (req, res) => {
+router.delete("/:userId/remove-grade/:gradeId", async (req, res) => {
     try {
-        const {gradeId, userId} = req.params;
-        const user = await User.findOneAndUpdate ({
+        const { gradeId, userId } = req.params;
+        const user = await User.findOneAndUpdate({
             _id: userId
         }, {
             $pull: {
@@ -1579,16 +1576,16 @@ router.delete ("/:userId/remove-grade/:gradeId", async (req, res) => {
                     _id: gradeId
                 }
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        if (! user) {
-            return res.status (404).json ({message: "User not found"});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
-        res.status (200).send ({user: user, message: "Grade Deleted Successfully!"});
+        res.status(200).send({ user: user, message: "Grade Deleted Successfully!" });
     } catch (err) {
-        console.error (err);
-        res.status (500).json ({message: "Server Error"});
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -1663,24 +1660,24 @@ router.delete ("/:userId/remove-grade/:gradeId", async (req, res) => {
  */
 
 // Post user custom grade
-router.post ("/:userId/add-custom-grade", async (req, res) => {
+router.post("/:userId/add-custom-grade", async (req, res) => {
     try {
         const userId = req.params.userId;
-        const {grade_symbol, grade_value} = req.body;
+        const { grade_symbol, grade_value } = req.body;
 
-        const user = await User.findByIdAndUpdate (userId, {
+        const user = await User.findByIdAndUpdate(userId, {
             $push: {
                 "preset_param.grading": {
                     grade_symbol,
                     grade_value
                 }
             }
-        }, {new: true}).select ("-password -token");
+        }, { new: true }).select("-password -token");
 
-        res.status (200).send ({user: user, message: "Grade Added Successfully!"});
+        res.status(200).send({ user: user, message: "Grade Added Successfully!" });
     } catch (err) {
-        console.error (err);
-        res.status (500).json ({message: "Server Error"});
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -1745,14 +1742,14 @@ router.post ("/:userId/add-custom-grade", async (req, res) => {
  */
 
 // Get all Grades for a user
-router.get ("/:id/grades", async (req, res) => {
+router.get("/:id/grades", async (req, res) => {
     try {
-        const user = await User.findById (req.params.id);
+        const user = await User.findById(req.params.id);
         const grading = user.preset_param.grading;
-        res.json (grading);
+        res.json(grading);
     } catch (err) {
-        console.error (err);
-        res.status (500).send ("Internal Server Error");
+        console.error(err);
+        res.status(500).send("Internal Server Error");
     }
 });
 
@@ -1821,15 +1818,15 @@ router.get ("/:id/grades", async (req, res) => {
  */
 
 // Get all User Login Activities
-router.get ("/user-activities", async (req, res) => {
+router.get("/user-activities", async (req, res) => {
     try {
-        let activities = await Activity.find ({userId: req.query.user_id}).sort ({createdAt: "desc"}).limit (10);
-        if (! activities) {
-            return res.status (400).send ({message: "No Activities Found"});
+        let activities = await Activity.find({ userId: req.query.user_id }).sort({ createdAt: "desc" }).limit(10);
+        if (!activities) {
+            return res.status(400).send({ message: "No Activities Found" });
         }
-        res.status (200).send ({activities: activities});
+        res.status(200).send({ activities: activities });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -1912,7 +1909,7 @@ router.get ("/user-activities", async (req, res) => {
  */
 
 // Add User GPA
-router.post ("/add-gpa", async (req, res) => {
+router.post("/add-gpa", async (req, res) => {
     let gpa = null;
 
     try {
@@ -1928,12 +1925,12 @@ router.post ("/add-gpa", async (req, res) => {
             institution,
             level
         } = req.body;
-        
+
         // Search for a document that matches the semester, level, and userId
-        gpa = await gpaSchema.findOne({ semester, institution, level, userId: user, accountType});
+        gpa = await gpaSchema.findOne({ semester, institution, level, userId: user, accountType });
 
         if (gpa) { // If a document is found, update the courses array
-            await gpaSchema.updateOne ({
+            await gpaSchema.updateOne({
                 _id: gpa._id
             }, {
                 $push: {
@@ -1946,10 +1943,10 @@ router.post ("/add-gpa", async (req, res) => {
                     }
                 }
             });
-            gpa = await gpaSchema.findOne ({semester, level, userId: user}).sort ({createdAt: "desc"});
-            res.status (200).send ({gpa: gpa, message: "Course Updated Successfully!"});
+            gpa = await gpaSchema.findOne({ semester, level, userId: user }).sort({ createdAt: "desc" });
+            res.status(200).send({ gpa: gpa, message: "Course Updated Successfully!" });
         } else { // If a document is not found, create a new document with all information
-            gpa = await gpaSchema.create ({
+            gpa = await gpaSchema.create({
                 userId: user,
                 level,
                 semester,
@@ -1965,10 +1962,10 @@ router.post ("/add-gpa", async (req, res) => {
                     },
                 ]
             });
-            res.status (200).send ({gpa: gpa, message: "Course Added Successfully!"});
+            res.status(200).send({ gpa: gpa, message: "Course Added Successfully!" });
         }
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error"});
+        res.status(500).send({ message: "Internal Server Error" });
     }
 });
 
@@ -2053,17 +2050,19 @@ router.post ("/add-gpa", async (req, res) => {
  */
 
 // Get User GPA
-router.get ("/user-gpa", async (req, res) => {
+router.get("/user-gpa", async (req, res) => {
     try {
-        let gpa = await gpaSchema.findOne ({userId: req.query.user_id, level: req.query.level, 
-            semester: req.query.semester, accountType: req.query.accountType});
+        let gpa = await gpaSchema.findOne({
+            userId: req.query.user_id, level: req.query.level,
+            semester: req.query.semester, accountType: req.query.accountType
+        });
 
-        if (! gpa) {
-            return res.status (400).send ({message: "No GPA Found"});
+        if (!gpa) {
+            return res.status(400).send({ message: "No GPA Found" });
         }
-        res.status (200).send ({gpa: gpa});
+        res.status(200).send({ gpa: gpa });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -2104,15 +2103,15 @@ router.get ("/user-gpa", async (req, res) => {
  */
 
 // Get User Result
-router.get ("/:userId/get-result/:resultId", async (req, res) => {
+router.get("/:userId/get-result/:resultId", async (req, res) => {
     try {
-        let gpa = await gpaSchema.findOne ({userId: req.params.userId, _id: req.params.resultId});
-        if (! gpa) {
-            return res.status (400).send ({message: "No GPA Found"});
+        let gpa = await gpaSchema.findOne({ userId: req.params.userId, _id: req.params.resultId });
+        if (!gpa) {
+            return res.status(400).send({ message: "No GPA Found" });
         }
-        res.status (200).send ({gpa: gpa});
+        res.status(200).send({ gpa: gpa });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -2214,16 +2213,16 @@ router.get ("/:userId/get-result/:resultId", async (req, res) => {
  */
 
 // Get User Results Based on Selected Institution
-router.get ("/get-user-gpa/:userId/:institutionType", async (req, res) => {
+router.get("/get-user-gpa/:userId/:institutionType", async (req, res) => {
     const institution = req.params.institutionType;
     try {
-        let gpa = await gpaSchema.find ({userId: req.params.userId, institution: institution});
-        if (! gpa) {
-            return res.status (400).send ({message: "No GPA Found"});
+        let gpa = await gpaSchema.find({ userId: req.params.userId, institution: institution });
+        if (!gpa) {
+            return res.status(400).send({ message: "No GPA Found" });
         }
-        res.status (200).send ({gpa: gpa});
+        res.status(200).send({ gpa: gpa });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -2287,12 +2286,12 @@ router.get("/get-user-result/:userId/:institutionType/:accountType", async (req,
  */
 
 // Get User Institution Logo
-router.get ("/user-institution", async (req, res) => {
+router.get("/user-institution", async (req, res) => {
     try {
-        let institution = await Institutions.findOne ({institution: req.query.institution});
-        res.status (201).send ({logo: institution.logo});
+        let institution = await Institutions.findOne({ institution: req.query.institution });
+        res.status(201).send({ logo: institution.logo });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -2361,45 +2360,45 @@ router.get ("/user-institution", async (req, res) => {
  */
 
 // Remove Course Based on the Course ID
-router.delete ("/remove-course/:courseId", async (req, res) => {
+router.delete("/remove-course/:courseId", async (req, res) => {
     try {
-        const {courseId} = req.params;
-        const {user, formData} = req.body;
-        const gpa = await gpaSchema.findOne ({userId: user._id, level: formData.current_level, semester: formData.semester});
+        const { courseId } = req.params;
+        const { user, formData } = req.body;
+        const gpa = await gpaSchema.findOne({ userId: user._id, level: formData.current_level, semester: formData.semester });
 
-        const courseIndex = gpa.courses.findIndex ( (course) => String (course._id) === courseId);
+        const courseIndex = gpa.courses.findIndex((course) => String(course._id) === courseId);
 
         if (courseIndex === -1) { // Course not found
-            return res.status (404).json ({error: "Course not found"});
+            return res.status(404).json({ error: "Course not found" });
         }
 
         // Remove the course from the courses array
-        gpa.courses.splice (courseIndex, 1);
+        gpa.courses.splice(courseIndex, 1);
 
         // Save the updated GPA document
-        await gpa.save ();
+        await gpa.save();
 
-        const selectedGPAs = await gpaSchema.findOne ({userId: user._id, level: formData.current_level, semester: formData.semester});
+        const selectedGPAs = await gpaSchema.findOne({ userId: user._id, level: formData.current_level, semester: formData.semester });
 
         // const selectedGPAs = selectedCourses.map(course => course.gpa);
-        res.status (200).send ({gpa: selectedGPAs, message: "Course Deleted Successfully"});
+        res.status(200).send({ gpa: selectedGPAs, message: "Course Deleted Successfully" });
     } catch (err) {
-        res.status (500).json ({error: "Server error"});
+        res.status(500).json({ error: "Server error" });
     }
 });
 
 // Get all Mentors
-router.get ("/mentors", async (req, res) => {
+router.get("/mentors", async (req, res) => {
     try {
-        const mentors = await Mentors.find ({status: "Approved"}).populate ("faculty").sort ({createdAt: "desc"});
+        const mentors = await Mentors.find({ status: "Approved" }).populate("faculty").sort({ createdAt: "desc" });
 
         if (mentors.length === 0) {
-            return res.status (404).send ({message: "No approved mentors found"});
+            return res.status(404).send({ message: "No approved mentors found" });
         }
 
-        res.status (200).send ({mentors: mentors});
+        res.status(200).send({ mentors: mentors });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -2458,10 +2457,10 @@ router.get ("/mentors", async (req, res) => {
  */
 
 // Get a Mentor based on ID
-router.get ("/mentor/:id", async (req, res) => {
+router.get("/mentor/:id", async (req, res) => {
     try {
         const mentorId = req.params.id;
-        const mentor = await Mentors.findOne ({_id: mentorId}).populate ("faculty").populate ({path: "rating.user", select: "firstname lastname profilePhoto"}).populate ({
+        const mentor = await Mentors.findOne({ _id: mentorId }).populate("faculty").populate({ path: "rating.user", select: "firstname lastname profilePhoto" }).populate({
             path: "sessions",
             model: "MentorSessions",
             populate: {
@@ -2469,19 +2468,19 @@ router.get ("/mentor/:id", async (req, res) => {
                 model: "Mentors"
             }
         });
-        res.status (200).json ({mentor});
+        res.status(200).json({ mentor });
     } catch (err) {
-        res.status (500).json ({message: err.message});
+        res.status(500).json({ message: err.message });
     }
 });
 
 // Get a Favorite Mentor based on ID
-router.get ("/favorite-mentor/:id/:mentorId", async (req, res) => {
+router.get("/favorite-mentor/:id/:mentorId", async (req, res) => {
     try {
         const mentorId = req.params.mentorId;
         const id = req.params.id;
 
-        const user = await User.findById ({_id: id}).populate ({
+        const user = await User.findById({ _id: id }).populate({
             path: "favoriteMentors.mentor",
             model: "Mentors",
             populate: [
@@ -2499,46 +2498,46 @@ router.get ("/favorite-mentor/:id/:mentorId", async (req, res) => {
                     }
                 },
             ]
-        }).exec ();
+        }).exec();
 
-        if (! user) {
-            return res.status (404).json ({message: "User not found"});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
-        const favoriteMentor = user.favoriteMentors.find ( (item) => item.mentor._id.toString () === mentorId);
+        const favoriteMentor = user.favoriteMentors.find((item) => item.mentor._id.toString() === mentorId);
 
-        if (! favoriteMentor) {
-            return res.status (404).json ({message: "Mentor not found"});
+        if (!favoriteMentor) {
+            return res.status(404).json({ message: "Mentor not found" });
         }
 
-        res.status (200).json ({mentor: favoriteMentor});
+        res.status(200).json({ mentor: favoriteMentor });
     } catch (err) {
-        res.status (500).json ({message: err.message});
+        res.status(500).json({ message: err.message });
     }
 });
 
 
-router.get ("/mentor/chat-status/:userId/:mentorId", async (req, res) => {
+router.get("/mentor/chat-status/:userId/:mentorId", async (req, res) => {
     try {
-        const {userId, mentorId} = req.params;
+        const { userId, mentorId } = req.params;
 
-        const user = await User.findById (userId);
+        const user = await User.findById(userId);
 
-        if (! user) {
-            return res.status (404).json ({message: "User not found"});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
-        const favoriteMentor = user.favoriteMentors.find ( (item) => item.mentor.toString () === mentorId);
+        const favoriteMentor = user.favoriteMentors.find((item) => item.mentor.toString() === mentorId);
 
-        if (! favoriteMentor) {
-            return res.status (404).json ({message: "Mentor not found"});
+        if (!favoriteMentor) {
+            return res.status(404).json({ message: "Mentor not found" });
         }
 
         const chatStatus = favoriteMentor.chatStatus;
 
-        res.status (200).json ({status: chatStatus});
+        res.status(200).json({ status: chatStatus });
     } catch (err) {
-        res.status (500).json ({message: err.message});
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -2581,14 +2580,14 @@ router.get ("/mentor/chat-status/:userId/:mentorId", async (req, res) => {
  */
 
 // Get a Facult Name
-router.get ("/faculty/:id", async (req, res) => {
+router.get("/faculty/:id", async (req, res) => {
     try {
         const facultyId = req.params.id;
-        const faculty = await MentorFaculty.findOne ({_id: facultyId});
+        const faculty = await MentorFaculty.findOne({ _id: facultyId });
         const facultyName = faculty ? faculty.title : null;
-        res.status (200).json ({facultyName});
+        res.status(200).json({ facultyName });
     } catch (err) {
-        res.status (500).json ({message: err.message});
+        res.status(500).json({ message: err.message });
     }
 });
 
@@ -2668,48 +2667,48 @@ router.get ("/faculty/:id", async (req, res) => {
  */
 
 // User Submit Mentor trading
-router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
+router.post("/submit-rating/:mentorId/:userId", async (req, res) => {
     try {
-        const {mentorId, userId} = req.params;
-        const {review, rating} = req.body;
+        const { mentorId, userId } = req.params;
+        const { review, rating } = req.body;
 
         // Convert userId to ObjectId
-        const userObjectId = new mongoose.Types.ObjectId (userId)
+        const userObjectId = new mongoose.Types.ObjectId(userId)
 
         // Check if mentor exists
-        const mentor = await Mentors.findById (mentorId).populate ("rating.user", "firstname lastname profilePhoto");
-        if (! mentor) {
-            return res.status (404).json ({message: "Mentor not found"});
+        const mentor = await Mentors.findById(mentorId).populate("rating.user", "firstname lastname profilePhoto");
+        if (!mentor) {
+            return res.status(404).json({ message: "Mentor not found" });
         }
 
         // Find the user's existing rating for the mentor
-        const userRating = mentor.rating.find ( (r) => r.user._id.equals (userObjectId));
+        const userRating = mentor.rating.find((r) => r.user._id.equals(userObjectId));
         if (userRating) { // User has already rated, update the existing rating
             userRating.review = review;
             userRating.rating = rating;
-            userRating.createdAt = Date.now ();
+            userRating.createdAt = Date.now();
         } else { // User has not rated yet, create a new rating object
             const newRating = {
                 review,
                 rating,
                 user: userObjectId,
-                createdAt: Date.now ()
+                createdAt: Date.now()
             };
 
             // Add the new rating to the mentor's ratings array
-            mentor.rating.push (newRating);
+            mentor.rating.push(newRating);
         }
 
         // Save the updated mentor document
-        const updatedMentor = await mentor.save ();
+        const updatedMentor = await mentor.save();
 
         // Populate user information in the updated mentor
-        await updatedMentor.populate ("rating.user", "firstname lastname profilePhoto");
+        await updatedMentor.populate("rating.user", "firstname lastname profilePhoto");
 
-        res.status (200).json ({mentor: updatedMentor, message: "Rating submitted successfully"});
+        res.status(200).json({ mentor: updatedMentor, message: "Rating submitted successfully" });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: "Server Error"});
+        console.error(error);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -2790,9 +2789,9 @@ router.post ("/submit-rating/:mentorId/:userId", async (req, res) => {
  */
 
 // POST /users/confirm-schedule/:mentorId/:userId
-router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
+router.post('/confirm-schedule/:mentorId/:userId', async (req, res) => {
     try {
-        const {mentorId, userId} = req.params;
+        const { mentorId, userId } = req.params;
         const {
             selectedSession,
             title,
@@ -2802,21 +2801,21 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
         } = req.body;
 
         // Check if the user already has a schedule with the mentor
-        const existingSchedule = await Schedule.findOne ({userId, mentorId, status: 'Pending'});
+        const existingSchedule = await Schedule.findOne({ userId, mentorId, status: 'Pending' });
         if (existingSchedule) {
-            return res.status (400).json ({error: 'You already have a pending schedule with this mentor'});
+            return res.status(400).json({ error: 'You already have a pending schedule with this mentor' });
         }
 
         // Count the number of already booked sessions for the selected session
-        const bookedSessionsCount = await Schedule.countDocuments ({session: selectedSession._id});
+        const bookedSessionsCount = await Schedule.countDocuments({ session: selectedSession._id });
 
         // Check if there are available slots in the session
         if (bookedSessionsCount >= selectedSession.slots) {
-            return res.status (400).json ({error: 'No available slots for this session'});
+            return res.status(400).json({ error: 'No available slots for this session' });
         }
 
         // Check if there is an existing schedule with the same start time and end time
-        const existingScheduleWithSameTime = await Schedule.findOne ({
+        const existingScheduleWithSameTime = await Schedule.findOne({
             mentorId, session: selectedSession._id,
             // status: 'Pending',
             $and: [
@@ -2833,10 +2832,10 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
         });
 
         if (existingScheduleWithSameTime) {
-            return res.status (400).json ({error: 'Another user has already booked a schedule within the same time'});
+            return res.status(400).json({ error: 'Another user has already booked a schedule within the same time' });
         }
         // Create a new schedule document
-        const newSchedule = new Schedule ({
+        const newSchedule = new Schedule({
             userId,
             mentorId,
             session: selectedSession,
@@ -2845,17 +2844,17 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
             title,
             notes,
             status: 'Pending',
-            createdAt: new Date (),
-            updatedAt: new Date ()
+            createdAt: new Date(),
+            updatedAt: new Date()
         });
 
         // Save the new schedule document to the database
 
         // Return the saved schedule to the client
-        res.status (200).json ({message: 'Session booked successfully'});
+        res.status(200).json({ message: 'Session booked successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'Server Error'});
+        console.error(error);
+        res.status(500).json({ error: 'Server Error' });
     }
 });
 
@@ -2922,29 +2921,29 @@ router.post ('/confirm-schedule/:mentorId/:userId', async (req, res) => {
  *                   example: Internal Server Error
  */
 
-router.post ('/cancel-meeting/:userId/:scheduleId', async (req, res) => {
+router.post('/cancel-meeting/:userId/:scheduleId', async (req, res) => {
     try {
-        const {userId, scheduleId} = req.params;
+        const { userId, scheduleId } = req.params;
 
         // Find the schedule by scheduleId
-        const schedule = await Schedule.findById (scheduleId);
+        const schedule = await Schedule.findById(scheduleId);
 
-        if (! schedule) {
-            return res.status (404).json ({error: 'Schedule not found'});
+        if (!schedule) {
+            return res.status(404).json({ error: 'Schedule not found' });
         }
 
         // Check if the schedule belongs to the specified user
-        if (schedule.userId.toString () !== userId) {
-            return res.status (403).json ({error: 'Unauthorized access'});
+        if (schedule.userId.toString() !== userId) {
+            return res.status(403).json({ error: 'Unauthorized access' });
         }
 
         // Delete the schedule
-        await Schedule.findByIdAndDelete (scheduleId);
+        await Schedule.findByIdAndDelete(scheduleId);
 
-        res.status (200).json ({message: 'Meeting canceled successfully'});
+        res.status(200).json({ message: 'Meeting canceled successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'Internal Server Error'});
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -3027,14 +3026,14 @@ router.post ('/cancel-meeting/:userId/:scheduleId', async (req, res) => {
  */
 
 // Get Meeting Schedule Confirmed based on Mentor
-router.get ("/schedules/:mentorId/:userId", async (req, res) => {
+router.get("/schedules/:mentorId/:userId", async (req, res) => {
     try {
-        const {userId, mentorId} = req.params;
-        const schedules = await Schedule.find ({userId, mentorId}).populate ("session", "date startTime endTime slots");
-        res.json ({schedules});
+        const { userId, mentorId } = req.params;
+        const schedules = await Schedule.find({ userId, mentorId }).populate("session", "date startTime endTime slots");
+        res.json({ schedules });
     } catch (err) {
-        console.error (err);
-        res.status (500).json ({message: "Server Error"});
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -3119,38 +3118,38 @@ router.get ("/schedules/:mentorId/:userId", async (req, res) => {
  */
 
 // Add Mentor as Favorite Mentors
-router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
-    const {mentorId, userId} = req.params;
+router.post("/favorite-mentor/:mentorId/:userId", async (req, res) => {
+    const { mentorId, userId } = req.params;
 
     try {
-        const mentor = await Mentors.findById (mentorId);
+        const mentor = await Mentors.findById(mentorId);
 
-        if (! mentor) {
-            return res.status (404).json ({message: "Mentor not found"});
+        if (!mentor) {
+            return res.status(404).json({ message: "Mentor not found" });
         }
 
-        const user = await User.findById (userId);
+        const user = await User.findById(userId);
 
-        if (! user) {
-            return res.status (404).json ({message: "User not found"});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
         const favoriteMentor = {
             mentor: mentorId,
-            dateAdded: Date.now ()
+            dateAdded: Date.now()
         };
 
-        user.favoriteMentors.push (favoriteMentor);
-        mentor.mentees.push ({user: userId, dateAdded: Date.now ()});
+        user.favoriteMentors.push(favoriteMentor);
+        mentor.mentees.push({ user: userId, dateAdded: Date.now() });
 
-        const updatedUser = await user.save ();
+        const updatedUser = await user.save();
 
-        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
+        const userWithoutPasswordAndToken = await User.findById(updatedUser._id).select("-password -token");
 
-        return res.status (200).json ({user: userWithoutPasswordAndToken, message: "Mentor Added to Favorites"});
+        return res.status(200).json({ user: userWithoutPasswordAndToken, message: "Mentor Added to Favorites" });
     } catch (error) {
-        console.error (error);
-        return res.status (500).json ({message: "Server error"});
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
     }
 });
 
@@ -3214,44 +3213,44 @@ router.post ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
  */
 
 // Remove Mentor as Favorite Mentor
-router.delete ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
-    const {mentorId, userId} = req.params;
+router.delete("/favorite-mentor/:mentorId/:userId", async (req, res) => {
+    const { mentorId, userId } = req.params;
 
     try {
-        const user = await User.findById (userId);
+        const user = await User.findById(userId);
 
-        if (! user) {
-            return res.status (404).json ({message: "User not found"});
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
-        const mentor = await Mentors.findById (mentorId);
+        const mentor = await Mentors.findById(mentorId);
 
-        if (! mentor) {
-            return res.status (404).json ({message: "Mentor not found"});
+        if (!mentor) {
+            return res.status(404).json({ message: "Mentor not found" });
         }
 
-        const favoriteMentorIndex = user.favoriteMentors.findIndex ( (item) => item.mentor.toString () === mentorId);
+        const favoriteMentorIndex = user.favoriteMentors.findIndex((item) => item.mentor.toString() === mentorId);
 
         if (favoriteMentorIndex === -1) {
-            return res.status (404).json ({message: "Mentor not found in favorites"});
+            return res.status(404).json({ message: "Mentor not found in favorites" });
         }
 
-        user.favoriteMentors.splice (favoriteMentorIndex, 1);
+        user.favoriteMentors.splice(favoriteMentorIndex, 1);
 
-        const menteeIndex = mentor.mentees.findIndex ( (item) => item.user.toString () === userId);
+        const menteeIndex = mentor.mentees.findIndex((item) => item.user.toString() === userId);
 
         if (menteeIndex !== -1) {
-            mentor.mentees.splice (menteeIndex, 1);
+            mentor.mentees.splice(menteeIndex, 1);
         }
 
-        const updatedUser = await user.save ();
+        const updatedUser = await user.save();
 
-        const userWithoutPasswordAndToken = await User.findById (updatedUser._id).select ("-password -token");
+        const userWithoutPasswordAndToken = await User.findById(updatedUser._id).select("-password -token");
 
-        return res.status (200).json ({user: userWithoutPasswordAndToken, message: "Mentor Removed from Favorites"});
+        return res.status(200).json({ user: userWithoutPasswordAndToken, message: "Mentor Removed from Favorites" });
     } catch (error) {
-        console.error (error);
-        return res.status (500).json ({message: "Server error"});
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
     }
 });
 
@@ -3307,33 +3306,33 @@ router.delete ("/favorite-mentor/:mentorId/:userId", async (req, res) => {
  *         - updatedAt
  */
 // Get all Faculties
-router.get ("/faculties", async (req, res) => {
+router.get("/faculties", async (req, res) => {
     try {
-        let faculties = await MentorFaculty.find ().sort ({createdAt: "desc"});
-        if (! faculties) {
-            return res.status (400).send ({message: "No Faculty Found"});
+        let faculties = await MentorFaculty.find().sort({ createdAt: "desc" });
+        if (!faculties) {
+            return res.status(400).send({ message: "No Faculty Found" });
         }
-        res.status (200).send ({faculties: faculties});
+        res.status(200).send({ faculties: faculties });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
 // Get all Averts
-router.get ("/adverts", async (req, res) => {
+router.get("/adverts", async (req, res) => {
     try {
-        let ads = await Advert.find ().sort ({createdAt: "desc"});
-        if (! ads) {
-            return res.status (400).send ({message: "No Advert Found"});
+        let ads = await Advert.find().sort({ createdAt: "desc" });
+        if (!ads) {
+            return res.status(400).send({ message: "No Advert Found" });
         }
-        res.status (200).send ({adverts: ads});
+        res.status(200).send({ adverts: ads });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
 // Set up Agenda job scheduler
-const agenda = new Agenda ({
+const agenda = new Agenda({
     db: {
         address: process.env.DATABASE_URL
     }
@@ -3394,7 +3393,7 @@ const agenda = new Agenda ({
 //     await browser.close();
 // });
 
-agenda.define ("generate-result-pdf", async (job) => {
+agenda.define("generate-result-pdf", async (job) => {
     const {
         firstname,
         lastname,
@@ -3407,7 +3406,7 @@ agenda.define ("generate-result-pdf", async (job) => {
     } = job.attrs.data;
 
     // Compile EJS template with user's data
-    const html = await ejs.renderFile (path.join (__dirname, "..", "views", "result_mockup.ejs"), {
+    const html = await ejs.renderFile(path.join(__dirname, "..", "views", "result_mockup.ejs"), {
         firstname,
         lastname,
         education,
@@ -3419,37 +3418,37 @@ agenda.define ("generate-result-pdf", async (job) => {
     });
 
     // Launch Puppeteer
-    const browser = await puppeteer.launch ();
-    const page = await browser.newPage ();
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
     // Set the HTML content of the page to the EJS-compiled HTML
-    await page.setContent (html);
+    await page.setContent(html);
 
-    const {PDFDocument} = require ("pdf-lib");
+    const { PDFDocument } = require("pdf-lib");
 
     // Generate an image of the page using Puppeteer
-    const screenshotPath = path.join (__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
-    await page.screenshot ({path: screenshotPath, fullPage: true});
+    const screenshotPath = path.join(__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
 
     // Convert the image to a PDF
-    const pdfPath = path.join (__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
-    const pngImageBytes = fs.readFileSync (screenshotPath);
-    const pdfDoc = await PDFDocument.create ();
-    const pdfPage = pdfDoc.addPage ();
-    const pngImage = await pdfDoc.embedPng (pngImageBytes);
-    const {width, height} = pngImage.scale (1);
-    pdfPage.setSize (width, height);
-    pdfPage.drawImage (pngImage, {
+    const pdfPath = path.join(__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
+    const pngImageBytes = fs.readFileSync(screenshotPath);
+    const pdfDoc = await PDFDocument.create();
+    const pdfPage = pdfDoc.addPage();
+    const pngImage = await pdfDoc.embedPng(pngImageBytes);
+    const { width, height } = pngImage.scale(1);
+    pdfPage.setSize(width, height);
+    pdfPage.drawImage(pngImage, {
         x: 0,
         y: 0,
         width,
         height
     });
-    const pdfBytes = await pdfDoc.save ();
-    fs.writeFileSync (pdfPath, pdfBytes);
+    const pdfBytes = await pdfDoc.save();
+    fs.writeFileSync(pdfPath, pdfBytes);
 
     // Close the browser
-    await browser.close ();
+    await browser.close();
 });
 
 // Generating PDF Result
@@ -3498,9 +3497,9 @@ agenda.define ("generate-result-pdf", async (job) => {
 //     }
 // });
 
-router.post ("/generate-pdf-result", async (req, res) => {
+router.post("/generate-pdf-result", async (req, res) => {
     try {
-        const {userId, inputs} = req.body;
+        const { userId, inputs } = req.body;
         const level = inputs.level;
         const semester = inputs.semester;
         const institution = "";
@@ -3508,13 +3507,13 @@ router.post ("/generate-pdf-result", async (req, res) => {
         let gpa;
 
         if (semester === "all") {
-            gpa = await gpaSchema.find ({level, userId: userId});
+            gpa = await gpaSchema.find({ level, userId: userId });
         } else {
-            gpa = await gpaSchema.find ({semester, level, userId: userId});
+            gpa = await gpaSchema.find({ semester, level, userId: userId });
         }
 
-        if (! gpa || gpa.length === 0) {
-            return res.status (404).send ({message: "You do not have a Result for this Level and Semester"});
+        if (!gpa || gpa.length === 0) {
+            return res.status(404).send({ message: "You do not have a Result for this Level and Semester" });
         }
 
         const {
@@ -3561,22 +3560,22 @@ router.post ("/generate-pdf-result", async (req, res) => {
         });
 
         // Launch Puppeteer
-        const browser = await puppeteer.launch ();
-        const page = await browser.newPage ();
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
 
         // Set the HTML content of the page to the EJS-compiled HTML
-        await page.setContent (html);
+        await page.setContent(html);
 
         // const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 
         // Generate an image of the page using Puppeteer
-        const screenshotPath = path.join (__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.jpg`);
-        await page.setViewport ({
+        const screenshotPath = path.join(__dirname, "..", "results", `Result_${firstname}_Level_${level}_Semester_${semester}.jpg`);
+        await page.setViewport({
             width: 1200, // increase the width
             height: 1600, // increase the height
             deviceScaleFactor: 2, // Increase pixel density
         });
-        await page.screenshot ({path: screenshotPath, fullPage: true, type: "jpeg", quality: 100});
+        await page.screenshot({ path: screenshotPath, fullPage: true, type: "jpeg", quality: 100 });
 
         // Convert the image to a PDF
         // const pdfPath = path.join(__dirname, '..', 'results', `Result_${firstname}_Level_${level}_Semester_${semester}.pdf`);
@@ -3599,36 +3598,36 @@ router.post ("/generate-pdf-result", async (req, res) => {
         // await browser.close();
 
         const folderName = "results";
-        const uploadResult = await cloudinary.uploader.upload (screenshotPath, {folder: folderName});
+        const uploadResult = await cloudinary.uploader.upload(screenshotPath, { folder: folderName });
 
         const imageUrl = uploadResult.secure_url;
 
         const fileName = `Result_${firstname}_Level_${level}_Semester_${semester}.jpeg`;
 
-        res.status (200).send ({url: imageUrl, filename: fileName, message: "Result Generated Successfully. Click the Link to Download the Result"});
+        res.status(200).send({ url: imageUrl, filename: fileName, message: "Result Generated Successfully. Click the Link to Download the Result" });
     } catch (error) {
-        console.log (error);
-        res.status (500).send ({message: "Internal Server Error"});
+        console.log(error);
+        res.status(500).send({ message: "Internal Server Error" });
     }
 });
 
-router.get ("/mentors/:mentorId/ratings", async (req, res) => {
+router.get("/mentors/:mentorId/ratings", async (req, res) => {
     try {
-        const {mentorId} = req.params;
+        const { mentorId } = req.params;
 
         // Check if mentor exists
-        const mentor = await Mentors.findById (mentorId);
-        if (! mentor) {
-            return res.status (404).json ({message: "Mentor not found"});
+        const mentor = await Mentors.findById(mentorId);
+        if (!mentor) {
+            return res.status(404).json({ message: "Mentor not found" });
         }
 
         // Get all ratings for the mentor
         const ratings = mentor.rating;
 
-        res.status (200).json ({ratings});
+        res.status(200).json({ ratings });
     } catch (err) {
-        console.error (err);
-        res.status (500).json ({message: "Server Error"});
+        console.error(err);
+        res.status(500).json({ message: "Server Error" });
     }
 });
 
@@ -3701,7 +3700,7 @@ router.get ("/mentors/:mentorId/ratings", async (req, res) => {
  */
 
 
-router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
+router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
     let story = null;
     try {
         const {
@@ -3711,20 +3710,19 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
             link,
             linkText,
             fileType
-        } = JSON.parse (req.body.data);
+        } = JSON.parse(req.body.data);
 
-        story = await Story.findOne ({id: id});
+        story = await Story.findOne({ id: id });
 
         // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
 
         if (story) {
             const lastItem = story.items[story.items.length - 1];
-            const lastItemId = parseInt (lastItem.id.split ("-")[1]);
-            const newItemId = `${id}-${
-                lastItemId + 1
-            }`;
+            const lastItemId = parseInt(lastItem.id.split("-")[1]);
+            const newItemId = `${id}-${lastItemId + 1
+                }`;
 
-            await Story.updateOne ({
+            await Story.updateOne({
                 id: id
             }, {
                 $push: {
@@ -3739,10 +3737,10 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
                 }
             });
 
-            const stories = await Story.find ();
-            res.status (200).send ({stories: stories, message: "Story Posted Successfully!"});
+            const stories = await Story.find();
+            res.status(200).send({ stories: stories, message: "Story Posted Successfully!" });
         } else {
-            story = await Story.create ({
+            story = await Story.create({
                 id: id,
                 photo: avatar,
                 name: name,
@@ -3758,12 +3756,12 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
                 ]
             });
 
-            const stories = await Story.find ();
-            res.status (200).send ({stories: stories, message: "Story Posted Successfully!"});
+            const stories = await Story.find();
+            res.status(200).send({ stories: stories, message: "Story Posted Successfully!" });
         }
     } catch (error) {
-        console.error ("Error", error);
-        res.status (500).json ({error: "Internal Server Error"});
+        console.error("Error", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
@@ -3811,7 +3809,7 @@ router.post ("/stories/:userId", upload3.single ("file"), async (req, res) => {
  *               error: Internal Server Error
  */
 router.post("/create-reels/:user", upload5.single("file"), async (req, res) => {
-    const userId = req.params.userId;
+    const userId = req.params.user;
     try {
         const {
             description
@@ -3880,7 +3878,7 @@ router.get('/reels', async (req, res) => {
                 select: 'firstname lastname profilePhoto liveFeedSettings',
             })
             .populate({
-                path: 'comments.user',  
+                path: 'comments.user',
                 select: 'firstname lastname profilePhoto liveFeedSettings',
             })
             .exec();
@@ -4040,15 +4038,15 @@ router.delete('/delete-reel/:reelId', async (req, res) => {
  *                   example: Internal Server Error
  */
 
-router.get ("/stories", async (req, res) => {
+router.get("/stories", async (req, res) => {
     try { // Retrieve all stories from the database
-        const stories = await Story.find ();
+        const stories = await Story.find();
 
         // Send the stories as the response
-        res.status (200).json (stories);
+        res.status(200).json(stories);
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: "Internal Server Error"});
+        console.error(error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
@@ -4104,20 +4102,20 @@ router.get ("/stories", async (req, res) => {
  *                   example: Internal Server Error
  */
 
-router.get ('/stories/:userId', async (req, res) => {
+router.get('/stories/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
 
         // Find the user's stories by their ID
-        const stories = await Story.find ({id: userId});
+        const stories = await Story.find({ id: userId });
 
         if (stories.length === 0) {
-            return res.status (404).json ({message: 'No stories found for the user'});
+            return res.status(404).json({ message: 'No stories found for the user' });
         }
 
-        res.status (200).json ({stories});
+        res.status(200).json({ stories });
     } catch (error) {
-        res.status (500).json ({message: 'Internal Server Error', error});
+        res.status(500).json({ message: 'Internal Server Error', error });
     }
 });
 
@@ -4180,34 +4178,34 @@ router.get ('/stories/:userId', async (req, res) => {
 
 
 // DELETE /users/stories/:userId/:itemId
-router.delete ('/stories/:userId/:itemId', async (req, res) => {
+router.delete('/stories/:userId/:itemId', async (req, res) => {
     const userId = req.params.userId;
     const itemId = req.params.itemId;
 
     try { // Find the story with the given user ID
-        const story = await Story.findOne ({id: userId});
+        const story = await Story.findOne({ id: userId });
 
-        if (! story) {
-            return res.status (404).json ({message: 'Story not found'});
+        if (!story) {
+            return res.status(404).json({ message: 'Story not found' });
         }
 
         // Find the item with the given ID
-        const itemIndex = story.items.findIndex ( (item) => item._id.toString () === itemId);
+        const itemIndex = story.items.findIndex((item) => item._id.toString() === itemId);
 
         if (itemIndex === -1) {
-            return res.status (404).json ({message: 'Item not found in story'});
+            return res.status(404).json({ message: 'Item not found in story' });
         }
 
         // Remove the item from the story's items array
-        story.items.splice (itemIndex, 1);
+        story.items.splice(itemIndex, 1);
 
         // Save the updated story
-        await story.save ();
+        await story.save();
 
-        return res.status (200).json ({message: 'Story item deleted successfully'});
+        return res.status(200).json({ message: 'Story item deleted successfully' });
     } catch (error) {
-        console.error ('Error deleting story item:', error);
-        return res.status (500).json ({message: 'Internal Server Error', error: error.message});
+        console.error('Error deleting story item:', error);
+        return res.status(500).json({ message: 'Internal Server Error', error: error.message });
     }
 });
 
@@ -4267,30 +4265,30 @@ router.delete ('/stories/:userId/:itemId', async (req, res) => {
  */
 
 // POST route to save a new post
-router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
+router.post("/share-post", upload4.array("file", 10), async (req, res) => {
     try {
-        const {userId, content} = req.body;
+        const { userId, content } = req.body;
         const files = req.files;
 
         // Create an array of media objects with the URLs and types from Cloudinary
-        const media = files.map ( (file) => ({
+        const media = files.map((file) => ({
             url: file.path,
-            type: file.mimetype.includes ("image") ? "image" : "video"
+            type: file.mimetype.includes("image") ? "image" : "video"
         }));
 
         // Create a new post instance
-        const newPost = new Post ({userId, content, media});
+        const newPost = new Post({ userId, content, media });
 
         // Save the post to the database
-        await newPost.save ();
+        await newPost.save();
 
         // Populate the userId field with additional user data
-        await newPost.populate ("userId", "firstname lastname profilePhoto personal");
+        await newPost.populate("userId", "firstname lastname profilePhoto personal");
 
-        res.status (200).json ({message: "Post shared successfully", post: newPost});
+        res.status(200).json({ message: "Post shared successfully", post: newPost });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: "Server error"});
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
     }
 });
 
@@ -4329,21 +4327,21 @@ router.post ("/share-post", upload4.array ("file", 10), async (req, res) => {
 // GET route to fetch all posts sorted by the latest
 const shuffleArray = (array) => {
     for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor (Math.random () * (i + 1));
+        const j = Math.floor(Math.random() * (i + 1));
         [
             array[i], array[j]
         ] = [
-            array[j], array[i]
-        ];
+                array[j], array[i]
+            ];
     }
     return array;
 };
 
-router.get ("/posts", async (req, res) => {
+router.get("/posts", async (req, res) => {
     try {
         // Retrieve all posts from the database, sort by 'createdAt' field in descending order,
         // and populate the 'userId' field
-        const posts = await Post.find ().sort ({createdAt: -1}).populate ({
+        const posts = await Post.find().sort({ createdAt: -1 }).populate({
             path: "userId", select: "firstname lastname profilePhoto personal verification", // Include the verification field in the populated user data
             populate: {
                 path: "verification", // Populate the verification field within the user data
@@ -4354,50 +4352,50 @@ router.get ("/posts", async (req, res) => {
         // Separate new posts from older posts
         const newPosts = [];
         const olderPosts = [];
-        const currentTime = new Date ();
+        const currentTime = new Date();
 
-        posts.forEach ( (post) => { // Define a threshold duration to consider a post as new (e.g., 24 hours)
+        posts.forEach((post) => { // Define a threshold duration to consider a post as new (e.g., 24 hours)
             const thresholdDuration = 24 * 60 * 60 * 1000;
             // 24 hours in milliseconds
 
             // Check if the post is newer than the threshold
             const timeDifference = currentTime - post.createdAt;
             if (timeDifference < thresholdDuration) {
-                newPosts.push (post);
+                newPosts.push(post);
             } else {
-                olderPosts.push (post);
+                olderPosts.push(post);
             }
         });
 
         // Shuffle the older posts array randomly
-        const shuffledOlderPosts = shuffleArray (olderPosts);
+        const shuffledOlderPosts = shuffleArray(olderPosts);
 
         // Concatenate the new posts at the beginning of the shuffled older posts array
         const shuffledPosts = [
-            ... newPosts,
-            ... shuffledOlderPosts
+            ...newPosts,
+            ...shuffledOlderPosts
         ];
 
         // Check if the userId in each post is valid before sending the response
-        const populatedPosts = await Promise.all (shuffledPosts.map (async (post) => {
-            if (mongoose.isValidObjectId (post.userId)) {
+        const populatedPosts = await Promise.all(shuffledPosts.map(async (post) => {
+            if (mongoose.isValidObjectId(post.userId)) {
                 return post;
             }
             return null; // Return null for posts with userId: null
         }));
 
-        const filteredPosts = populatedPosts.filter ( (post) => post !== null);
+        const filteredPosts = populatedPosts.filter((post) => post !== null);
 
-        res.status (200).json (filteredPosts);
+        res.status(200).json(filteredPosts);
 
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: "Server error"});
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
     }
 });
 
 
-router.get ("/posts-by-type", async (req, res) => {
+router.get("/posts-by-type", async (req, res) => {
     const page = req.query.page || 1; // Get the page number from the query parameter (default to page 1 if not provided)
     const limit = 10; // Define the number of posts to return per page
     const skip = (page - 1) * limit; // Calculate the number of posts to skip based on the page number
@@ -4407,48 +4405,48 @@ router.get ("/posts-by-type", async (req, res) => {
     try {
         // Retrieve posts from the database based on the media type,
         // sort by 'createdAt' field in descending order, and populate the 'userId' field
-        const posts = await Post.find ({'media.type': type}).sort ({createdAt: -1}).populate ('userId', 'firstname lastname profilePhoto personal').limit (limit).skip (skip);
+        const posts = await Post.find({ 'media.type': type }).sort({ createdAt: -1 }).populate('userId', 'firstname lastname profilePhoto personal').limit(limit).skip(skip);
 
         // Separate new posts from older posts
         const newPosts = [];
         const olderPosts = [];
-        const currentTime = new Date ();
+        const currentTime = new Date();
 
-        posts.forEach ( (post) => { // Define a threshold duration to consider a post as new (e.g., 24 hours)
+        posts.forEach((post) => { // Define a threshold duration to consider a post as new (e.g., 24 hours)
             const thresholdDuration = 24 * 60 * 60 * 1000;
             // 24 hours in milliseconds
 
             // Check if the post is newer than the threshold
             const timeDifference = currentTime - post.createdAt;
             if (timeDifference < thresholdDuration) {
-                newPosts.push (post);
+                newPosts.push(post);
             } else {
-                olderPosts.push (post);
+                olderPosts.push(post);
             }
         });
 
         // Shuffle the older posts array randomly
-        const shuffledOlderPosts = shuffleArray (olderPosts);
+        const shuffledOlderPosts = shuffleArray(olderPosts);
 
         // Concatenate the new posts at the beginning of the shuffled older posts array
         const shuffledPosts = [
-            ... newPosts,
-            ... shuffledOlderPosts
+            ...newPosts,
+            ...shuffledOlderPosts
         ];
-        const populatedPosts = await Promise.all (shuffledPosts.map (async (post) => {
-            if (mongoose.isValidObjectId (post.userId)) {
+        const populatedPosts = await Promise.all(shuffledPosts.map(async (post) => {
+            if (mongoose.isValidObjectId(post.userId)) {
                 return post;
             }
             return null; // Return null for posts with userId: null
         }));
 
-        const filteredPosts = populatedPosts.filter ( (post) => post !== null);
+        const filteredPosts = populatedPosts.filter((post) => post !== null);
 
-        res.status (200).json (filteredPosts);
+        res.status(200).json(filteredPosts);
 
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'Server error'});
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -4505,21 +4503,21 @@ router.get ("/posts-by-type", async (req, res) => {
  */
 
 // Delete Post based on ID
-router.delete ("/posts/:id", async (req, res) => {
-    const {id} = req.params;
+router.delete("/posts/:id", async (req, res) => {
+    const { id } = req.params;
     try { // Find the post by ID
-        const post = await Post.findById (id);
+        const post = await Post.findById(id);
 
         // Check if the post exists
-        if (! post) {
-            return res.status (404).json ({message: "Post not found"});
+        if (!post) {
+            return res.status(404).json({ message: "Post not found" });
         }
         // Delete the post
-        await post.deleteOne ();
-        res.json ({message: "Post deleted successfully"});
+        await post.deleteOne();
+        res.json({ message: "Post deleted successfully" });
     } catch (error) {
-        console.error ("Error deleting post:", error);
-        res.status (500).json ({message: "Internal server error"});
+        console.error("Error deleting post:", error);
+        res.status(500).json({ message: "Internal server error" });
     }
 });
 
@@ -4583,26 +4581,26 @@ router.delete ("/posts/:id", async (req, res) => {
  *                   example: Internal server error.
  */
 
-router.post ('/posts/:postId/like', async (req, res) => {
-    const {postId} = req.params;
-    const {userId} = req.body;
+router.post('/posts/:postId/like', async (req, res) => {
+    const { postId } = req.params;
+    const { userId } = req.body;
 
     try {
-        const post = await Post.findById (postId).populate ("userId", "firstname lastname profilePhoto");
+        const post = await Post.findById(postId).populate("userId", "firstname lastname profilePhoto");
 
         // Check if the post exists
-        if (! post) {
-            return res.status (404).json ({message: 'Post not found'});
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
         }
 
         // Check if the post already has the user's like
-        const isLiked = post.likes.some ( (like) => like.user.toString () === userId);
+        const isLiked = post.likes.some((like) => like.user.toString() === userId);
 
         if (isLiked) { // Unlike the post
-            post.likes = post.likes.filter ( (like) => like.user.toString () !== userId);
+            post.likes = post.likes.filter((like) => like.user.toString() !== userId);
 
             // Delete the notification for the unliked post
-            await Notification.deleteOne ({
+            await Notification.deleteOne({
                 recipient: post.userId,
                 sender: userId,
                 action: {
@@ -4610,38 +4608,35 @@ router.post ('/posts/:postId/like', async (req, res) => {
                 }
             });
         } else { // Like the post
-            post.likes.push ({user: userId});
+            post.likes.push({ user: userId });
 
             // Check if the user is the owner of the post
-            if (post.userId.toString () !== userId) { // Create a notification for the post owner
-                const user = await User.findById (userId);
-                const fullName = user ? `${
-                    user.firstname
-                } ${
-                    user.lastname
-                }` : 'Unknown User';
+            if (post.userId.toString() !== userId) { // Create a notification for the post owner
+                const user = await User.findById(userId);
+                const fullName = user ? `${user.firstname
+                    } ${user.lastname
+                    }` : 'Unknown User';
 
-                const postText = post.content ? `"${
-                    post.content.substring (0, 100)
-                }..."` : '...';
+                const postText = post.content ? `"${post.content.substring(0, 100)
+                    }..."` : '...';
 
-                const notification = new Notification ({
+                const notification = new Notification({
                     recipient: post.userId, // Post owner's ID
                     sender: userId, // Liked user's ID
                     action: `${fullName} liked your post on the live feed ${postText}`,
                     isSystemNotification: false
                 });
 
-                await notification.save ();
+                await notification.save();
             }
         }
 
-        const updatedPost = await post.save ();
+        const updatedPost = await post.save();
 
-        res.status (200).json ({message: 'Post liked/unliked successfully', post: updatedPost});
+        res.status(200).json({ message: 'Post liked/unliked successfully', post: updatedPost });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: 'Internal server error'});
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 });
 
@@ -4700,9 +4695,9 @@ router.post ('/posts/:postId/like', async (req, res) => {
  */
 
 // Route to handle posting a comment
-router.post ("/posts/:postId/comments", async (req, res) => {
+router.post("/posts/:postId/comments", async (req, res) => {
     try { // Find the post based on the provided postId
-        const post = await Post.findById (req.params.postId).populate ("userId", "firstname lastname profilePhoto");
+        const post = await Post.findById(req.params.postId).populate("userId", "firstname lastname profilePhoto");
 
 
         // Create a new comment object with the user and text
@@ -4712,32 +4707,29 @@ router.post ("/posts/:postId/comments", async (req, res) => {
         };
 
         // Add the new comment to the post's comments array
-        post.comments.push (newComment);
+        post.comments.push(newComment);
 
         // Save the updated post
-        const updatedPost = await post.save ();
+        const updatedPost = await post.save();
 
         // Check if the post belongs to the user commenting
-        if (post.userId.toString () !== req.body.user) { // Create a notification for the post owner
-            const user = await User.findById (req.body.user);
-            const fullName = user ? `${
-                user.firstname
-            } ${
-                user.lastname
-            }` : "Unknown User";
-            const postText = post.content ? `"${
-                post.content.substring (0, 100)
-            }..."` : "...";
-            const notification = new Notification ({recipient: post.userId, sender: req.body.user, action: `${fullName} commented on your post: ${postText}`, isSystemNotification: false});
+        if (post.userId.toString() !== req.body.user) { // Create a notification for the post owner
+            const user = await User.findById(req.body.user);
+            const fullName = user ? `${user.firstname
+                } ${user.lastname
+                }` : "Unknown User";
+            const postText = post.content ? `"${post.content.substring(0, 100)
+                }..."` : "...";
+            const notification = new Notification({ recipient: post.userId, sender: req.body.user, action: `${fullName} commented on your post: ${postText}`, isSystemNotification: false });
 
             // Save the notification
-            await notification.save ();
+            await notification.save();
         }
 
-        res.status (200).json ({message: "Comment posted successfully", post: updatedPost});
+        res.status(200).json({ message: "Comment posted successfully", post: updatedPost });
     } catch (error) { // Handle any errors that occurred during the request
-        console.error (error);
-        res.status (500).json ({message: "Internal server error"});
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 });
 
@@ -4791,22 +4783,22 @@ router.post ("/posts/:postId/comments", async (req, res) => {
  *                   example: Internal Server Error
  */
 
-router.get ("/posts/:postId", async (req, res) => {
+router.get("/posts/:postId", async (req, res) => {
     try {
-        let post = await Post.findById (req.params.postId).populate ({
+        let post = await Post.findById(req.params.postId).populate({
             path: "userId", select: "firstname lastname profilePhoto personal verification", // Include the verification field in the populated user data
             populate: {
                 path: "verification", // Populate the verification field within the user data
                 model: "VerificationBadge", // Replace "VerificationBadge" with the correct model name if different
             }
-        }).populate ({
+        }).populate({
 
             path: "comments",
             populate: {
                 path: "user",
                 select: "firstname lastname profilePhoto"
             }
-        }).populate ({
+        }).populate({
             path: "comments.replies.user",
             select: "firstname lastname profilePhoto",
             populate: {
@@ -4815,23 +4807,23 @@ router.get ("/posts/:postId", async (req, res) => {
             }
         });
 
-        if (! post) {
-            return res.status (400).send ({message: "No Post Found"});
+        if (!post) {
+            return res.status(400).send({ message: "No Post Found" });
         }
-        res.status (200).send ({post: post});
+        res.status(200).send({ post: post });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
-router.get ("/user-posts/:userId", async (req, res) => {
-    const {userId} = req.params;
+router.get("/user-posts/:userId", async (req, res) => {
+    const { userId } = req.params;
 
     try {
         // Retrieve posts of a particular user from the database,
         // sort by 'createdAt' field in descending order,
         // and populate the 'userId' field with 'firstname', 'lastname', and 'profilePhoto'
-        const posts = await Post.find ({userId}).sort ({createdAt: -1}).populate ({
+        const posts = await Post.find({ userId }).sort({ createdAt: -1 }).populate({
             path: "userId", select: "firstname lastname profilePhoto personal verification", // Include the verification field in the populated user data
             populate: {
                 path: "verification", // Populate the verification field within the user data
@@ -4840,10 +4832,10 @@ router.get ("/user-posts/:userId", async (req, res) => {
         });
 
 
-        res.status (200).json (posts);
+        res.status(200).json(posts);
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: "Server error"});
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
     }
 });
 
@@ -4920,23 +4912,23 @@ router.get ("/user-posts/:userId", async (req, res) => {
 
 
 // POST /posts/:postId/comments/:commentId/replies
-router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
+router.post('/posts/:postId/comments/:commentId/replies', async (req, res) => {
     try {
-        const {postId, commentId} = req.params;
-        const {user, text} = req.body;
+        const { postId, commentId } = req.params;
+        const { user, text } = req.body;
 
         // Find the post by postId
-        const post = await Post.findById (postId);
+        const post = await Post.findById(postId);
 
-        if (! post) {
-            return res.status (404).json ({error: 'Post not found'});
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
         }
 
         // Find the comment within the post by commentId
-        const comment = post.comments.find ( (c) => c._id.toString () === commentId);
+        const comment = post.comments.find((c) => c._id.toString() === commentId);
 
-        if (! comment) {
-            return res.status (404).json ({error: 'Comment not found'});
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found' });
         }
 
         // Create the reply comment
@@ -4946,15 +4938,15 @@ router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
         };
 
         // Add the reply comment to the comment's replies array
-        comment.replies.push (replyComment);
+        comment.replies.push(replyComment);
 
         // Save the post
-        await post.save ();
+        await post.save();
 
-        res.status (201).json ({message: 'Reply comment created successfully'});
+        res.status(201).json({ message: 'Reply comment created successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'Server error'});
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -5047,18 +5039,18 @@ router.post ('/posts/:postId/comments/:commentId/replies', async (req, res) => {
  *                   example: Internal Server Error
  */
 
-router.get ('/people-you-know/:userId', async (req, res) => {
+router.get('/people-you-know/:userId', async (req, res) => {
     try {
-        const {userId} = req.params;
-        const {course_of_study, current_level, department, institution} = req.query;
+        const { userId } = req.params;
+        const { course_of_study, current_level, department, institution } = req.query;
 
         // Check if the user exists
-        const user = await User.findById (userId);
-        if (! user) {
-            return res.status (404).json ({error: 'User not found'});
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        const userIdObject = new mongoose.Types.ObjectId (userId);
+        const userIdObject = new mongoose.Types.ObjectId(userId);
 
         // Optimize the aggregation pipeline
         const pipeline = [
@@ -5098,10 +5090,10 @@ router.get ('/people-you-know/:userId', async (req, res) => {
             // Select the desired fields
         ];
 
-        const users = await User.aggregate (pipeline);
+        const users = await User.aggregate(pipeline);
 
         // If the number of matching documents is less than 4, adjust the number of results
-        const totalCount = await User.countDocuments ({
+        const totalCount = await User.countDocuments({
             $or: [
                 {
                     'education.course_of_study': course_of_study
@@ -5114,14 +5106,14 @@ router.get ('/people-you-know/:userId', async (req, res) => {
                 }
             ]
         });
-        const adjustedSize = Math.min (users.length, totalCount);
+        const adjustedSize = Math.min(users.length, totalCount);
 
-        res.json ({
-            people: users.slice (0, adjustedSize)
+        res.json({
+            people: users.slice(0, adjustedSize)
         });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'Internal Server Error'});
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
@@ -5201,7 +5193,7 @@ router.get ('/people-you-know/:userId', async (req, res) => {
  *                   example: Server error
  */
 
-router.post ("/update-livefeed-settings/:userId", async (req, res) => {
+router.post("/update-livefeed-settings/:userId", async (req, res) => {
     const userId = req.params.userId;
     const {
         about,
@@ -5213,9 +5205,9 @@ router.post ("/update-livefeed-settings/:userId", async (req, res) => {
     } = req.body;
 
     try {
-        const user = await User.findById (userId);
-        if (! user) {
-            return res.status (404).json ({error: "User not found"});
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
         }
 
         // Update the liveFeedSettings object
@@ -5229,15 +5221,15 @@ router.post ("/update-livefeed-settings/:userId", async (req, res) => {
         };
 
         // Save the updated user
-        await user.save ();
+        await user.save();
 
         // Fetch the user again to exclude sensitive fields
-        const updatedUser = await User.findById (userId).select ("-token -password");
+        const updatedUser = await User.findById(userId).select("-token -password");
 
-        res.status (200).json ({user: updatedUser, message: "Live feed settings updated successfully"});
+        res.status(200).json({ user: updatedUser, message: "Live feed settings updated successfully" });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: "Server error"});
+        console.error(error);
+        res.status(500).json({ error: "Server error" });
     }
 });
 
@@ -5312,20 +5304,20 @@ router.post ("/update-livefeed-settings/:userId", async (req, res) => {
  *                   example: An error occurred while fetching author details.
  */
 
-router.get ('/author/:id', async (req, res) => {
-    const {id} = req.params;
+router.get('/author/:id', async (req, res) => {
+    const { id } = req.params;
 
     try {
-        const author = await User.findById (id).select ('-token -password').populate ("friends.userId", "firstname lastname profilePhoto").populate ("verification");
+        const author = await User.findById(id).select('-token -password').populate("friends.userId", "firstname lastname profilePhoto").populate("verification");
 
-        if (! author) {
-            return res.status (404).json ({error: 'Author not found'});
+        if (!author) {
+            return res.status(404).json({ error: 'Author not found' });
         }
 
-        res.json ({author});
+        res.json({ author });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while fetching author details.'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching author details.' });
     }
 });
 
@@ -5382,18 +5374,18 @@ router.get ('/author/:id', async (req, res) => {
  *                   example: Internal server error
  */
 
-router.get ('/posts/media/:type/:userId', async (req, res) => {
-    const {type, userId} = req.params;
+router.get('/posts/media/:type/:userId', async (req, res) => {
+    const { type, userId } = req.params;
 
-    const userIdObject = new mongoose.Types.ObjectId (userId);
+    const userIdObject = new mongoose.Types.ObjectId(userId);
     try {
-        const posts = await Post.find ({'media.type': type, userId: userIdObject});
+        const posts = await Post.find({ 'media.type': type, userId: userIdObject });
 
-        const media = posts.flatMap ( (post) => post.media);
-        res.json (media);
+        const media = posts.flatMap((post) => post.media);
+        res.json(media);
     } catch (error) {
-        console.error ('Error fetching post media:', error);
-        res.status (500).json ({error: 'Internal server error'});
+        console.error('Error fetching post media:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -5488,13 +5480,13 @@ router.get ('/posts/media/:type/:userId', async (req, res) => {
  *                   example: Failed to submit mentor application
  */
 
-router.post ('/become-mentor/:userId', async (req, res) => {
+router.post('/become-mentor/:userId', async (req, res) => {
     const userId = req.params.userId;
 
     try { // Check if the user exists
-        const user = await User.findById (userId);
-        if (! user) {
-            return res.status (404).json ({error: 'User not found'});
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
         }
 
         // Extract the form values from the request body
@@ -5511,11 +5503,11 @@ router.post ('/become-mentor/:userId', async (req, res) => {
 
         // Check if required fields are empty
         if (!skills || !faculty || !briefDescription || !mentorshipReason) {
-            return res.status (400).json ({error: 'Please fill in all required fields.'});
+            return res.status(400).json({ error: 'Please fill in all required fields.' });
         }
 
         // Check if the user already has an application
-        let mentorApplication = await MentorApplication.findOne ({userId});
+        let mentorApplication = await MentorApplication.findOne({ userId });
 
         if (mentorApplication) { // If application exists, update it
             mentorApplication.skills = skills;
@@ -5527,7 +5519,7 @@ router.post ('/become-mentor/:userId', async (req, res) => {
             mentorApplication.twitterHandle = twitterHandle;
             mentorApplication.googleMeet = googleMeet;
         } else { // If application does not exist, create a new one
-            mentorApplication = new MentorApplication ({
+            mentorApplication = new MentorApplication({
                 userId,
                 skills,
                 faculty,
@@ -5541,16 +5533,16 @@ router.post ('/become-mentor/:userId', async (req, res) => {
         }
 
         // Save the mentor application to the database
-        await mentorApplication.save ();
+        await mentorApplication.save();
 
         // Update the isMentorStatus of the user to "Application Submitted"
         user.isMentorStatus = "Application Submitted";
-        await user.save ();
+        await user.save();
 
-        res.json ({message: 'Mentor application submitted successfully'});
+        res.json({ message: 'Mentor application submitted successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'Failed to submit mentor application'});
+        console.error(error);
+        res.status(500).json({ error: 'Failed to submit mentor application' });
     }
 });
 
@@ -5614,27 +5606,27 @@ router.post ('/become-mentor/:userId', async (req, res) => {
  *                   description: A message indicating a server error occurred.
  */
 
-router.get ('/notifications/:userId', async (req, res) => {
+router.get('/notifications/:userId', async (req, res) => {
     const userId = req.params.userId;
 
     try {
-        const notifications = await Notification.find ({recipient: userId}).populate ("sender", "firstname lastname profilePhoto").sort ({date: -1});
-        res.json ({notifications});
+        const notifications = await Notification.find({ recipient: userId }).populate("sender", "firstname lastname profilePhoto").sort({ date: -1 });
+        res.json({ notifications });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: error.message});
+        console.error(error);
+        res.status(500).json({ message: error.message });
     }
 });
 
-router.get ('/notifications-short/:userId', async (req, res) => {
+router.get('/notifications-short/:userId', async (req, res) => {
     const userId = req.params.userId;
 
     try {
-        const notifications = await Notification.find ({recipient: userId}).populate ("sender", "firstname lastname profilePhoto").sort ({date: -1}).limit (3);
-        res.json ({notifications});
+        const notifications = await Notification.find({ recipient: userId }).populate("sender", "firstname lastname profilePhoto").sort({ date: -1 }).limit(3);
+        res.json({ notifications });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({message: error.message});
+        console.error(error);
+        res.status(500).json({ message: error.message });
     }
 });
 
@@ -5684,27 +5676,27 @@ router.get ('/notifications-short/:userId', async (req, res) => {
  */
 
 // Route for sending a friend request
-router.post ('/send-friend-request', async (req, res) => {
+router.post('/send-friend-request', async (req, res) => {
     try {
-        const {senderId, receiverId} = req.body;
+        const { senderId, receiverId } = req.body;
 
         // Check if the friend request already exists
-        const existingRequest = await FriendRequest.findOne ({sender: senderId, receiver: receiverId});
+        const existingRequest = await FriendRequest.findOne({ sender: senderId, receiver: receiverId });
 
         if (existingRequest) {
-            return res.status (400).json ({error: 'Friend request already sent to this user.'});
+            return res.status(400).json({ error: 'Friend request already sent to this user.' });
         }
 
         // Create a new friend request
-        const friendRequest = new FriendRequest ({sender: senderId, receiver: receiverId});
+        const friendRequest = new FriendRequest({ sender: senderId, receiver: receiverId });
 
         // Save the friend request to the database
-        const savedFriendRequest = await friendRequest.save ();
+        const savedFriendRequest = await friendRequest.save();
 
-        res.status (200).json ({message: 'Request sent successfully'});
+        res.status(200).json({ message: 'Request sent successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while sending the friend request.'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while sending the friend request.' });
     }
 });
 
@@ -5770,12 +5762,12 @@ router.post ('/send-friend-request', async (req, res) => {
  *                   description: A message indicating that a server error occurred while retrieving friend requests.
  */
 
-router.get ('/friend-request/:userId/:id', async (req, res) => {
+router.get('/friend-request/:userId/:id', async (req, res) => {
     try {
-        const {userId, id} = req.params;
+        const { userId, id } = req.params;
 
         // Find friend requests where the user is the sender or receiver
-        const friendRequests = await FriendRequest.findOne ({
+        const friendRequests = await FriendRequest.findOne({
             $or: [
                 {
                     sender: userId,
@@ -5787,10 +5779,10 @@ router.get ('/friend-request/:userId/:id', async (req, res) => {
             ]
         });
 
-        res.status (200).json ({friendRequests});
+        res.status(200).json({ friendRequests });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while retrieving friend requests.'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while retrieving friend requests.' });
     }
 });
 
@@ -5843,24 +5835,24 @@ router.get ('/friend-request/:userId/:id', async (req, res) => {
  *                   description: A message indicating a server error occurred.
  */
 
-router.delete ('/friend-requests/:requestId', async (req, res) => {
+router.delete('/friend-requests/:requestId', async (req, res) => {
     try {
-        const {requestId} = req.params;
+        const { requestId } = req.params;
 
         // Find the friend request by ID
-        const friendRequest = await FriendRequest.findById (requestId);
+        const friendRequest = await FriendRequest.findById(requestId);
 
-        if (! friendRequest) {
-            return res.status (404).json ({error: 'Friend request not found'});
+        if (!friendRequest) {
+            return res.status(404).json({ error: 'Friend request not found' });
         }
 
         // Delete the friend request
-        await FriendRequest.deleteOne ({_id: requestId});
+        await FriendRequest.deleteOne({ _id: requestId });
 
-        res.status (200).json ({message: 'Friend request deleted successfully'});
+        res.status(200).json({ message: 'Friend request deleted successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while deleting the friend request'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while deleting the friend request' });
     }
 });
 
@@ -5912,25 +5904,25 @@ router.delete ('/friend-requests/:requestId', async (req, res) => {
  *                   description: A message indicating that a server error occurred while accepting the friend request.
  */
 
-router.put ('/friend-requests/accept/:requestId', async (req, res) => {
+router.put('/friend-requests/accept/:requestId', async (req, res) => {
     try {
-        const {requestId} = req.params;
+        const { requestId } = req.params;
 
         // Find the friend request by ID
-        const friendRequest = await FriendRequest.findById (requestId);
+        const friendRequest = await FriendRequest.findById(requestId);
 
-        if (! friendRequest) {
-            return res.status (404).json ({error: 'Friend request not found'});
+        if (!friendRequest) {
+            return res.status(404).json({ error: 'Friend request not found' });
         }
 
         // Update the status to 'accepted'
         friendRequest.status = 'accepted';
 
         // Save the updated friend request
-        const updatedFriendRequest = await friendRequest.save ();
+        const updatedFriendRequest = await friendRequest.save();
 
         // Add receiver as a friend of the sender
-        await User.findByIdAndUpdate (friendRequest.sender, {
+        await User.findByIdAndUpdate(friendRequest.sender, {
             $addToSet: { // Use $addToSet instead of $push
                 friends: {
                     userId: friendRequest.receiver
@@ -5939,7 +5931,7 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
         });
 
         // Add sender as a friend of the receiver
-        await User.findByIdAndUpdate (friendRequest.receiver, {
+        await User.findByIdAndUpdate(friendRequest.receiver, {
             $addToSet: { // Use $addToSet instead of $push
                 friends: {
                     userId: friendRequest.sender
@@ -5948,23 +5940,21 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
         });
 
         // Create a notification for the friend request acceptance
-        const receiverUser = await User.findById (friendRequest.receiver);
-        const fullName = `${
-            receiverUser.firstname
-        } ${
-            receiverUser.lastname
-        }`;
+        const receiverUser = await User.findById(friendRequest.receiver);
+        const fullName = `${receiverUser.firstname
+            } ${receiverUser.lastname
+            }`;
         const notificationMessage = `${fullName} has accepted your Buddy Request. You can now chat on Acadaboo.`;
 
-        const notification = new Notification ({recipient: friendRequest.sender, sender: friendRequest.receiver, action: notificationMessage, isSystemNotification: true});
+        const notification = new Notification({ recipient: friendRequest.sender, sender: friendRequest.receiver, action: notificationMessage, isSystemNotification: true });
 
         // Save the notification to the database
-        await notification.save ();
+        await notification.save();
 
-        res.status (200).json ({message: 'Friend request accepted successfully'});
+        res.status(200).json({ message: 'Friend request accepted successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while accepting the friend request'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while accepting the friend request' });
     }
 });
 
@@ -6028,12 +6018,12 @@ router.put ('/friend-requests/accept/:requestId', async (req, res) => {
  *                   description: A message indicating a server error occurred.
  */
 
-router.get ('/all-friend-requests/:userId', async (req, res) => {
+router.get('/all-friend-requests/:userId', async (req, res) => {
     try {
-        const {userId} = req.params;
+        const { userId } = req.params;
 
         // Find all friend requests where the user is either the receiver or the sender and the status is 'pending'
-        const friendRequests = await FriendRequest.find ({
+        const friendRequests = await FriendRequest.find({
             $or: [
                 {
                     receiver: userId
@@ -6042,15 +6032,15 @@ router.get ('/all-friend-requests/:userId', async (req, res) => {
                 }
             ],
             status: 'pending'
-        }).populate ('sender', 'firstname lastname profilePhoto personal').populate ('receiver', 'firstname lastname profilePhoto personal');
+        }).populate('sender', 'firstname lastname profilePhoto personal').populate('receiver', 'firstname lastname profilePhoto personal');
 
         // Filter out friend requests without populated sender or receiver
-        const filteredFriendRequests = friendRequests.filter (request => request.sender && request.receiver);
+        const filteredFriendRequests = friendRequests.filter(request => request.sender && request.receiver);
 
-        res.status (200).json ({friendRequests: filteredFriendRequests});
+        res.status(200).json({ friendRequests: filteredFriendRequests });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while retrieving friend requests'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while retrieving friend requests' });
     }
 });
 
@@ -6081,22 +6071,22 @@ router.get ('/all-friend-requests/:userId', async (req, res) => {
  *         description: An error occurred while unfriending
  */
 
-router.delete ('/unfriend/:requestId', async (req, res) => {
+router.delete('/unfriend/:requestId', async (req, res) => {
     try {
-        const {requestId} = req.params;
+        const { requestId } = req.params;
 
         // Find the friend request by ID
-        const friendRequest = await FriendRequest.findById (requestId);
+        const friendRequest = await FriendRequest.findById(requestId);
 
-        if (! friendRequest) {
-            return res.status (404).json ({error: 'Friend request not found'});
+        if (!friendRequest) {
+            return res.status(404).json({ error: 'Friend request not found' });
         }
 
         // Delete the friend request document
-        await FriendRequest.deleteOne ({_id: requestId});
+        await FriendRequest.deleteOne({ _id: requestId });
 
         // Remove the sender from the receiver's friend list
-        await User.findByIdAndUpdate (friendRequest.receiver, {
+        await User.findByIdAndUpdate(friendRequest.receiver, {
             $pull: {
                 friends: {
                     userId: friendRequest.sender
@@ -6105,7 +6095,7 @@ router.delete ('/unfriend/:requestId', async (req, res) => {
         });
 
         // Remove the receiver from the sender's friend list
-        await User.findByIdAndUpdate (friendRequest.sender, {
+        await User.findByIdAndUpdate(friendRequest.sender, {
             $pull: {
                 friends: {
                     userId: friendRequest.receiver
@@ -6113,10 +6103,10 @@ router.delete ('/unfriend/:requestId', async (req, res) => {
             }
         });
 
-        res.status (200).json ({message: 'Unfriended successfully'});
+        res.status(200).json({ message: 'Unfriended successfully' });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while unfriending'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while unfriending' });
     }
 });
 
@@ -6179,33 +6169,33 @@ router.delete ('/unfriend/:requestId', async (req, res) => {
  *                   type: string
  */
 
-router.get ('/count-mutual-friends/:requestId', async (req, res) => {
+router.get('/count-mutual-friends/:requestId', async (req, res) => {
     try {
-        const {requestId} = req.params;
+        const { requestId } = req.params;
 
         // Find the friend request
-        const friendRequest = await FriendRequest.findById (requestId);
+        const friendRequest = await FriendRequest.findById(requestId);
 
-        if (! friendRequest) {
-            return res.status (404).json ({error: 'Friend request not found'});
+        if (!friendRequest) {
+            return res.status(404).json({ error: 'Friend request not found' });
         }
 
         // Find the receiver and sender of the friend request and populate their friends field
-        const receiver = await User.findById (friendRequest.receiver).populate ('friends');
-        const sender = await User.findById (friendRequest.sender).populate ('friends');
+        const receiver = await User.findById(friendRequest.receiver).populate('friends');
+        const sender = await User.findById(friendRequest.sender).populate('friends');
 
         // Get the list of sender's friend userIds
-        const senderFriendIds = sender.friends.map ( (friend) => friend.userId.toString ());
+        const senderFriendIds = sender.friends.map((friend) => friend.userId.toString());
 
         // Get the list of receiver's friend userIds
-        const receiverFriendIds = receiver.friends.map ( (friend) => friend.userId.toString ());
+        const receiverFriendIds = receiver.friends.map((friend) => friend.userId.toString());
 
         // Calculate the mutual friends count
-        const mutualFriendsCount = senderFriendIds.filter ( (friendId) => receiverFriendIds.includes (friendId)).length;
-        res.status (200).json ({mutualFriendsCount});
+        const mutualFriendsCount = senderFriendIds.filter((friendId) => receiverFriendIds.includes(friendId)).length;
+        res.status(200).json({ mutualFriendsCount });
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while retrieving mutual friends count'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while retrieving mutual friends count' });
     }
 });
 
@@ -6260,22 +6250,22 @@ router.get ('/count-mutual-friends/:requestId', async (req, res) => {
  *                   type: string
  */
 
-router.post ('/check-username', async (req, res) => {
+router.post('/check-username', async (req, res) => {
     try {
-        const {username} = req.body;
+        const { username } = req.body;
 
         // Check if the username already exists in the database
-        const existingUser = await User.findOne ({'liveFeedSettings.username': username});
+        const existingUser = await User.findOne({ 'liveFeedSettings.username': username });
 
         if (existingUser) { // Username already taken, suggest alternative usernames
-            const suggestedUsernames = generateSuggestedUsernames (username);
-            res.status (200).json ({taken: true, suggestedUsernames});
+            const suggestedUsernames = generateSuggestedUsernames(username);
+            res.status(200).json({ taken: true, suggestedUsernames });
         } else { // Username is available
-            res.status (200).json ({taken: false});
+            res.status(200).json({ taken: false });
         }
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while checking the username.'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while checking the username.' });
     }
 });
 
@@ -6286,7 +6276,7 @@ const generateSuggestedUsernames = (username) => {
 
     for (let i = 1; i <= MAX_SUFFIX; i++) {
         const suggestedUsername = `${username}${i}`;
-        suggestedUsernames.push (suggestedUsername);
+        suggestedUsernames.push(suggestedUsername);
     }
 
     return suggestedUsernames;
@@ -6342,21 +6332,21 @@ const generateSuggestedUsernames = (username) => {
  *                   type: string
  */
 
-router.get ('/friends/:userId', async (req, res) => {
+router.get('/friends/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        const user = await User.findById (userId).populate ('friends.userId', 'firstname lastname liveFeedSettings.username liveFeedSettings.onlineStatus education.institution profilePhoto personal');
+        const user = await User.findById(userId).populate('friends.userId', 'firstname lastname liveFeedSettings.username liveFeedSettings.onlineStatus education.institution profilePhoto personal');
 
-        if (! user) {
-            return res.status (404).json ({message: 'User not found'});
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
         // Filter out friends where userId wasn't successfully populated
-        const filteredFriends = user.friends.filter (friend => friend.userId);
+        const filteredFriends = user.friends.filter(friend => friend.userId);
 
-        res.json ({friends: filteredFriends});
+        res.json({ friends: filteredFriends });
     } catch (err) {
-        console.error (err);
-        res.status (500).json ({message: 'Server Error'});
+        console.error(err);
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 
@@ -6420,12 +6410,12 @@ router.get ('/friends/:userId', async (req, res) => {
 // });
 
 
-router.get ('/messages/user/:userId', async (req, res) => {
+router.get('/messages/user/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
 
         // Find all chat messages where the user is either the sender or receiver
-        const messages = await Chat.find ({
+        const messages = await Chat.find({
             $or: [
                 {
                     sender: userId
@@ -6433,18 +6423,18 @@ router.get ('/messages/user/:userId', async (req, res) => {
                     receiver: userId
                 }
             ]
-        }).sort ({timeSent: 1});
+        }).sort({ timeSent: 1 });
 
         // Create an array to store promises for populating sender and receiver details
-        const populatePromises = messages.map (async (message) => { // Determine the model type (user or mentor) for both sender and receiver
+        const populatePromises = messages.map(async (message) => { // Determine the model type (user or mentor) for both sender and receiver
             const senderModel = message.senderModel;
             const receiverModel = message.receiverModel;
 
             // Find the sender details based on the senderModel
-            const senderDetails = senderModel === 'user' ? await User.findById (message.sender, 'firstname lastname profilePhoto') : await Mentors.findById (message.sender, 'fullname avatar');
+            const senderDetails = senderModel === 'user' ? await User.findById(message.sender, 'firstname lastname profilePhoto') : await Mentors.findById(message.sender, 'fullname avatar');
 
             // Find the receiver details based on the receiverModel
-            const receiverDetails = receiverModel === 'user' ? await User.findById (message.receiver, 'firstname lastname profilePhoto') : await Mentors.findById (message.receiver, 'fullname avatar');
+            const receiverDetails = receiverModel === 'user' ? await User.findById(message.receiver, 'firstname lastname profilePhoto') : await Mentors.findById(message.receiver, 'fullname avatar');
 
             // Update the message object with populated sender and receiver details
             message.sender = senderDetails;
@@ -6453,11 +6443,11 @@ router.get ('/messages/user/:userId', async (req, res) => {
         });
 
         // Wait for all the populate promises to resolve
-        const populatedMessages = await Promise.all (populatePromises);
+        const populatedMessages = await Promise.all(populatePromises);
 
-        res.status (200).json (populatedMessages);
+        res.status(200).json(populatedMessages);
     } catch (error) {
-        res.status (500).json ({error: 'Failed to fetch messages'});
+        res.status(500).json({ error: 'Failed to fetch messages' });
     }
 });
 
@@ -6587,23 +6577,23 @@ router.get('/chat/:id/messages', async (req, res) => {
  */
 
 // Route to change the chat status of a user
-router.put ('/chat-status/:userId', async (req, res) => {
+router.put('/chat-status/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
-        const {chatStatus} = req.body;
+        const { chatStatus } = req.body;
         // Update the chat status of the user
-        const updatedUser = await User.findByIdAndUpdate (userId, {
+        const updatedUser = await User.findByIdAndUpdate(userId, {
             'liveFeedSettings.onlineStatus': chatStatus
-        }, {new: true}).select ("-password -token").populate ('friends.userId', 'firstname lastname profilePhoto');
+        }, { new: true }).select("-password -token").populate('friends.userId', 'firstname lastname profilePhoto');
 
-        if (! updatedUser) {
-            return res.status (404).json ({error: 'User not found'});
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
         }
 
-        res.status (200).json ({message: 'Chat status updated successfully', user: updatedUser});
+        res.status(200).json({ message: 'Chat status updated successfully', user: updatedUser });
     } catch (error) {
-        console.log ('Error updating chat status:', error);
-        res.status (500).json ({error: 'Failed to update chat status'});
+        console.log('Error updating chat status:', error);
+        res.status(500).json({ error: 'Failed to update chat status' });
     }
 });
 
@@ -6655,23 +6645,23 @@ router.put ('/chat-status/:userId', async (req, res) => {
  *                   type: string
  */
 
-router.get ('/chat-status/:userId', async (req, res) => {
+router.get('/chat-status/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
 
         // Retrieve the user's chat status
-        const user = await User.findById (userId).select ('liveFeedSettings.onlineStatus');
+        const user = await User.findById(userId).select('liveFeedSettings.onlineStatus');
 
-        if (! user) {
-            return res.status (404).json ({error: 'User not found'});
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
         }
 
         const chatStatus = user.liveFeedSettings.onlineStatus;
 
-        res.status (200).json ({chatStatus});
+        res.status(200).json({ chatStatus });
     } catch (error) {
-        console.log ('Error retrieving chat status:', error);
-        res.status (500).json ({error: 'Failed to retrieve chat status'});
+        console.log('Error retrieving chat status:', error);
+        res.status(500).json({ error: 'Failed to retrieve chat status' });
     }
 });
 
@@ -6723,13 +6713,13 @@ router.get ('/chat-status/:userId', async (req, res) => {
  */
 
 
-router.put ('/update-message-status/:receiverId/:senderId', async (req, res) => {
+router.put('/update-message-status/:receiverId/:senderId', async (req, res) => {
 
-    const {receiverId, senderId} = req.params;
-    const {messages} = req.body;
+    const { receiverId, senderId } = req.params;
+    const { messages } = req.body;
 
     try {
-        const chat = await Chat.findOne ({
+        const chat = await Chat.findOne({
             $or: [
                 {
                     sender: senderId,
@@ -6741,24 +6731,24 @@ router.put ('/update-message-status/:receiverId/:senderId', async (req, res) => 
             ]
         });
 
-        if (! chat) {
-            return res.status (404).json ({message: 'Chat not found'});
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found' });
         }
 
-        messages.forEach ( (update) => {
-            const message = chat.messages.find ( (msg) => msg._id.toString () === update.messageId);
+        messages.forEach((update) => {
+            const message = chat.messages.find((msg) => msg._id.toString() === update.messageId);
             if (message) { // Update the status of the corresponding message
                 message.status = update.status;
             }
         });
 
-        await chat.save ();
+        await chat.save();
 
         // Respond with a success message or status code (200 OK)
-        res.json ({message: 'Message statuses updated successfully'});
+        res.json({ message: 'Message statuses updated successfully' });
     } catch (err) {
-        console.error (err);
-        res.status (500).json ({message: 'Error updating message statuses'});
+        console.error(err);
+        res.status(500).json({ message: 'Error updating message statuses' });
     }
 });
 
@@ -6817,7 +6807,7 @@ router.put ('/update-message-status/:receiverId/:senderId', async (req, res) => 
  */
 
 // POST route to send a message
-router.post ('/send-message', async (req, res) => {
+router.post('/send-message', async (req, res) => {
     try {
         const message = req.body;
         // Assuming the message object is sent in the request body
@@ -6832,14 +6822,14 @@ router.post ('/send-message', async (req, res) => {
         };
 
         // Find the chat between sender A and receiver B
-        let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
+        let chat = await Chat.findOne({ sender: message.sender._id, receiver: message.receiver._id });
 
-        if (! chat) { // Check if the reverse chat exists between sender B and receiver A
-            chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
+        if (!chat) { // Check if the reverse chat exists between sender B and receiver A
+            chat = await Chat.findOne({ sender: message.receiver._id, receiver: message.sender._id });
         }
 
-        if (! chat) { // Create a new chat if neither chat exists
-            chat = new Chat ({
+        if (!chat) { // Create a new chat if neither chat exists
+            chat = new Chat({
                 sender: message.sender._id,
                 receiver: message.receiver._id,
                 senderModel: message.sender.model,
@@ -6847,17 +6837,17 @@ router.post ('/send-message', async (req, res) => {
                 messages: [newMessage]
             });
         } else { // Add the new message to the messages array
-            chat.messages.push (newMessage);
+            chat.messages.push(newMessage);
         }
 
         // Save the chat document
-        await chat.save ();
+        await chat.save();
 
         // Respond with a success message or status code (200 OK)
-        res.json ({message: 'Message sent successfully'});
+        res.json({ message: 'Message sent successfully' });
     } catch (error) {
-        console.error ('Error sending message:', error);
-        res.status (500).json ({error: 'An error occurred while sending the message'});
+        console.error('Error sending message:', error);
+        res.status(500).json({ error: 'An error occurred while sending the message' });
     }
 });
 
@@ -6883,20 +6873,20 @@ router.post ('/send-message', async (req, res) => {
  *         description: An error occurred while marking notifications as read.
  */
 // Route to mark all notifications of a particular user as read
-router.put ('/mark-as-read/:userId', async (req, res) => {
+router.put('/mark-as-read/:userId', async (req, res) => {
     const userId = req.params.userId;
 
     try { // Update all notifications where the recipient matches the userId
-        await Notification.updateMany ({
+        await Notification.updateMany({
             recipient: userId
         }, {
             $set: {
                 isRead: true
             }
         });
-        res.status (200).json ({message: 'All notifications marked as read successfully.'});
+        res.status(200).json({ message: 'All notifications marked as read successfully.' });
     } catch (error) {
-        res.status (500).json ({error: 'An error occurred while marking notifications as read.'});
+        res.status(500).json({ error: 'An error occurred while marking notifications as read.' });
     }
 });
 
@@ -6926,11 +6916,11 @@ router.put ('/mark-as-read/:userId', async (req, res) => {
  *         description: An error occurred while searching for users.
  */
 
-router.get ('/search/people/:query', async (req, res) => {
-    const {query} = req.params;
+router.get('/search/people/:query', async (req, res) => {
+    const { query } = req.params;
 
     try {
-        const searchResults = await User.find ({
+        const searchResults = await User.find({
             $or: [
                 {
                     $or: [
@@ -6953,20 +6943,20 @@ router.get ('/search/people/:query', async (req, res) => {
                     }
                 }, // Case-insensitive search for username
             ]
-        }).select ('-password -token').populate ("verification");
+        }).select('-password -token').populate("verification");
 
-        res.json (searchResults);
+        res.json(searchResults);
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while searching for users'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while searching for users' });
     }
 });
 
-router.get ('/search/people-app/:query', async (req, res) => {
-    const {query} = req.params;
+router.get('/search/people-app/:query', async (req, res) => {
+    const { query } = req.params;
 
     try {
-        const searchResults = await User.find ({
+        const searchResults = await User.find({
             $or: [
                 {
                     $or: [
@@ -6989,12 +6979,12 @@ router.get ('/search/people-app/:query', async (req, res) => {
                     }
                 }, // Case-insensitive search for username
             ]
-        }).select ('firstname lastname profilePhoto'); // Only select the specified fields
+        }).select('firstname lastname profilePhoto'); // Only select the specified fields
 
-        res.json (searchResults);
+        res.json(searchResults);
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while searching for users'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while searching for users' });
     }
 });
 
@@ -7025,11 +7015,11 @@ router.get ('/search/people-app/:query', async (req, res) => {
  *         description: An error occurred while searching for posts.
  */
 
-router.get ('/search/posts/:query', async (req, res) => {
-    const {query} = req.params;
+router.get('/search/posts/:query', async (req, res) => {
+    const { query } = req.params;
 
     try {
-        const posts = await Post.find ({
+        const posts = await Post.find({
             $or: [
                 {
                     content: {
@@ -7043,12 +7033,12 @@ router.get ('/search/posts/:query', async (req, res) => {
                     }
                 }, // Case-insensitive search for comments
             ]
-        }).populate ('userId', 'firstname lastname profilePhoto');
+        }).populate('userId', 'firstname lastname profilePhoto');
 
-        res.json (posts);
+        res.json(posts);
     } catch (error) {
-        console.error (error);
-        res.status (500).json ({error: 'An error occurred while searching for posts'});
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while searching for posts' });
     }
 });
 
@@ -7114,8 +7104,8 @@ router.post('/update-account-type/:userId', async (req, res) => {
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             { accountType: selectedAccountType },
-            { new: true }  
-        ).select ("-password -token").populate('friends.userId', 'firstname lastname profilePhoto');
+            { new: true }
+        ).select("-password -token").populate('friends.userId', 'firstname lastname profilePhoto');
 
         return res.status(200).json({
             message: 'Account type updated successfully',
@@ -7173,15 +7163,15 @@ router.post('/update-account-type/:userId', async (req, res) => {
  *                   type: object
  */
 
-router.get ("/event-categories", async (req, res) => {
+router.get("/event-categories", async (req, res) => {
     try { // check if user exists
-        let eventCategories = await EventCategory.find ().sort ({createdAt: "desc"});
-        if (! eventCategories) {
-            return res.status (400).send ({message: "No Categories Found"});
+        let eventCategories = await EventCategory.find().sort({ createdAt: "desc" });
+        if (!eventCategories) {
+            return res.status(400).send({ message: "No Categories Found" });
         }
-        res.status (200).send ({categories: eventCategories});
+        res.status(200).send({ categories: eventCategories });
     } catch (error) {
-        res.status (500).send ({message: "Internal Server Error", error: error});
+        res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
 
@@ -7233,12 +7223,12 @@ router.get ("/event-categories", async (req, res) => {
 router.post('/create-event', upload6.single('file'), async (req, res) => {
     try {
         const eventData = JSON.parse(req.body.data); // Parse the JSON data
-        const { user, title, details, category, startDate, startTime, endDate, endTime, location } = eventData;
+        const { user, title, details, category, startDate, startTime, endDate, endTime, attendanceType, location, eventLink } = eventData;
 
         // Create a new Event object
         const event = new Event({
             user,
-            banner_image: req.file.path,  
+            banner_image: req.file.path,
             title,
             details,
             category,
@@ -7247,12 +7237,14 @@ router.post('/create-event', upload6.single('file'), async (req, res) => {
             endDate,
             endTime,
             location,
+            attendanceType,
+            eventLink
         });
 
         // Save the event to the database
         const savedEvent = await event.save();
 
-        res.status(201).json({ message: 'Event created successfully'});
+        res.status(201).json({ message: 'Event created successfully' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -7376,15 +7368,15 @@ router.get('/events', async (req, res) => {
             .populate('category')
             .populate({
                 path: 'user',
-                select: 'firstname lastname profilePhoto',
+                select: 'firstname lastname profilePhoto education personal',
             })
             .populate({
                 path: 'interestedParticipants.user',
-                select: 'firstname lastname profilePhoto',
+                select: 'firstname lastname profilePhoto education personal',
             })
             .populate({
                 path: 'goingParticipants.user',
-                select: 'firstname lastname profilePhoto',
+                select: 'firstname lastname profilePhoto education personal',
             })
             .exec();
 
@@ -7394,5 +7386,904 @@ router.get('/events', async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 });
+
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing events
+ * 
+ * /users/event/{id}:
+ *   delete:
+ *     summary: Delete Event
+ *     description: Delete an event by its ID
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the event to delete
+ *     responses:
+ *       200:
+ *         description: Event deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Failed to delete event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+router.delete('/event/:id', async (req, res) => {
+    try {
+        const eventId = req.params.id;
+
+        // Check if the event exists
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        // Delete the event
+        await Event.findByIdAndDelete(eventId);
+
+        res.status(200).json({ message: 'Event deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/event/{id}:
+ *   get:
+ *     summary: Get Event by ID
+ *     description: Retrieve an event by its ID
+ *     tags: User
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the event
+ *     responses:
+ *       200:
+ *         description: Event retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+router.get('/event/:id', async (req, res) => {
+    try {
+        const eventId = req.params.id;
+
+        // Retrieve the event by its ID
+        const event = await Event.findById(eventId).populate('category')
+            .populate({
+                path: 'user',
+                select: 'firstname lastname profilePhoto personal education',
+            })
+            .populate({
+                path: 'interestedParticipants.user',
+                select: 'firstname lastname profilePhoto personal education',
+            })
+            .populate({
+                path: 'goingParticipants.user',
+                select: 'firstname lastname profilePhoto personal education',
+            })
+            .exec();;
+
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        res.status(200).json({ event });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/add-interested/{eventId}:
+ *   post:
+ *     summary: Add or Remove User from Interested Participants
+ *     description: Add or remove a user as an interested participant for an event
+ *     tags: User
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the event
+ *       - in: body
+ *         name: userId
+ *         schema:
+ *           type: object
+ *           properties:
+ *             userId:
+ *               type: string
+ *         required: true
+ *         description: ID of the user
+ *     responses:
+ *       200:
+ *         description: Success message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: User is already an interested participant
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Add a user as an interested participant
+router.post('/add-interested/:eventId', async (req, res) => {
+    const { eventId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const userIndex = event.interestedParticipants.findIndex(participant => participant.user.equals(userId));
+
+        if (userIndex !== -1) {
+            event.interestedParticipants.splice(userIndex, 1); // Remove the user from the interested participants
+            await event.save();
+            return res.json({ message: 'Removed from interested participants' });
+        }
+
+        // If the user is not already an interested participant, add them
+        event.interestedParticipants.push({ user: userId });
+        await event.save();
+
+        res.json({ message: 'Added as an interested participant' });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/add-going/{eventId}:
+ *   post:
+ *     summary: Add or Remove User from Going Participants
+ *     description: Add or remove a user as a going participant for an event
+ *     tags: User
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the event
+ *       - in: body
+ *         name: userId
+ *         schema:
+ *           type: object
+ *           properties:
+ *             userId:
+ *               type: string
+ *         required: true
+ *         description: ID of the user
+ *     responses:
+ *       200:
+ *         description: Success message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: User is already a going participant
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+// Add a user as a going participant
+router.post('/add-going/:eventId', async (req, res) => {
+    const { eventId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        // Check if the user is already a going participant
+        const userIndex = event.goingParticipants.findIndex(participant => participant.user.equals(userId));
+
+        if (userIndex !== -1) {
+            event.goingParticipants.splice(userIndex, 1); // Remove the user from the going participants
+            await event.save();
+            return res.json({ message: 'User removed from going participants' });
+        }
+
+        event.goingParticipants.push({ user: userId });
+        await event.save();
+
+        res.json({ message: 'User added as a going participant' });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /event/bookmark/{eventId}:
+ *   post:
+ *     summary: Add or Remove Event Bookmark
+ *     description: Add or remove an event from bookmarks for a user
+ *     tags: Events
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the event
+ *       - in: body
+ *         name: userId
+ *         schema:
+ *           type: object
+ *           properties:
+ *             userId:
+ *               type: string
+ *         required: true
+ *         description: ID of the user
+ *     responses:
+ *       200:
+ *         description: Success message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+// Route to add or remove an event as a bookmark
+router.post('/event/bookmark/:eventId', async (req, res) => {
+    const { eventId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        const bookmark = await EventBookmark.findOne({ user: userId, event: eventId });
+
+        if (bookmark) {
+            await EventBookmark.deleteOne({ user: userId, event: eventId });
+            return res.json({ message: 'Event removed from bookmarks' });
+        } else {
+            await EventBookmark.create({ user: userId, event: eventId });
+            return res.json({ message: 'Event saved to bookmarks' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/event/is-bookmarked/{eventId}:
+ *   get:
+ *     summary: Check if Event is Bookmarked
+ *     description: Check if an event is bookmarked by a user
+ *     tags: Events
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the event
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user
+ *     responses:
+ *       200:
+ *         description: Success message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isBookmarked:
+ *                   type: boolean
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Route to check if an event is bookmarked by a user
+router.get('/event/is-bookmarked/:eventId', async (req, res) => {
+    const { eventId } = req.params;
+    const { userId } = req.query;
+
+    try {
+        const bookmark = await EventBookmark.findOne({ user: userId, event: eventId });
+
+        if (bookmark) {
+            return res.json({ isBookmarked: true });
+        } else {
+            return res.json({ isBookmarked: false });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/event/report:
+ *   post:
+ *     summary: Report an event
+ *     description: Report an event for violating community guidelines or other issues.
+ *     tags: User
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               eventId:
+ *                 type: string
+ *                 description: ID of the event to be reported
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user reporting the event
+ *               reason:
+ *                 type: string
+ *                 description: Reason for reporting the event (e.g., "Nudity", "Harassment", etc.)
+ *               explanation:
+ *                 type: string
+ *                 description: Explanation provided by the user for the report
+ *             required:
+ *               - eventId
+ *               - userId
+ *               - reason
+ *     responses:
+ *       200:
+ *         description: Event reported successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Confirmation message
+ *       400:
+ *         description: User has already reported this event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to allow users to report an event
+router.post('/event/report', async (req, res) => {
+    const { eventId, userId, reason, explanation } = req.body;
+
+    try {
+        // Check if the user has reported the event before
+        const existingReport = await ReportEvent.findOne({ event: eventId, user: userId });
+
+        if (existingReport) {
+            return res.status(400).json({ message: 'You have already reported this event' });
+        }
+
+        // Create a new report
+        const report = new ReportEvent({
+            event: eventId,
+            user: userId,
+            reason: reason,
+            explanation: explanation,
+            dateReported: new Date()
+        });
+
+        // Save the report
+        await report.save();
+
+        res.json({ message: 'Event reported successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/event/bookmarks/{userId}:
+ *   get:
+ *     summary: Get user's bookmarked events
+ *     description: Get a list of events bookmarked by the user.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user.
+ *     responses:
+ *       200:
+ *         description: List of bookmarked events retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 bookmarks:
+ *                   type: array
+ *                   description: List of bookmarked events.
+ *                   items:
+ *                     type: object
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to get user's bookmarked events
+router.get('/event/bookmarks/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Find all bookmarks of the user
+        const bookmarks = await EventBookmark.find({ user: userId }).populate('event');
+
+        // Extract event details from bookmarks
+        const bookmarkedEvents = bookmarks.map(bookmark => bookmark.event);
+
+        res.json({ bookmarks: bookmarkedEvents });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/events/interested/{userId}:
+ *   get:
+ *     summary: Get events user is interested in
+ *     description: Get a list of events that the user is interested in based on user ID.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user.
+ *     responses:
+ *       200:
+ *         description: List of events user is interested in retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 interestedEvents:
+ *                   type: array
+ *                   description: List of events user is interested in.
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to get events user is interested in based on user ID
+router.get('/events/interested/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const interestedEvents = await Event.find({
+            'interestedParticipants.user': user._id
+        });
+        
+        res.json({ interestedEvents });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/events/going/{userId}:
+ *   get:
+ *     summary: Get events user is going to
+ *     description: Get a list of events that the user is going to based on user ID.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user.
+ *     responses:
+ *       200:
+ *         description: List of events user is going to retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 goingEvents:
+ *                   type: array
+ *                   description: List of events user is going to.
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to get events user is going to based on user ID
+router.get('/events/going/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const goingEvents = await Event.find({
+            'goingParticipants.user': user._id
+        });
+
+        res.json({ goingEvents });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/events/hosted/{userId}:
+ *   get:
+ *     summary: Get events hosted by a user
+ *     description: Get a list of events that are hosted by the user based on user ID.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user.
+ *     responses:
+ *       200:
+ *         description: List of events hosted by the user retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hostedEvents:
+ *                   type: array
+ *                   description: List of events hosted by the user.
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to get events hosted by a user based on user ID
+router.get('/events/hosted/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const hostedEvents = await Event.find({ user: user._id });
+
+        res.json({ hostedEvents });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/events/{category}:
+ *   get:
+ *     summary: Get events under a specific category
+ *     description: Get a list of events that belong to a specific category.
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: category
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Category title.
+ *     responses:
+ *       200:
+ *         description: List of events under the category retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   description: List of events under the category.
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to get events under a specific category
+router.get('/events/category/:category', async (req, res) => {
+    const { category } = req.params;
+
+    try {
+        const categoryExists = await EventCategory.findOne({ title: category });
+        if (!categoryExists) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+
+        const eventsUnderCategory = await Event.find({ category: categoryExists._id });
+        
+        res.json({ events: eventsUnderCategory });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 module.exports = router;

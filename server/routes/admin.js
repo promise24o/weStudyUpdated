@@ -1085,7 +1085,11 @@ router.get ("/mentors-applications", async (req, res) => {
 
         const mentorApplications2 = await MentorApplicationWithMentor.find ().populate ("mentorId", "fullname avatar").populate ("faculty");
 
-        res.status (200).json ({mentors: mentorApplications, mentors2: mentorApplications2});
+        const filteredMentorApplications = mentorApplications.filter((mentorApp) => mentorApp.userId !== null && mentorApp.faculty !== null);
+
+        const filteredMentorApplications2 = mentorApplications2.filter((mentorApp) => mentorApp.mentorId !== null && mentorApp.faculty !== null);
+
+        res.status(200).json({ mentors: filteredMentorApplications, mentors2: filteredMentorApplications2 });
     } catch (err) {
         res.status (500).json ({message: err.message});
     }
