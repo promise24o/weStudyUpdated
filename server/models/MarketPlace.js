@@ -38,10 +38,31 @@ const listingSchema = new mongoose.Schema({
     },
     category: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "ProductCategory",
+        ref: "ListingCategory",
         required: true
     },
+    condition: {
+        type: String,
+        required: true
+    },
+    price: {
+        type: Number,
+        required: true
+    },
+    description: {
+        type: String,
+        required: true
+    },
+    media: [
+        {
+            url: {
+                type: String,
+                required: true
+            },
+        },
+    ],
 });
+
 listingSchema.set('timestamps', true);
 
 const reportSchema = new mongoose.Schema({

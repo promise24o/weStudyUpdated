@@ -33,6 +33,7 @@ const FriendRequest = require("../models/FriendRequest");
 const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
+const { ListingCategory } = require("../models/MarketPlace");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET });
@@ -3725,7 +3726,7 @@ router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
             linkText,
             fileType
         } = JSON.parse(req.body.data);
-
+        console.log(req.body.data)
         story = await Story.findOne({ id: id });
 
         // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
@@ -9227,6 +9228,64 @@ router.get('/events/filter', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing listings
+ * 
+ * /users/listing-categories:
+ *   get:
+ *     summary: Get Listing Categories
+ *     description: Get all listing categories
+ *     tags: [User]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved listing categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 categories:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ListingCategory'  # Replace with the correct schema reference for the ListingCategory model
+ *       400:
+ *         description: No Categories Found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Failed to fetch listing categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 error:
+ *                   type: object
+ */
+router.get("/listing-categories", async (req, res) => {
+    try {
+        let listingCategories = await ListingCategory.find().sort({ createdAt: "desc" });
+        if (!listingCategories) {
+            return res.status(400).send({ message: "No Categories Found" });
+        }
+        res.status(200).send({ categories: listingCategories });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error: error });
+    }
+});
+
 
 // Start the Agenda scheduler
 (async () => {
