@@ -21,6 +21,7 @@ const Institutions = require ("../models/Institutions");
 const MentorApplication = require ("../models/MentorApplication");
 const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMentor");
 const VerificationBadge = require ("../models/VerificationBadge");
+const { ListingCategory } = require("../models/MarketPlace");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
@@ -791,6 +792,43 @@ router.post ("/add-event-category", upload4.single ("file"), async (req, res) =>
         res.status (500).send ({message: "Internal Server Error", error});
     }
 });
+
+router.post ("/add-lisiting-category", upload4.single ("file"), async (req, res) => {
+    if (!req.file) {
+        return res.status (400).json ({error: "No photo uploaded"});
+    }
+
+    // Update the user's photo in the database
+    const data = JSON.parse (req.body.data);
+
+    // Upload the banner_image to cloudinary
+    const result = await cloudinary.uploader.upload (req.file.path);
+
+    try { // Create a new category
+        const category = new ListingCategory ({title: data.title, banner_image: result.url});
+        // Save the scholarship to the database
+        await category.save ();
+        // Send a response with the saved category
+        const categories = await ListingCategory.find ({}).sort ({createdAt: "desc"});
+        res.status (201).send ({categories: categories, message: "Category Created Successfully"});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error});
+    }
+});
+
+
+router.get ("/listing-categories", auth2, async (req, res) => {
+    try { // check if user exists
+        let listingCategories = await ListingCategory.find ().sort ({createdAt: "desc"});
+        if (! listingCategories) {
+            return res.status (400).send ({message: "No Categories Found"});
+        }
+        res.status (200).send ({categories: listingCategories});
+    } catch (error) {
+        res.status (500).send ({message: "Internal Server Error", error: error});
+    }
+});
+
 
 
 router.post ("/add-course", upload3.single ("file"), async (req, res) => {

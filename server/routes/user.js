@@ -77,15 +77,11 @@ const upload = multer({
 });
 
 // Configure Multer to use Cloudinary as the storage engine
-
-// Create a multer instance with the storage engine and limits (if necessary)
-
 const storage3 = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: (req, file) => {
         let format;
         let resourceType;
-
 
         if (file.mimetype.includes("image")) {
             format = "jpg";
@@ -98,23 +94,24 @@ const storage3 = new CloudinaryStorage({
         //     throw new Error ("Invalid file type");
         // }
 
-        const randomString = crypto.randomBytes(8).toString('hex');
+        const randomString = crypto.randomBytes(8).toString('hex'); // Generate a random string (8 characters)
+        const fileName = `${randomString}`; // Combine the random string
+
         const params = {
             folder: "/stories",
-            format: format,
-            public_id: `${randomString}`,
+            public_id: fileName, // Use the generated file name as the public_id
             resource_type: resourceType
         };
 
         if (format === "mp4") {
-            params.transformation = [{
-                duration: 25
-            },]; // Set the maximum duration to 25 seconds for videos
+            params.format = format;
             params.allowed_formats = ["mp4"]; // Allow only mp4 format for videos
         }
+
         return params;
     }
 });
+
 
 const upload3 = multer({
     storage: storage3,
