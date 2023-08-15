@@ -91,7 +91,7 @@ const eventSchema = new mongoose.Schema({
         type: String
     },
     startDate: {
-        type: Date,
+        type: String,
         required: true
     },
     startTime: {
@@ -99,7 +99,7 @@ const eventSchema = new mongoose.Schema({
         required: true
     },
     endDate: {
-        type: Date,
+        type: String,
     },
     endTime: {
         type: String,

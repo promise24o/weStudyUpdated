@@ -13,6 +13,22 @@ const commentSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    likes: [
+        {
+            user: {
+                type: mongoose.ObjectId,
+                ref: 'user'
+            }
+        }
+    ],
+    dislikes: [
+        {
+            user: {
+                type: mongoose.ObjectId,
+                ref: 'user'
+            }
+        }
+    ],
     replies: [
         {
             user: {
@@ -26,7 +42,23 @@ const commentSchema = new mongoose.Schema({
             createdAt: {
                 type: Date,
                 default: Date.now
-            }
+            },
+            likes: [
+                {
+                    user: {
+                        type: mongoose.ObjectId,
+                        ref: 'user'
+                    }
+                }
+            ],
+            dislikes: [
+                {
+                    user: {
+                        type: mongoose.ObjectId,
+                        ref: 'user'
+                    }
+                }
+            ]
         },
     ]
 });
@@ -67,6 +99,26 @@ const reelSchema = new mongoose.Schema({
     }
 });
 
-const Reels = mongoose.model('Reels', reelSchema);
+const bookmarkSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
+    },
+    reel: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Reels',
+        required: true
+    },
+    dateAdded: {
+        type: Date,
+        default: Date.now()
+    },
+});
 
-module.exports = Reels;
+
+module.exports = {
+    Reels: mongoose.model('Reels', reelSchema),
+    ReelsBookmark: mongoose.model('ReelsBookmark', bookmarkSchema),
+};
+

@@ -3,12 +3,12 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const router = require("express").Router();
 const bcrypt = require("bcrypt");
 const mongoose = require('mongoose');
-
-
-
 const Token = require("../models/Token");
 const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
+const moment = require('moment');
+const OneSignal = require('@onesignal/node-onesignal');
+
 
 const ejs = require("ejs");
 const fs = require("fs");
@@ -31,8 +31,8 @@ const MentorApplication = require("../models/MentorApplication");
 const Notification = require("../models/Notifications");
 const FriendRequest = require("../models/FriendRequest");
 const Chat = require("../models/Chat");
-const Reels = require("../models/Reels");
-const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent } = require("../models/Events");
+const { Reels, ReelsBookmark } = require("../models/Reels");
+const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET });
@@ -209,6 +209,80 @@ router.get("/", function (req, res) {
     res.send("User API");
 });
 
+
+// Setup OneSignal 
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
+const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY;
+
+
+const app_key_provider = {
+    getToken() {
+        return ONESIGNAL_API_KEY;
+    }
+};
+
+
+const configuration = OneSignal.createConfiguration({
+    authMethods: {
+        app_key: {
+        	tokenProvider: app_key_provider
+        }
+    }
+});
+
+const client = new OneSignal.DefaultApi(configuration);
+
+// Set up Agenda job scheduler
+const agenda = new Agenda({
+    db: {
+        address: process.env.DATABASE_URL
+    }
+});
+
+
+// Define job for sending notifications to goingParticipants
+agenda.define('send-notification', async (job) => {
+    const { event, action } = job.attrs.data;
+
+    const eventDoc = await Event.findById(event);
+    if (!eventDoc) {
+        console.error(`Event ${event} not found.`);
+        return;
+    }
+
+    const recipients = [
+        ...eventDoc.goingParticipants.map(participant => participant.user.toString()),
+        ...eventDoc.interestedParticipants.map(participant => participant.user.toString())
+    ];
+
+    // Remove duplicates from the recipients array
+    const uniqueRecipients = recipients.filter((userId, index) => recipients.indexOf(userId) === index);
+
+    // Iterate through the unique recipients array and send notifications
+    for (const userId of uniqueRecipients) {
+
+        // Create and save a new event notification for each recipient
+        const newNotification = new EventNotification({
+            recipient: userId,
+            event: eventDoc._id,
+            action,
+            date: new Date(),
+            isRead: false,
+            isSystemNotification: true
+        });
+        await newNotification.save();
+    }
+
+    const notification = new OneSignal.Notification();
+    notification.app_id = ONESIGNAL_APP_ID;
+    notification.included_segments = ['All'];
+    notification.contents = {
+        en: action
+    };
+   await client.createNotification(notification);
+
+});
+
 // router.post("/admin", async(req, res) => {
 //     console.log(req.body);
 //     try {
@@ -225,6 +299,7 @@ router.get("/", function (req, res) {
 //         res.status(500).send({ message: "Internal Server Error", error: error })
 //     }
 // });
+
 
 router.get("/:id/verify/:token", async (req, res) => {
     try {
@@ -3331,67 +3406,9 @@ router.get("/adverts", async (req, res) => {
     }
 });
 
-// Set up Agenda job scheduler
-const agenda = new Agenda({
-    db: {
-        address: process.env.DATABASE_URL
-    }
-});
 
-// agenda.define('generate-result-pdf', async(job) => {
-//     const { userId, level, semester } = job.attrs.data;
-//     console.log(userId);
 
-//     // Get user's data from the database
-//     const user = await User.findById(userId);
 
-//     // Compile EJS template with user's data
-//     const html = await ejs.renderFile(path.join(__dirname, '..', 'views', 'result_mockup.ejs'), {
-//         user,
-//         level,
-//         semester,
-//     });
-
-//     // Launch Puppeteer
-//     const browser = await puppeteer.launch();
-//     const page = await browser.newPage();
-
-//     // Set the HTML content of the page to the EJS-compiled HTML
-//     await page.setContent(html);
-
-//     // Generate PDF file using Puppeteer
-//     const filePath = path.join(__dirname, '..', 'results', `Result_${user.firstname}.pdf`);
-//     await page.pdf({
-//         path: filePath,
-//         format: 'A4',
-//         printBackground: true,
-//         pageOptions: {
-//             width: '1366px',
-//             height: '768px'
-//         },
-//         margin: {
-//             top: '1in',
-//             bottom: '1in'
-//         },
-//         displayHeaderFooter: true,
-//         preferCSSPageSize: true,
-//         scale: 1
-//     });
-
-//     // Save PDF file to database
-//     //   const pdfData = fs.readFileSync(filePath);
-//     //   await User.findByIdAndUpdate(userId, {
-//     //     $push: {
-//     //       pdfFiles: {
-//     //         data: pdfData,
-//     //         name: filePath
-//     //       }
-//     //     }
-//     //   });
-
-//     // Close the browser
-//     await browser.close();
-// });
 
 agenda.define("generate-result-pdf", async (job) => {
     const {
@@ -3945,10 +3962,9 @@ router.put('/update-reel-view/:reelId', async (req, res) => {
             return res.status(404).json({ message: 'Reel not found' });
         }
 
-        if (!reel.views.some((view) => view.user.equals(userId))) {
             reel.views.push({ user: userId });
             reel.save();
-        }
+    
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred' });
@@ -4004,6 +4020,589 @@ router.delete('/delete-reel/:reelId', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/reels/like/{reelId}:
+ *   post:
+ *     summary: Like a reel
+ *     description: Like a reel by providing the reel ID and user ID.
+ *     tags: Reels
+ *     parameters:
+ *       - in: path
+ *         name: reelId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the reel.
+ *       - in: body
+ *         name: userId
+ *         schema:
+ *           type: object
+ *           properties:
+ *             userId:
+ *               type: string
+ *               description: ID of the user who is liking the reel.
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Reel liked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *       400:
+ *         description: You have already liked this reel
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       404:
+ *         description: Reel not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to like/unlike a reel
+router.post('/reels/like/:reelId', async (req, res) => {
+    const { reelId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const reel = await Reels.findById(reelId).populate({
+            path: 'user',
+            select: 'firstname lastname profilePhoto liveFeedSettings',
+        })
+            .populate({
+                path: 'comments.user',
+                select: 'firstname lastname profilePhoto liveFeedSettings',
+            })
+            .exec();;
+
+        if (!reel) {
+            return res.status(404).json({ message: 'Reel not found' });
+        }
+
+        // Check if the user has already liked the reel
+        const existingLike = reel.likes.find(like => like.user.toString() === userId);
+
+        if (existingLike) {
+            // User has already liked the reel, so remove the like
+            reel.likes = reel.likes.filter(like => like.user.toString() !== userId);
+            await reel.save();
+            res.json({ message: 'Reel unliked successfully', reel });
+        } else {
+            // User has not liked the reel, so add the like
+            reel.likes.push({ user: userId });
+            await reel.save();
+            res.json({ message: 'Reel liked successfully', reel });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/reels/comments/like/{commentId}:
+ *   post:
+ *     summary: Like or unlike a comment on a reel
+ *     description: Like or unlike a comment on a reel. If already liked, remove the like.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the comment to like or unlike.
+ *       - in: body
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user liking the comment.
+ *     responses:
+ *       200:
+ *         description: Comment liked/unliked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *       404:
+ *         description: Comment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+router.post('/reels/comments/like/:commentId', async (req, res) => {
+    const { commentId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const reel = await Reels.findOne({ 'comments._id': commentId }).populate({
+            path: 'user',
+            select: 'firstname lastname profilePhoto liveFeedSettings',
+        })
+            .populate({
+                path: 'comments.user',
+                select: 'firstname lastname profilePhoto liveFeedSettings',
+            })
+            .exec();;;
+
+        if (!reel) {
+            return res.status(404).json({ message: 'Comment or Reel not found' });
+        }
+
+        const comment = reel.comments.id(commentId);
+
+        if (!comment) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+
+        // Check if the user has already liked the comment
+        const existingLike = comment.likes.find(like => like.user.toString() === userId);
+
+        if (existingLike) {
+            // User has already liked the comment, so remove the like
+            comment.likes = comment.likes.filter(like => like.user.toString() !== userId);
+        } else {
+            // User has not liked the comment, so add the like
+            comment.likes.push({ user: userId });
+        }
+
+        await reel.save();
+        res.json({ reel });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/reels/user/{userId}:
+ *   get:
+ *     summary: Get all reels of a particular user
+ *     description: Get all reels created by a specific user.
+ *     tags: [Reels]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user whose reels to retrieve.
+ *     responses:
+ *       200:
+ *         description: List of reels created by the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 reels:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Reel'  # Reference to the Reel schema
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+// Get all reels of a particular user
+router.get('/reels/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const userReels = await Reels.find({ user: userId });
+
+        res.json({ reels: userReels });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /reels/bookmarks/{userId}:
+ *   get:
+ *     summary: Get user bookmarked reels
+ *     description: Get reels that are bookmarked by a specific user.
+ *     tags: [Reels]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user whose bookmarked reels to retrieve.
+ *     responses:
+ *       200:
+ *         description: List of bookmarked reels for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 bookmarkedReels:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Reel'  # Reference to the Reel schema
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Get user bookmarked reels
+router.get('/reels/bookmarks/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const bookmarkedReels = await ReelsBookmark.find({ user: userId }).populate('reel');
+        res.json({ reels: bookmarkedReels });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/reels/bookmark/{reelId}:
+ *   post:
+ *     summary: Bookmark a reel
+ *     description: Bookmark a reel for the user. If already bookmarked, remove the bookmark.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: reelId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the reel to bookmark.
+ *     requestBody:
+ *       description: User ID for bookmarking the reel.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user bookmarking the reel.
+ *             example:
+ *               userId: 1234567890
+ *     responses:
+ *       200:
+ *         description: Reel bookmarked/unbookmarked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *       404:
+ *         description: Reel not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+router.post('/reels/bookmark/:reelId', async (req, res) => {
+    const { reelId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const reel = await Reels.findById(reelId);
+
+        if (!reel) {
+            return res.status(404).json({ message: 'Reel not found' });
+        }
+
+        const bookmark = await ReelsBookmark.findOne({ user: userId, reel: reelId });
+
+        if (bookmark) {
+            // User has bookmarked the reel, so remove the bookmark
+            await ReelsBookmark.findByIdAndRemove(bookmark._id);
+            res.json({ message: 'Reel removed from bookmark' });
+        } else {
+            // User has not bookmarked the reel, so add the bookmark
+            const newBookmark = new ReelsBookmark({ user: userId, reel: reelId });
+            await newBookmark.save();
+            res.json({ message: 'Reel added to bookmark' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/reels/comments/{commentId}:
+ *   delete:
+ *     summary: Delete a comment on a reel
+ *     description: Delete a comment on a reel by its commentId.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: commentId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the comment to delete.
+ *     responses:
+ *       200:
+ *         description: Comment deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *       404:
+ *         description: Reel or comment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+// Delete a comment on a reel
+router.delete('/reels/comments/:commentId', async (req, res) => {
+    const { commentId } = req.params;
+
+    try {
+        const reel = await Reels.findOne({ 'comments._id': commentId }).populate({
+            path: 'user',
+            select: 'firstname lastname profilePhoto liveFeedSettings',
+        }).populate({ path: 'comments.user', select: 'firstname lastname profilePhoto liveFeedSettings' }).exec();;
+
+        if (!reel) {
+            return res.status(404).json({ message: 'Reel or comment not found' });
+        }
+
+        // Find the comment index and remove it
+        const commentIndex = reel.comments.findIndex(comment => comment._id.toString() === commentId);
+        if (commentIndex === -1) {
+            return res.status(404).json({ message: 'Comment not found' });
+        }
+
+        reel.comments.splice(commentIndex, 1);
+        await reel.save();
+
+        res.json({ message: 'Comment deleted successfully', reel });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/reels/comments/{reelId}:
+ *   post:
+ *     summary: Add a comment on a reel
+ *     description: Add a comment on a reel by a user.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: reelId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the reel to add a comment on.
+ *     requestBody:
+ *       description: Comment details.
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user adding the comment.
+ *               text:
+ *                 type: string
+ *                 description: Comment text.
+ *             example:
+ *               userId: 1234567890
+ *               text: "Great reel!"
+ *     responses:
+ *       200:
+ *         description: Comment added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *                 comment:
+ *                   type: object
+ *                   description: Added comment details
+ *                   properties:
+ *                     user:
+ *                       type: string
+ *                       description: ID of the user who added the comment
+ *                     text:
+ *                       type: string
+ *                       description: Comment text
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       description: Comment creation timestamp
+ *       404:
+ *         description: Reel not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+router.post('/reels/comments/:reelId', async (req, res) => {
+    const { reelId } = req.params;
+    const { user, text } = req.body;
+
+    try {
+        const reel = await Reels.findById(reelId).populate({
+            path: 'user',
+            select: 'firstname lastname profilePhoto liveFeedSettings',
+        }).populate({ path: 'comments.user', select: 'firstname lastname profilePhoto liveFeedSettings' }).exec();
+
+        if (!reel) {
+            return res.status(404).json({ message: 'Reel not found' });
+        }
+
+        const newComment = {
+            user: user,
+            text: text,
+            createdAt: new Date(),
+        };
+
+        reel.comments.push(newComment);
+        await reel.save();
+
+        const updatedReel = await Reels.findById(reelId).populate({
+            path: 'user',
+            select: 'firstname lastname profilePhoto liveFeedSettings',
+        }).populate({ path: 'comments.user', select: 'firstname lastname profilePhoto liveFeedSettings' }).exec();
+
+        res.json({ message: 'Comment added successfully', reel: updatedReel });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
@@ -4786,13 +5385,13 @@ router.post("/posts/:postId/comments", async (req, res) => {
 router.get("/posts/:postId", async (req, res) => {
     try {
         let post = await Post.findById(req.params.postId).populate({
-            path: "userId", select: "firstname lastname profilePhoto personal verification", // Include the verification field in the populated user data
+            path: "userId",
+            select: "firstname lastname profilePhoto personal verification",
             populate: {
-                path: "verification", // Populate the verification field within the user data
-                model: "VerificationBadge", // Replace "VerificationBadge" with the correct model name if different
+                path: "verification",
+                model: "VerificationBadge",
             }
         }).populate({
-
             path: "comments",
             populate: {
                 path: "user",
@@ -4802,9 +5401,16 @@ router.get("/posts/:postId", async (req, res) => {
             path: "comments.replies.user",
             select: "firstname lastname profilePhoto",
             populate: {
-                path: "verification", // Populate the verification field within the user data
-                model: "VerificationBadge", // Replace "VerificationBadge" with the correct model name if different
+                path: "verification",
+                model: "VerificationBadge",
             }
+        });
+
+        // Filter out null populated values
+        post.userId = post.userId || null;
+        post.comments = post.comments.filter(comment => comment.user !== null);
+        post.comments.forEach(comment => {
+            comment.replies = comment.replies.filter(reply => reply.user !== null);
         });
 
         if (!post) {
@@ -4815,6 +5421,7 @@ router.get("/posts/:postId", async (req, res) => {
         res.status(500).send({ message: "Internal Server Error", error: error });
     }
 });
+
 
 router.get("/user-posts/:userId", async (req, res) => {
     const { userId } = req.params;
@@ -6461,7 +7068,7 @@ router.get('/messages/user/:userId', async (req, res) => {
  *   get:
  *     summary: Get Chat Messages
  *     description: Get all messages of a chat
- *     tags: [Chat]
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: id
@@ -7128,7 +7735,7 @@ router.post('/update-account-type/:userId', async (req, res) => {
  *   get:
  *     summary: Get Event Categories
  *     description: Get all event categories
- *     tags: [Events]
+ *     tags: [User]
  *     responses:
  *       200:
  *         description: Successfully retrieved event categories
@@ -7185,7 +7792,7 @@ router.get("/event-categories", async (req, res) => {
  *   post:
  *     summary: Create Event
  *     description: Create a new event
- *     tags: [Events]
+ *     tags: [User]
  *     consumes:
  *       - multipart/form-data
  *     parameters:
@@ -7219,6 +7826,26 @@ router.get("/event-categories", async (req, res) => {
  *                 message:
  *                   type: string
  */
+
+// Schedule the job to run 10 minutes before the event's start time
+const scheduleEventNotifications = async (event) => {
+    // const existingJobs = await agenda.jobs({ 'data.event': event._id });
+
+    // if (existingJobs.length === 0) {
+        const eventStartTime = moment(event.startTime, 'HH:mm');
+        const notificationTime = eventStartTime.subtract(2, 'minutes');
+
+        const timeDiffInMinutes = notificationTime.diff(moment(), 'minutes');
+        await agenda.schedule(`in ${timeDiffInMinutes} minutes`, 'send-notification', {
+            event: event._id,
+            action: `2 minutes before event "${event.title}" starts`
+        });
+
+       
+    // }
+};
+
+
 
 router.post('/create-event', upload6.single('file'), async (req, res) => {
     try {
@@ -7261,7 +7888,7 @@ router.post('/create-event', upload6.single('file'), async (req, res) => {
  *   get:
  *     summary: Get All Events
  *     description: Get all events with populated fields
- *     tags: [Events]
+ *     tags: [User]
  *     responses:
  *       200:
  *         description: Successfully retrieved events
@@ -7397,7 +8024,7 @@ router.get('/events', async (req, res) => {
  *   delete:
  *     summary: Delete Event
  *     description: Delete an event by its ID
- *     tags: [Events]
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: id
@@ -7458,11 +8085,166 @@ router.delete('/event/:id', async (req, res) => {
 
 /**
  * @swagger
+ * /users/events/notifications/{userId}:
+ *   get:
+ *     summary: Get event notifications for a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID.
+ *     responses:
+ *       200:
+ *         description: List of event notifications retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notifications:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       recipient:
+ *                         type: string
+ *                       sender:
+ *                         type: string
+ *                       event:
+ *                         type: string
+ *                       action:
+ *                         type: string
+ *                       date:
+ *                         type: string
+ *                         format: date-time
+ *                       isRead:
+ *                         type: boolean
+ *                       isSystemNotification:
+ *                         type: boolean
+ *       500:
+ *         description: Server error.
+ */
+
+// Route to get all event notifications of a user
+router.get('/events/notifications/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const notifications = await EventNotification.find({
+            recipient: userId
+        });  
+
+        res.json({ notifications });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/events/notifications/unread/{userId}:
+ *   get:
+ *     summary: Count unread event notifications for a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID.
+ *     responses:
+ *       200:
+ *         description: Count of unread event notifications retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 unreadCount:
+ *                   type: integer
+ *       500:
+ *         description: Server error.
+ */
+
+// Route to count the number of unread notifications for a user
+router.get('/events/notifications/unread/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const unreadCount = await EventNotification.countDocuments({
+            recipient: userId,
+            isRead: false
+        });
+
+        res.json({ unreadCount });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/events/notifications/mark-read/{userId}:
+ *   put:
+ *     summary: Mark all event notifications as read for a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID.
+ *     responses:
+ *       200:
+ *         description: All event notifications marked as read successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message.
+ *       500:
+ *         description: Server error.
+ */
+
+// Route to mark all event notifications as read for a user
+router.put('/events/notifications/mark-read/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        await EventNotification.updateMany(
+            { recipient: userId, isRead: false },
+            { $set: { isRead: true } }
+        );
+
+        res.json({ message: 'All notifications marked as read' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
  * /users/event/{id}:
  *   get:
  *     summary: Get Event by ID
  *     description: Retrieve an event by its ID
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: id
@@ -7537,7 +8319,7 @@ router.get('/event/:id', async (req, res) => {
  *   post:
  *     summary: Add or Remove User from Interested Participants
  *     description: Add or remove a user as an interested participant for an event
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: eventId
@@ -7616,6 +8398,8 @@ router.post('/add-interested/:eventId', async (req, res) => {
         event.interestedParticipants.push({ user: userId });
         await event.save();
 
+        await scheduleEventNotifications(event);
+
         res.json({ message: 'Added as an interested participant' });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -7628,7 +8412,7 @@ router.post('/add-interested/:eventId', async (req, res) => {
  *   post:
  *     summary: Add or Remove User from Going Participants
  *     description: Add or remove a user as a going participant for an event
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: eventId
@@ -7706,6 +8490,8 @@ router.post('/add-going/:eventId', async (req, res) => {
         event.goingParticipants.push({ user: userId });
         await event.save();
 
+        await scheduleEventNotifications(event);
+
         res.json({ message: 'User added as a going participant' });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -7718,7 +8504,7 @@ router.post('/add-going/:eventId', async (req, res) => {
  *   post:
  *     summary: Add or Remove Event Bookmark
  *     description: Add or remove an event from bookmarks for a user
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: eventId
@@ -7796,7 +8582,7 @@ router.post('/event/bookmark/:eventId', async (req, res) => {
  *   get:
  *     summary: Check if Event is Bookmarked
  *     description: Check if an event is bookmarked by a user
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: eventId
@@ -7857,7 +8643,7 @@ router.get('/event/is-bookmarked/:eventId', async (req, res) => {
  *   post:
  *     summary: Report an event
  *     description: Report an event for violating community guidelines or other issues.
- *     tags: User
+ *     tags: [User]
  *     requestBody:
  *       required: true
  *       content:
@@ -7952,7 +8738,7 @@ router.post('/event/report', async (req, res) => {
  *   get:
  *     summary: Get user's bookmarked events
  *     description: Get a list of events bookmarked by the user.
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8010,7 +8796,7 @@ router.get('/event/bookmarks/:userId', async (req, res) => {
  *   get:
  *     summary: Get events user is interested in
  *     description: Get a list of events that the user is interested in based on user ID.
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8067,8 +8853,95 @@ router.get('/events/interested/:userId', async (req, res) => {
         const interestedEvents = await Event.find({
             'interestedParticipants.user': user._id
         });
-        
+
         res.json({ interestedEvents });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/events/past-attended/{userId}:
+ *   get:
+ *     summary: Get past events attended by a user
+ *     description: Get a list of past events attended by the user based on user ID.
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user.
+ *     responses:
+ *       200:
+ *         description: List of past events attended by the user retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 attendedEvents:
+ *                   type: array
+ *                   description: List of past events attended by the user.
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+// Route to get past events attended by a user based on user ID
+router.get('/events/past-attended/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const currentTime = new Date();
+
+        const pastAttendedEvents = await Event.find({
+            $and: [
+                {
+                    $or: [
+                        { 'interestedParticipants.user': user._id },
+                        { 'goingParticipants.user': user._id }
+                    ]
+                },
+                {
+                    $or: [
+                        { startDate: { $lt: currentTime } },
+                        { endDate: { $lt: currentTime } }
+                    ]
+                }
+            ]
+        });
+
+        res.json({ pastAttendedEvents });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
@@ -8082,7 +8955,7 @@ router.get('/events/interested/:userId', async (req, res) => {
  *   get:
  *     summary: Get events user is going to
  *     description: Get a list of events that the user is going to based on user ID.
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8154,7 +9027,7 @@ router.get('/events/going/:userId', async (req, res) => {
  *   get:
  *     summary: Get events hosted by a user
  *     description: Get a list of events that are hosted by the user based on user ID.
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -8223,7 +9096,7 @@ router.get('/events/hosted/:userId', async (req, res) => {
  *   get:
  *     summary: Get events under a specific category
  *     description: Get a list of events that belong to a specific category.
- *     tags: User
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: category
@@ -8292,7 +9165,7 @@ router.get('/events/category/:category', async (req, res) => {
  *   get:
  *     summary: Get events filtered by location and/or startDate
  *     description: Get a list of events filtered by location and/or startDate.
- *     tags: Events
+ *     tags: [User]
  *     parameters:
  *       - name: location
  *         in: query
@@ -8301,7 +9174,7 @@ router.get('/events/category/:category', async (req, res) => {
  *           type: string
  *       - name: startDate
  *         in: query
- *         description: Filter events by startDate (format: YYYY-MM-DD)
+ *         description: Filter events by startDate
  *         schema:
  *           type: string
  *     responses:
@@ -8332,17 +9205,15 @@ router.get('/events/category/:category', async (req, res) => {
 // Route to get events filtered by location and startDate
 router.get('/events/filter', async (req, res) => {
     const { location, startDate } = req.query;
-    
     try {
         let query = {};
 
         if (location) {
-            // Use a regular expression to perform a partial match on the location
             query.location = { $regex: new RegExp(location, 'i') };
         }
 
         if (startDate) {
-            query.startDate = { $gte: new Date(startDate) };
+            query.startDate = startDate;
         }
 
         let filteredEvents;
@@ -8360,6 +9231,10 @@ router.get('/events/filter', async (req, res) => {
     }
 });
 
-
+// Start the Agenda scheduler
+(async () => {
+    await agenda.start();
+    console.log('Agenda scheduler started');
+})();
 
 module.exports = router;

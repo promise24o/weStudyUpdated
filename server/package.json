@@ -1,5 +1,6 @@
 {
     "dependencies": {
+        "@onesignal/node-onesignal": "^2.0.1-beta2",
         "agenda": "^5.0.0",
         "aws-sdk": "^2.1428.0",
         "axios": "^1.4.0",
