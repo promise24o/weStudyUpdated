@@ -3725,8 +3725,8 @@ router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
             link,
             linkText,
             fileType
-        } = JSON.parse(req.body.data);
-        console.log(req.body.data)
+        } = (req.body);
+        
         story = await Story.findOne({ id: id });
 
         // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
