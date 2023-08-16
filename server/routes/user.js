@@ -223,7 +223,7 @@ const app_key_provider = {
 const configuration = OneSignal.createConfiguration({
     authMethods: {
         app_key: {
-        	tokenProvider: app_key_provider
+            tokenProvider: app_key_provider
         }
     }
 });
@@ -277,7 +277,7 @@ agenda.define('send-notification', async (job) => {
     notification.contents = {
         en: action
     };
-   await client.createNotification(notification);
+    await client.createNotification(notification);
 
 });
 
@@ -3726,7 +3726,7 @@ router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
             linkText,
             fileType
         } = (req.body);
-        
+
         story = await Story.findOne({ id: id });
 
         // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
@@ -3960,9 +3960,9 @@ router.put('/update-reel-view/:reelId', async (req, res) => {
             return res.status(404).json({ message: 'Reel not found' });
         }
 
-            reel.views.push({ user: userId });
-            reel.save();
-    
+        reel.views.push({ user: userId });
+        reel.save();
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred' });
@@ -7830,16 +7830,16 @@ const scheduleEventNotifications = async (event) => {
     // const existingJobs = await agenda.jobs({ 'data.event': event._id });
 
     // if (existingJobs.length === 0) {
-        const eventStartTime = moment(event.startTime, 'HH:mm');
-        const notificationTime = eventStartTime.subtract(2, 'minutes');
+    const eventStartTime = moment(event.startTime, 'HH:mm');
+    const notificationTime = eventStartTime.subtract(2, 'minutes');
 
-        const timeDiffInMinutes = notificationTime.diff(moment(), 'minutes');
-        await agenda.schedule(`in ${timeDiffInMinutes} minutes`, 'send-notification', {
-            event: event._id,
-            action: `2 minutes before event "${event.title}" starts`
-        });
+    const timeDiffInMinutes = notificationTime.diff(moment(), 'minutes');
+    await agenda.schedule(`in ${timeDiffInMinutes} minutes`, 'send-notification', {
+        event: event._id,
+        action: `2 minutes before event "${event.title}" starts`
+    });
 
-       
+
     // }
 };
 
@@ -8135,7 +8135,7 @@ router.get('/events/notifications/:userId', async (req, res) => {
     try {
         const notifications = await EventNotification.find({
             recipient: userId
-        });  
+        });
 
         res.json({ notifications });
     } catch (error) {
@@ -8850,7 +8850,20 @@ router.get('/events/interested/:userId', async (req, res) => {
 
         const interestedEvents = await Event.find({
             'interestedParticipants.user': user._id
-        }).populate("category");
+        }).populate('category')
+            .populate({
+                path: 'user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'interestedParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'goingParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .exec();
 
         res.json({ interestedEvents });
     } catch (error) {
@@ -8937,7 +8950,20 @@ router.get('/events/past-attended/:userId', async (req, res) => {
                     ]
                 }
             ]
-        }).populate("category");
+        }).populate('category')
+            .populate({
+                path: 'user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'interestedParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'goingParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .exec();
 
         res.json({ pastAttendedEvents });
     } catch (error) {
@@ -9009,7 +9035,20 @@ router.get('/events/going/:userId', async (req, res) => {
 
         const goingEvents = await Event.find({
             'goingParticipants.user': user._id
-        }).populate("category");
+        }).populate('category')
+            .populate({
+                path: 'user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'interestedParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'goingParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .exec();
 
         res.json({ goingEvents });
     } catch (error) {
@@ -9079,7 +9118,20 @@ router.get('/events/hosted/:userId', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const hostedEvents = await Event.find({ user: user._id }).populate("category");
+        const hostedEvents = await Event.find({ user: user._id }).populate('category')
+            .populate({
+                path: 'user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'interestedParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'goingParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .exec();
 
         res.json({ hostedEvents });
     } catch (error) {
