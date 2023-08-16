@@ -8554,7 +8554,7 @@ router.post('/event/bookmark/:eventId', async (req, res) => {
     const { userId } = req.body;
 
     try {
-        const event = await Event.findById(eventId);
+        const event = await Event.findById(eventId).populate('category');
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
@@ -8850,7 +8850,7 @@ router.get('/events/interested/:userId', async (req, res) => {
 
         const interestedEvents = await Event.find({
             'interestedParticipants.user': user._id
-        });
+        }).populate("category");
 
         res.json({ interestedEvents });
     } catch (error) {
@@ -8937,7 +8937,7 @@ router.get('/events/past-attended/:userId', async (req, res) => {
                     ]
                 }
             ]
-        });
+        }).populate("category");
 
         res.json({ pastAttendedEvents });
     } catch (error) {
@@ -9009,7 +9009,7 @@ router.get('/events/going/:userId', async (req, res) => {
 
         const goingEvents = await Event.find({
             'goingParticipants.user': user._id
-        });
+        }).populate("category");
 
         res.json({ goingEvents });
     } catch (error) {
@@ -9079,7 +9079,7 @@ router.get('/events/hosted/:userId', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        const hostedEvents = await Event.find({ user: user._id });
+        const hostedEvents = await Event.find({ user: user._id }).populate("category");
 
         res.json({ hostedEvents });
     } catch (error) {
