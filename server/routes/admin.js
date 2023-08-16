@@ -462,25 +462,25 @@ router.put('/update-school-summary/:id', async (req, res) => {
         const institutionId = req.params.id;
         const { editorContent } = req.body;
 
-        const institution = await Institutions.findById(institutionId);
-        if (!institution) {
+        const updatedInstitution = await Institutions.findByIdAndUpdate(
+            institutionId,
+            { summary: editorContent },
+            { new: true } // This option returns the updated document
+        );
+
+        if (!updatedInstitution) {
             return res.status(404).json({ error: 'Institution not found' });
         }
 
-        institution.summary = editorContent;
-        await institution.save(); // Save the updated institution
-
-        // Fetch the updated list of institutions
-        const updatedInstitutions = await Institutions.find();
-
         res.status(201).json({
             message: 'School Summary Updated Successfully',
-            institutions: updatedInstitutions,
+            updatedInstitution,
         });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
+
 
 router.put ("/update-institution/:id", async (req, res) => {
     try {
