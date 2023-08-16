@@ -8554,7 +8554,19 @@ router.post('/event/bookmark/:eventId', async (req, res) => {
     const { userId } = req.body;
 
     try {
-        const event = await Event.findById(eventId).populate('category');
+        const event = await Event.findById(eventId).populate('category').populate({
+            path: 'user',
+            select: 'firstname lastname profilePhoto education personal',
+        })
+            .populate({
+                path: 'interestedParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .populate({
+                path: 'goingParticipants.user',
+                select: 'firstname lastname profilePhoto education personal',
+            })
+            .exec();;
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
