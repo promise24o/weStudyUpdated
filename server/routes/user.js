@@ -8,6 +8,7 @@ const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
 const moment = require('moment');
 const OneSignal = require('@onesignal/node-onesignal');
+const B2 = require('backblaze-b2');
 
 
 const ejs = require("ejs");
@@ -34,6 +35,37 @@ const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
 const { ListingCategory } = require("../models/MarketPlace");
+
+
+// Replace with your Backblaze B2 application key ID and application key
+const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
+const applicationKey = process.env.BACKBLAZE_APP_KEY;
+
+const b2 = new B2({
+    applicationKeyId: applicationKeyId,  
+    applicationKey: applicationKey 
+});
+
+// async function GetBucket() {
+//     try {
+//         await b2.authorize();  
+//         let response = await b2.getBucket({ bucketName: 'acadaboo' });
+//         console.log(response.data);
+//     } catch (err) {
+//         console.log('Error getting bucket:', err);
+//     }
+// }
+
+// Create a multer storage engine
+const storage10 = multer.memoryStorage();  
+
+const upload10 = multer({
+    storage: storage10,
+    limits: {
+        fileSize: 20 * 1024 * 1024,  
+    },
+});
+
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET });
@@ -3715,8 +3747,7 @@ router.get("/mentors/:mentorId/ratings", async (req, res) => {
  */
 
 
-router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
-    let story = null;
+router.post("/stories/:userId", upload10.single("file"), async (req, res) => {
     try {
         const {
             id,
@@ -3725,17 +3756,40 @@ router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
             link,
             linkText,
             fileType
-        } = (req.body);
+        } = req.body;
 
-        story = await Story.findOne({ id: id });
+        // Check if the file size exceeds the limit
+        if (req.file.size > 20 * 1024 * 1024) {
+            return res.status(400).json({ error: "File size exceeds limit (20MB)" });
+        }
+        
+        let story = await Story.findOne({ id: id });
 
-        // const uploadStory = await cloudinary.uploader.upload (req.file.path, {folder: folderName});
+        const uniqueIdentifier = Date.now(); 
+        const fileName = `${uniqueIdentifier}_${encodeURIComponent(req.file.originalname)}`;
+        const fileBuffer = req.file.buffer;
 
+        await b2.authorize();
+
+        const response = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const uploadResponse = await b2.uploadFile({
+            uploadUrl: response.data.uploadUrl,
+            uploadAuthToken: response.data.authorizationToken,
+            fileName: fileName,
+            data: fileBuffer,
+        });
+        
+        const bucketName = process.env.BACKBLAZE_BUCKET;
+        const uploadedFileName = uploadResponse.data.fileName;
+        const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+        
         if (story) {
             const lastItem = story.items[story.items.length - 1];
             const lastItemId = parseInt(lastItem.id.split("-")[1]);
-            const newItemId = `${id}-${lastItemId + 1
-                }`;
+            const newItemId = `${id}-${lastItemId + 1}`;
 
             await Story.updateOne({
                 id: id
@@ -3744,8 +3798,8 @@ router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
                     items: {
                         id: newItemId,
                         type: fileType,
-                        src: req.file.path,
-                        preview: req.file.path,
+                        src: fileUrl,
+                        preview: fileUrl,
                         link,
                         linkText
                     }
@@ -3763,8 +3817,8 @@ router.post("/stories/:userId", upload3.single("file"), async (req, res) => {
                     {
                         id: `${id}-1`,
                         type: fileType,
-                        src: req.file.path,
-                        preview: req.file.path,
+                        src: fileUrl,
+                        preview: fileUrl,
                         link: link,
                         linkText: linkText
                     },
