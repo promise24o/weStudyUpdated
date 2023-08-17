@@ -33,10 +33,23 @@ const chatSchema = new mongoose.Schema ({
                 required: true,
                 refPath: 'receiverModel'
             },
-            content: {
+            messageType:{
                 type: String,
                 required: true
             },
+            content: {
+                type: String,
+            },
+            media: [
+                {
+                    mediaUrl: {
+                        type: String,
+                    },
+                    mimeType: {
+                        type: String,
+                    }
+                }
+            ],
             timeSent: {
                 type: Date,
                 default: Date.now

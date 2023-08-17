@@ -19,6 +19,19 @@ const publicRoutes = require ('./routes/public');
 const AIRoutes = require ('./routes/acadabooai');
 const Mentors = require ('./models/Mentors');
 const {User} = require ('./models/Users');
+const B2 = require('backblaze-b2');
+
+
+//Setup Backblaze
+
+const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
+const applicationKey = process.env.BACKBLAZE_APP_KEY;
+
+const b2 = new B2({
+    applicationKeyId: applicationKeyId,
+    applicationKey: applicationKey
+});
+
 
 const app = express ();
 const server = http.createServer (app); // Create an HTTP server using Express
@@ -127,62 +140,253 @@ io.on ('connection', (socket) => {
         }
     });
 
+    
 
     socket.on ('sendMessage', async (message) => {
-        try { // Create a new message object
-            const newMessage = {
-                sender: message.sender._id,
-                receiver: message.receiver._id,
-                content: message.content,
-                timeSent: message.timeSent,
-                status: message.status
-            };
-
-            // Create a new emitted message object
-            const emittedMessage = {
-                sender: {
-                    model: message.sender.model,
-                    _id: message.sender._id
-                },
-                receiver: {
-                    model: message.receiver.model,
-                    _id: message.receiver._id
-                },
-                content: message.content,
-                timeSent: message.timeSent,
-                status: message.status
-            };
-
-
-            // Find the chat between sender A and receiver B
-            let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
-
-            if (! chat) { // Check if the reverse chat exists between sender B and receiver A
-                chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
-            }
-
-            if (! chat) { // Create a new chat if neither chat exists
-                chat = new Chat ({
+        try { 
+            if(message.hasMedia){
+                // Create a new message object
+                const newMessage = {
                     sender: message.sender._id,
                     receiver: message.receiver._id,
-                    senderModel: message.sender.model,
-                    receiverModel: message.receiver.model,
-                    messages: [newMessage]
-                });
-            } else { // Add the new message to the messages array
-                chat.messages.push (newMessage);
+                    timeSent: message.timeSent,
+                    status: message.status,
+                    messageType: "media",
+                    media: [], 
+                };
+
+                // Create a new emitted message object
+                const emittedMessage = {
+                    sender: {
+                        model: message.sender.model,
+                        _id: message.sender._id
+                    },
+                    receiver: {
+                        model: message.receiver.model,
+                        _id: message.receiver._id
+                    },
+                    media: message.media,
+                    timeSent: message.timeSent,
+                    status: message.status,
+                    messageType: "media"
+                };
+
+
+                // Find the chat between sender A and receiver B
+                let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
+
+                if (! chat) { // Check if the reverse chat exists between sender B and receiver A
+                    chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
+                }
+
+                if (!chat) {
+                    chat = new Chat({
+                        sender: message.sender._id,
+                        receiver: message.receiver._id,
+                        senderModel: message.sender.model,
+                        receiverModel: message.receiver.model,
+                        messages: [
+                            {
+                                sender: message.sender._id,
+                                receiver: message.receiver._id,
+                                messageType: newMessage.messageType,
+                                media: [],
+                                timeSent: newMessage.timeSent,
+                                status: newMessage.status,
+                            },
+                        ],
+                    });
+
+                    // Iterate through each media file and upload to Backblaze B2
+                    for (const mediaFile of message.media) {
+                        const uniqueIdentifier = Date.now();
+                        const fileName = `${uniqueIdentifier}_${encodeURIComponent(mediaFile.name)}`;
+                        const fileBuffer = mediaFile.file;
+
+                        await b2.authorize();
+
+                        const response = await b2.getUploadUrl({
+                            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+                        });
+
+                        const uploadResponse = await b2.uploadFile({
+                            uploadUrl: response.data.uploadUrl,
+                            uploadAuthToken: response.data.authorizationToken,
+                            fileName: fileName,
+                            data: fileBuffer,
+                        });
+
+                        const bucketName = process.env.BACKBLAZE_BUCKET;
+                        const uploadedFileName = uploadResponse.data.fileName;
+                        const mediaUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+                        // Add the media object to the media array of the chat's first message
+                        chat.messages[0].media.push({
+                            mediaUrl: mediaUrl,
+                            mimeType: mediaFile.type,
+                        });
+                    }
+                } else {
+                    // Create a new message object with media files
+                    const newMessageWithMedia = {
+                        ...newMessage,
+                        media: [],
+                    };
+
+                    // Iterate through each media file and upload to Backblaze B2
+                    for (const mediaFile of message.media) {
+                        const uniqueIdentifier = Date.now();
+                        const fileName = `${uniqueIdentifier}_${encodeURIComponent(mediaFile.name)}`;
+                        const fileBuffer = mediaFile.file;
+
+                        await b2.authorize();
+
+                        const response = await b2.getUploadUrl({
+                            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+                        });
+
+                        const uploadResponse = await b2.uploadFile({
+                            uploadUrl: response.data.uploadUrl,
+                            uploadAuthToken: response.data.authorizationToken,
+                            fileName: fileName,
+                            data: fileBuffer,
+                        });
+
+                        const bucketName = process.env.BACKBLAZE_BUCKET;
+                        const uploadedFileName = uploadResponse.data.fileName;
+                        const mediaUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+                        // Add the media object to the media array of the new message
+                        newMessageWithMedia.media.push({
+                            mediaUrl: mediaUrl,
+                            mimeType: mediaFile.type,
+                        });
+                    }
+
+                    // Push the new message with media files to chat's messages
+                    chat.messages.push(newMessageWithMedia);
+                }
+                // Save the chat document
+                await chat.save();
+
+                // Emit the message to the chat room
+                io.to (message.receiver._id).emit ('message', emittedMessage);
+                console.log ("Message Sent to " + message.receiver._id)
+            }else{
+                // Create a new message object
+                const newMessage = {
+                    sender: message.sender._id,
+                    receiver: message.receiver._id,
+                    content: message.content,
+                    timeSent: message.timeSent,
+                    status: message.status,
+                    messageType:"text"
+                };
+
+                // Create a new emitted message object
+                const emittedMessage = {
+                    sender: {
+                        model: message.sender.model,
+                        _id: message.sender._id
+                    },
+                    receiver: {
+                        model: message.receiver.model,
+                        _id: message.receiver._id
+                    },
+                    content: message.content,
+                    timeSent: message.timeSent,
+                    status: message.status,
+                    messageType: "media"
+                };
+
+
+                // Find the chat between sender A and receiver B
+                let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
+
+                if (! chat) { // Check if the reverse chat exists between sender B and receiver A
+                    chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
+                }
+
+                if (! chat) { // Create a new chat if neither chat exists
+                    chat = new Chat ({
+                        sender: message.sender._id,
+                        receiver: message.receiver._id,
+                        senderModel: message.sender.model,
+                        receiverModel: message.receiver.model,
+                        messages: [newMessage]
+                    });
+                } else { // Add the new message to the messages array
+                    chat.messages.push (newMessage);
+                }
+
+                // Save the chat document
+                await chat.save ();
+
+                // Emit the message to the chat room
+                io.to (message.receiver._id).emit ('message', emittedMessage);
+                console.log ("Message Sent to " + message.receiver._id)
             }
-
-            // Save the chat document
-            await chat.save ();
-
-            // Emit the message to the chat room
-            io.to (message.receiver._id).emit ('message', emittedMessage);
-            console.log ("Message Sent to " + message.receiver._id)
+            
         } catch (error) {
             console.error ('Error saving message:', error);
         }
     });
+
+    // socket.on ('sendMessage', async (message) => {
+    //     try { // Create a new message object
+    //         const newMessage = {
+    //             sender: message.sender._id,
+    //             receiver: message.receiver._id,
+    //             content: message.content,
+    //             timeSent: message.timeSent,
+    //             status: message.status
+    //         };
+
+    //         // Create a new emitted message object
+    //         const emittedMessage = {
+    //             sender: {
+    //                 model: message.sender.model,
+    //                 _id: message.sender._id
+    //             },
+    //             receiver: {
+    //                 model: message.receiver.model,
+    //                 _id: message.receiver._id
+    //             },
+    //             content: message.content,
+    //             timeSent: message.timeSent,
+    //             status: message.status
+    //         };
+
+
+    //         // Find the chat between sender A and receiver B
+    //         let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
+
+    //         if (! chat) { // Check if the reverse chat exists between sender B and receiver A
+    //             chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
+    //         }
+
+    //         if (! chat) { // Create a new chat if neither chat exists
+    //             chat = new Chat ({
+    //                 sender: message.sender._id,
+    //                 receiver: message.receiver._id,
+    //                 senderModel: message.sender.model,
+    //                 receiverModel: message.receiver.model,
+    //                 messages: [newMessage]
+    //             });
+    //         } else { // Add the new message to the messages array
+    //             chat.messages.push (newMessage);
+    //         }
+
+    //         // Save the chat document
+    //         await chat.save ();
+
+    //         // Emit the message to the chat room
+    //         io.to (message.receiver._id).emit ('message', emittedMessage);
+    //         console.log ("Message Sent to " + message.receiver._id)
+    //     } catch (error) {
+    //         console.error ('Error saving message:', error);
+    //     }
+    // });
 
     socket.on ("typing", (data) => { // Generate a unique room name based on sender and receiver IDs
         const roomName = `${

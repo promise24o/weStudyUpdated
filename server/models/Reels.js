@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const commentSchema = new mongoose.Schema({
     user: {
         type: mongoose.ObjectId,
-        ref: 'user'
+        ref: 'user',
+        required: true
     },
     text: {
         type: String,
@@ -33,7 +34,8 @@ const commentSchema = new mongoose.Schema({
         {
             user: {
                 type: mongoose.ObjectId,
-                ref: 'user'
+                ref: 'user',
+                required: true
             },
             text: {
                 type: String,

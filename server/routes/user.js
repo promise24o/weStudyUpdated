@@ -37,7 +37,6 @@ const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotific
 const { ListingCategory } = require("../models/MarketPlace");
 
 
-// Replace with your Backblaze B2 application key ID and application key
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
 const applicationKey = process.env.BACKBLAZE_APP_KEY;
 
@@ -3762,7 +3761,7 @@ router.post("/stories/:userId", upload10.single("file"), async (req, res) => {
         if (req.file.size > 20 * 1024 * 1024) {
             return res.status(400).json({ error: "File size exceeds limit (20MB)" });
         }
-        
+
         let story = await Story.findOne({ id: id });
 
         const uniqueIdentifier = Date.now(); 
@@ -3951,7 +3950,6 @@ router.get('/reels', async (req, res) => {
                 select: 'firstname lastname profilePhoto liveFeedSettings',
             })
             .exec();
-
         res.json(reels);
     } catch (error) {
         console.error(error);
