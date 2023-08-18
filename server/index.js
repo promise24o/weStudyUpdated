@@ -143,6 +143,7 @@ io.on ('connection', (socket) => {
     
 
     socket.on ('sendMessage', async (message) => {
+        console.log("start");
         try { 
             if(message.hasMedia){
                 // Create a new message object
@@ -199,8 +200,7 @@ io.on ('connection', (socket) => {
 
                     // Iterate through each media file and upload to Backblaze B2
                     for (const mediaFile of message.media) {
-                        const uniqueIdentifier = Date.now();
-                        const fileName = `${uniqueIdentifier}_${encodeURIComponent(mediaFile.name)}`;
+                        const fileName = `${Date.now()}_${mediaFile.name.replace(/ /g, '_')}`;
                         const fileBuffer = mediaFile.file;
 
                         await b2.authorize();
@@ -227,6 +227,7 @@ io.on ('connection', (socket) => {
                         });
                     }
                 } else {
+                  
                     // Create a new message object with media files
                     const newMessageWithMedia = {
                         ...newMessage,
@@ -235,22 +236,22 @@ io.on ('connection', (socket) => {
 
                     // Iterate through each media file and upload to Backblaze B2
                     for (const mediaFile of message.media) {
-                        const uniqueIdentifier = Date.now();
-                        const fileName = `${uniqueIdentifier}_${encodeURIComponent(mediaFile.name)}`;
+                        const fileName = `${Date.now()}_${mediaFile.name.replace(/ /g, '_')}`;
                         const fileBuffer = mediaFile.file;
-
+                        console.log("!");
                         await b2.authorize();
 
                         const response = await b2.getUploadUrl({
                             bucketId: process.env.BACKBLAZE_BUCKET_ID,
                         });
-
+                        console.log("2");
                         const uploadResponse = await b2.uploadFile({
                             uploadUrl: response.data.uploadUrl,
                             uploadAuthToken: response.data.authorizationToken,
                             fileName: fileName,
                             data: fileBuffer,
                         });
+                        console.log("3");
 
                         const bucketName = process.env.BACKBLAZE_BUCKET;
                         const uploadedFileName = uploadResponse.data.fileName;

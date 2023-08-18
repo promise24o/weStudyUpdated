@@ -8796,7 +8796,7 @@ router.post('/event/report', async (req, res) => {
 
 /**
  * @swagger
- * /users/event/bookmarks/{userId}:
+ * /users/events/bookmarks/{userId}:
  *   get:
  *     summary: Get user's bookmarked events
  *     description: Get a list of events bookmarked by the user.
@@ -8834,12 +8834,21 @@ router.post('/event/report', async (req, res) => {
  */
 
 // Route to get user's bookmarked events
-router.get('/event/bookmarks/:userId', async (req, res) => {
+router.get('/events/bookmarks/:userId', async (req, res) => {
     const { userId } = req.params;
 
     try {
         // Find all bookmarks of the user
-        const bookmarks = await EventBookmark.find({ user: userId }).populate('event');
+        const bookmarks = await EventBookmark.find({ user: userId })
+            .populate({
+                path: 'event',
+                populate: [
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'category' },
+                    { path: 'interestedParticipants.user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'goingParticipants.user', select: 'firstname lastname profilePhoto education personal' },
+                ]
+            });
 
         // Extract event details from bookmarks
         const bookmarkedEvents = bookmarks.map(bookmark => bookmark.event);
