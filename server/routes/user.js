@@ -7175,6 +7175,49 @@ router.get('/chat/:id/messages', async (req, res) => {
 
 /**
  * @swagger
+ * /users/delete-message/{messageId}:
+ *   delete:
+ *     summary: Delete a message by ID
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the message to delete
+ *     responses:
+ *       200:
+ *         description: Message deleted successfully
+ *       404:
+ *         description: Message not found
+ *       500:
+ *         description: Server error
+ */
+router.delete('/delete-message/:messageId', async (req, res) => {
+    const messageId = new mongoose.Types.ObjectId(req.params.messageId)
+    try {
+        // Find the chat by messageId and update the specific message's deleted field to true
+        const chat = await Chat.findOneAndUpdate(
+            { 'messages._id': messageId },
+            { $set: { 'messages.$.deleted': true } },
+            { new: true }
+        );
+
+        if (!chat) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        return res.json({ message: 'Message deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+
+});
+
+
+/**
+ * @swagger
  * tags:
  *   name: User
  *   description: APIs for managing chat status
@@ -7413,12 +7456,8 @@ router.put('/update-message-status/:receiverId/:senderId', async (req, res) => {
  * @swagger
  * /users/send-message:
  *   post:
- *     tags:
- *       - User
  *     summary: Send a message
- *     description: Send a message from one user to another user
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -7429,54 +7468,145 @@ router.put('/update-message-status/:receiverId/:senderId', async (req, res) => {
  *                 properties:
  *                   _id:
  *                     type: string
- *                     description: ID of the sender user
- *                   model:
- *                     type: string
- *                     enum: [user, Mentors]
- *                     description: Type of the sender model (user or Mentors)
+ *                 example:
+ *                   _id: sender_id_here
  *               receiver:
  *                 type: object
  *                 properties:
  *                   _id:
  *                     type: string
- *                     description: ID of the receiver user
- *                   model:
- *                     type: string
- *                     enum: [user, Mentors]
- *                     description: Type of the receiver model (user or Mentors)
+ *                 example:
+ *                   _id: receiver_id_here
+ *               hasMedia:
+ *                 type: boolean
+ *                 example: true
+ *               media:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     file:
+ *                       type: string
+ *                     type:
+ *                       type: string
+ *                 example:
+ *                   - name: media_file.jpg
+ *                     file: base64_encoded_file_here
+ *                     type: image/jpeg
  *               content:
  *                 type: string
- *                 description: The content of the message
+ *                 example: Hello, this is a text message
  *               timeSent:
  *                 type: string
  *                 format: date-time
- *                 description: The timestamp of when the message was sent
+ *                 example: 2023-08-15T12:00:00Z
  *               status:
  *                 type: string
- *                 enum: [sent, delivered, seen]
- *                 default: sent
- *                 description: The status of the message
+ *                 example: sent
  *     responses:
  *       200:
  *         description: Message sent successfully
  *       500:
- *         description: An error occurred while sending the message
+ *         description: Server error
  */
 
 // POST route to send a message
+// router.post('/send-message', async (req, res) => {
+//     try {
+//         const message = req.body;
+
+//         // Save the message to the database using Mongoose
+//         const newMessage = {
+//             sender: message.sender._id,
+//             receiver: message.receiver._id,
+//             content: message.content,
+//             timeSent: message.timeSent,
+//             status: message.status
+//         };
+
+//         // Find the chat between sender A and receiver B
+//         let chat = await Chat.findOne({ sender: message.sender._id, receiver: message.receiver._id });
+
+//         if (!chat) { // Check if the reverse chat exists between sender B and receiver A
+//             chat = await Chat.findOne({ sender: message.receiver._id, receiver: message.sender._id });
+//         }
+
+//         if (!chat) { // Create a new chat if neither chat exists
+//             chat = new Chat({
+//                 sender: message.sender._id,
+//                 receiver: message.receiver._id,
+//                 senderModel: message.sender.model,
+//                 receiverModel: message.receiver.model,
+//                 messages: [newMessage]
+//             });
+//         } else { // Add the new message to the messages array
+//             chat.messages.push(newMessage);
+//         }
+
+//         // Save the chat document
+//         await chat.save();
+
+//         // Respond with a success message or status code (200 OK)
+//         res.json({ message: 'Message sent successfully' });
+//     } catch (error) {
+//         console.error('Error sending message:', error);
+//         res.status(500).json({ error: 'An error occurred while sending the message' });
+//     }
+// });
+
 router.post('/send-message', async (req, res) => {
     try {
         const message = req.body;
         // Assuming the message object is sent in the request body
 
+        // Determine the message type
+        const messageType = message.hasMedia ? 'media' : 'text';
+
         // Save the message to the database using Mongoose
         const newMessage = {
             sender: message.sender._id,
             receiver: message.receiver._id,
-            content: message.content,
             timeSent: message.timeSent,
-            status: message.status
+            status: message.status,
+            messageType: messageType
         };
+
+        if (messageType === 'media') {
+            newMessage.media = [];  
+            // Iterate through each media file and upload to Backblaze B2
+            for (const mediaFile of message.media) {
+                const fileName = `${Date.now()}_${mediaFile.name.replace(/ /g, '_')}`;
+                const fileBuffer = mediaFile.file;
+
+                await b2.authorize();
+
+                const response = await b2.getUploadUrl({
+                    bucketId: process.env.BACKBLAZE_BUCKET_ID,
+                });
+
+                const uploadResponse = await b2.uploadFile({
+                    uploadUrl: response.data.uploadUrl,
+                    uploadAuthToken: response.data.authorizationToken,
+                    fileName: fileName,
+                    data: fileBuffer,
+                });
+
+                const bucketName = process.env.BACKBLAZE_BUCKET;
+                const uploadedFileName = uploadResponse.data.fileName;
+                const mediaUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+                // Add the media object to the media array of the chat's first message
+                newMessage.newMessage.push({
+                    mediaUrl: mediaUrl,
+                    mimeType: mediaFile.type,
+                });
+            }
+
+        } else if (messageType === 'text') {
+            newMessage.content = message.content;
+        }
 
         // Find the chat between sender A and receiver B
         let chat = await Chat.findOne({ sender: message.sender._id, receiver: message.receiver._id });
@@ -7507,6 +7637,7 @@ router.post('/send-message', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while sending the message' });
     }
 });
+
 
 /**
  * @swagger

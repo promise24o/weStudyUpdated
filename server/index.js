@@ -143,7 +143,6 @@ io.on ('connection', (socket) => {
     
 
     socket.on ('sendMessage', async (message) => {
-        console.log("start");
         try { 
             if(message.hasMedia){
                 // Create a new message object
@@ -297,7 +296,7 @@ io.on ('connection', (socket) => {
                     content: message.content,
                     timeSent: message.timeSent,
                     status: message.status,
-                    messageType: "media"
+                    messageType: "text"
                 };
 
 

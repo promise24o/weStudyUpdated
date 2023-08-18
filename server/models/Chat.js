@@ -23,6 +23,7 @@ const chatSchema = new mongoose.Schema ({
     },
     messages: [
         {
+             
             sender: {
                 type: mongoose.Schema.Types.ObjectId,
                 required: true,
@@ -60,6 +61,10 @@ const chatSchema = new mongoose.Schema ({
                     'sent', 'delivered', 'seen'
                 ],
                 default: 'sent'
+            }, 
+            deleted:{
+                type: Boolean,
+                default: false
             }
         },
     ]
