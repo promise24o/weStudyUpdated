@@ -32,35 +32,158 @@ const bookmarkSchema = new mongoose.Schema({
 
 
 const listingSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'user',
+    },
+    visibility: {
+        type: Boolean,
+        default: true
+    },
     title: {
         type: String,
         required: true
     },
-    category: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "ListingCategory",
-        required: true
-    },
-    condition: {
+    listingType: {
         type: String,
+        enum: ['itemsForSale', 'housingAndResources', 'academicAssistance'],
         required: true
     },
-    price: {
-        type: Number,
-        required: true
-    },
-    description: {
+    location: {
         type: String,
-        required: true
     },
-    media: [
-        {
-            url: {
-                type: String,
-                required: true
-            },
+    itemsForSale: {
+        category: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ListingCategory",
+            required: function () {
+                return this.listingType === 'itemsForSale';
+            }
         },
-    ],
+        condition: {
+            type: String,
+            enum: ['new', 'like-new', 'fair', 'good'],
+            required: function () {
+                return this.listingType === 'itemsForSale';
+            }
+        },
+        description: {
+            type: String,
+            required: function () {
+                return this.listingType === 'itemsForSale';
+            }
+        },
+        price: {
+            type: Number,
+            required: function () {
+                return this.listingType === 'itemsForSale';
+            }
+        },
+        media: [
+            {
+                url: {
+                    type: String,
+                    required: function () {
+                        return this.listingType === 'itemsForSale';
+                    }
+                }
+            }
+        ]
+    },
+    housingAndResources: {
+        description: {
+            type: String,
+            required: function () {
+                return this.listingType === 'housingAndResources';
+            }
+        },
+        category: {
+            type: String,
+            required: function () {
+                return this.listingType === 'housingAndResources';
+            }
+        },
+        preferences: {
+            type: String,
+            required: function () {
+                return this.listingType === 'housingAndResources';
+            }
+        },
+        media: [
+            {
+                url: {
+                    type: String,
+                    required: function () {
+                        return this.listingType === 'housingAndResources';
+                    }
+                }
+            }
+        ],
+        payment: {
+            type: String,
+            enum: ['free', 'paid'],
+            required: function () {
+                return this.listingType === 'housingAndResources';
+            }
+        },
+        durationOfStay: {
+            type: String,
+            required: function () {
+                return this.listingType === 'housingAndResources';
+            }
+        },
+        amount: {
+            type: Number,
+            required: function () {
+                return this.payment === 'paid';
+            }
+        },
+        termsAndConditions: {
+            type: String,
+            required: function () {
+                return this.listingType === 'housingAndResources';
+            }
+        }
+    },
+    academicAssistance: {
+        description: {
+            type: String,
+            required: function () {
+                return this.listingType === 'academicAssistance';
+            }
+        },
+        category: {
+            type: String,
+            required: function () {
+                return this.listingType === 'academicAssistance';
+            }
+        },
+        media: [
+            {
+                url: {
+                    type: String,
+                    required: function () {
+                        return this.listingType === 'academicAssistance';
+                    }
+                }
+            }
+        ],
+        payment: {
+            type: String,
+            enum: ['free', 'paid'],
+            required: function () {
+                return this.listingType === 'academicAssistance';
+            }
+        },
+        amount: {
+            type: Number,
+            required: function () {
+                return this.payment === 'paid';
+            }
+        },
+    },
+
 });
 
 listingSchema.set('timestamps', true);

@@ -34,15 +34,15 @@ const FriendRequest = require("../models/FriendRequest");
 const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
-const { ListingCategory } = require("../models/MarketPlace");
+const { ListingCategory, Listing, ListingBookmark } = require("../models/MarketPlace");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
 const applicationKey = process.env.BACKBLAZE_APP_KEY;
 
 const b2 = new B2({
-    applicationKeyId: applicationKeyId,  
-    applicationKey: applicationKey 
+    applicationKeyId: applicationKeyId,
+    applicationKey: applicationKey
 });
 
 // async function GetBucket() {
@@ -56,12 +56,12 @@ const b2 = new B2({
 // }
 
 // Create a multer storage engine
-const storage10 = multer.memoryStorage();  
+const storage10 = multer.memoryStorage();
 
 const upload10 = multer({
     storage: storage10,
     limits: {
-        fileSize: 20 * 1024 * 1024,  
+        fileSize: 20 * 1024 * 1024,
     },
 });
 
@@ -3764,7 +3764,7 @@ router.post("/stories/:userId", upload10.single("file"), async (req, res) => {
 
         let story = await Story.findOne({ id: id });
 
-        const uniqueIdentifier = Date.now(); 
+        const uniqueIdentifier = Date.now();
         const fileName = `${uniqueIdentifier}_${encodeURIComponent(req.file.originalname)}`;
         const fileBuffer = req.file.buffer;
 
@@ -3780,11 +3780,11 @@ router.post("/stories/:userId", upload10.single("file"), async (req, res) => {
             fileName: fileName,
             data: fileBuffer,
         });
-        
+
         const bucketName = process.env.BACKBLAZE_BUCKET;
         const uploadedFileName = uploadResponse.data.fileName;
         const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
-        
+
         if (story) {
             const lastItem = story.items[story.items.length - 1];
             const lastItemId = parseInt(lastItem.id.split("-")[1]);
@@ -4080,7 +4080,7 @@ router.delete('/delete-reel/:reelId', async (req, res) => {
  *   post:
  *     summary: Like a reel
  *     description: Like a reel by providing the reel ID and user ID.
- *     tags: Reels
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: reelId
@@ -4282,7 +4282,7 @@ router.post('/reels/comments/like/:commentId', async (req, res) => {
  *   get:
  *     summary: Get all reels of a particular user
  *     description: Get all reels created by a specific user.
- *     tags: [Reels]
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -4333,7 +4333,7 @@ router.get('/reels/user/:userId', async (req, res) => {
  *   get:
  *     summary: Get user bookmarked reels
  *     description: Get reels that are bookmarked by a specific user.
- *     tags: [Reels]
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -7173,11 +7173,17 @@ router.get('/chat/:id/messages', async (req, res) => {
     }
 });
 
+
 /**
  * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing user-related operations
+ * 
  * /users/delete-message/{messageId}:
  *   delete:
  *     summary: Delete a message by ID
+ *     tags: [User]
  *     parameters:
  *       - in: path
  *         name: messageId
@@ -7193,6 +7199,7 @@ router.get('/chat/:id/messages', async (req, res) => {
  *       500:
  *         description: Server error
  */
+
 router.delete('/delete-message/:messageId', async (req, res) => {
     const messageId = new mongoose.Types.ObjectId(req.params.messageId)
     try {
@@ -7454,9 +7461,14 @@ router.put('/update-message-status/:receiverId/:senderId', async (req, res) => {
 
 /**
  * @swagger
+ * tags:
+ *   name: User
+ *   description: APIs for managing user-related operations
+ * 
  * /users/send-message:
  *   post:
  *     summary: Send a message
+ *     tags: [User]
  *     requestBody:
  *       content:
  *         application/json:
@@ -7574,7 +7586,7 @@ router.post('/send-message', async (req, res) => {
         };
 
         if (messageType === 'media') {
-            newMessage.media = [];  
+            newMessage.media = [];
             // Iterate through each media file and upload to Backblaze B2
             for (const mediaFile of message.media) {
                 const fileName = `${Date.now()}_${mediaFile.name.replace(/ /g, '_')}`;
@@ -9492,7 +9504,7 @@ router.get('/events/filter', async (req, res) => {
  *   name: User
  *   description: APIs for managing listings
  * 
- * /users/listing-categories:
+ * /users/marketplace/listing-categories:
  *   get:
  *     summary: Get Listing Categories
  *     description: Get all listing categories
@@ -9530,7 +9542,7 @@ router.get('/events/filter', async (req, res) => {
  *                 error:
  *                   type: object
  */
-router.get("/listing-categories", async (req, res) => {
+router.get("/marketplace/listing-categories", async (req, res) => {
     try {
         let listingCategories = await ListingCategory.find().sort({ createdAt: "desc" });
         if (!listingCategories) {
@@ -9542,6 +9554,431 @@ router.get("/listing-categories", async (req, res) => {
     }
 });
 
+router.post("/marketplace/create-listing/:listingType", upload10.array("files"), async (req, res) => {
+    try {
+        const listing = req.params.listingType;
+        if (listing === "itemsForSale") {
+            const {
+                user,
+                title,
+                condition,
+                price,
+                category,
+                location,
+                listingType,
+                description
+            } = JSON.parse(req.body.data);
+
+            // Check if the file size exceeds the limit
+            if (req.files.some(file => file.size > 20 * 1024 * 1024)) {
+                return res.status(400).json({ error: "File size exceeds limit (20MB)" });
+            }
+
+            const media = [];
+            for (const mediaFile of req.files) {
+                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileBuffer = mediaFile.buffer;
+
+                await b2.authorize();
+
+                const response = await b2.getUploadUrl({
+                    bucketId: process.env.BACKBLAZE_BUCKET_ID,
+                });
+
+                const uploadResponse = await b2.uploadFile({
+                    uploadUrl: response.data.uploadUrl,
+                    uploadAuthToken: response.data.authorizationToken,
+                    fileName: fileName,
+                    data: fileBuffer,
+                });
+
+                const bucketName = process.env.BACKBLAZE_BUCKET;
+                const uploadedFileName = uploadResponse.data.fileName;
+                const mediaUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+                media.push({
+                    url: mediaUrl,
+                });
+            }
+            // Create a new listing for itemsForSale
+            const newItemListing = await Listing.create({
+                user,
+                title,
+                visibility: true,
+                listingType,
+                location,
+                itemsForSale: {
+                    category,
+                    condition,
+                    description,
+                    price,
+                    media
+                }
+            });
+
+            return res.status(200).json({ message: "Listing created successfully" });
+        }
+        if (listing === "housingAndResources") {
+            const {
+                user,
+                title,
+                condition,
+                category,
+                location,
+                listingType,
+                description,
+                preferences,
+                payment,
+                durationOfStay,
+                amount,
+                termsAndConditions
+            } = JSON.parse(req.body.data);
+
+            // Check if the file size exceeds the limit
+            if (req.files.some(file => file.size > 20 * 1024 * 1024)) {
+                return res.status(400).json({ error: "File size exceeds limit (20MB)" });
+            }
+
+            const media = [];
+            for (const mediaFile of req.files) {
+                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileBuffer = mediaFile.buffer;
+
+                await b2.authorize();
+
+                const response = await b2.getUploadUrl({
+                    bucketId: process.env.BACKBLAZE_BUCKET_ID,
+                });
+
+                const uploadResponse = await b2.uploadFile({
+                    uploadUrl: response.data.uploadUrl,
+                    uploadAuthToken: response.data.authorizationToken,
+                    fileName: fileName,
+                    data: fileBuffer,
+                });
+
+                const bucketName = process.env.BACKBLAZE_BUCKET;
+                const uploadedFileName = uploadResponse.data.fileName;
+                const mediaUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+                media.push({
+                    url: mediaUrl,
+                });
+            }
+
+            // Create a new listing for housingAndResources
+            const newItemListing = await Listing.create({
+                user,
+                title,
+                visibility: true,
+                listingType,
+                location,
+                housingAndResources: {
+                    category,
+                    condition,
+                    description,
+                    preferences,
+                    payment,
+                    durationOfStay,
+                    amount,
+                    termsAndConditions,
+                    media
+                }
+            });
+
+            return res.status(200).json({ message: "Listing created successfully" });
+        }
+        if (listing === "academicAssistance") {
+            const {
+                user,
+                title,
+                category,
+                location,
+                listingType,
+                description,
+                payment,
+                amount,
+            } = JSON.parse(req.body.data);
+
+            // Check if the file size exceeds the limit
+            if (req.files.some(file => file.size > 20 * 1024 * 1024)) {
+                return res.status(400).json({ error: "File size exceeds limit (20MB)" });
+            }
+
+            const media = [];
+            for (const mediaFile of req.files) {
+                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileBuffer = mediaFile.buffer;
+
+                await b2.authorize();
+
+                const response = await b2.getUploadUrl({
+                    bucketId: process.env.BACKBLAZE_BUCKET_ID,
+                });
+
+                const uploadResponse = await b2.uploadFile({
+                    uploadUrl: response.data.uploadUrl,
+                    uploadAuthToken: response.data.authorizationToken,
+                    fileName: fileName,
+                    data: fileBuffer,
+                });
+
+                const bucketName = process.env.BACKBLAZE_BUCKET;
+                const uploadedFileName = uploadResponse.data.fileName;
+                const mediaUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+                media.push({
+                    url: mediaUrl,
+                });
+            }
+
+            // Create a new listing for housingAndResources
+            const newItemListing = await Listing.create({
+                user,
+                title,
+                visibility: true,
+                listingType,
+                location,
+                academicAssistance: {
+                    category,
+                    description,
+                    payment,
+                    amount,
+                    media
+                }
+            });
+
+            return res.status(200).json({ message: "Listing created successfully" });
+        }
+
+    } catch (error) {
+        console.error("Error", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+/**
+ * @swagger
+ * /users/marketplace/listings:
+ *   get:
+ *     summary: Get Listings
+ *     description: Get all listings sorted by creation date
+ *     tags: [User]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved listings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 listings:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Listing'  # Reference to your Listing schema
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
+router.get('/marketplace/listings', async (req, res) => {
+    try {
+        // Get all listings and populate the user field
+        const listings = await Listing.find().populate('user', 'firstname lastname profilePhoto education personal').populate({
+            path: 'itemsForSale.category',
+            model: 'ListingCategory',
+        }).sort({ createdAt: -1 });
+
+        const sortedListings = shuffleArray(listings);
+
+        res.status(200).json({ listings: sortedListings });
+    } catch (error) {
+        console.error('Error getting listings:', error);
+        res.status(500).json({ error: 'An error occurred while fetching listings' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/marketplace/bookmark:
+ *   post:
+ *     summary: Add or Remove Marketplace Listing from Bookmarks
+ *     description: Add or remove a marketplace listing from user's bookmarks
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user:
+ *                 type: string
+ *                 description: User's ObjectId
+ *               listing:
+ *                 type: string
+ *                 description: Listing's ObjectId
+ *     responses:
+ *       200:
+ *         description: Successfully added or removed listing from bookmarks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Add or remove a listing from user's bookmarks
+router.post('/marketplace/bookmark', async (req, res) => {
+    const { user, listing } = req.body;
+
+    try {
+        // Check if the user has already bookmarked the listing
+        const existingBookmark = await ListingBookmark.findOne({ user, listing });
+
+        if (existingBookmark) {
+            // If bookmark exists, remove it
+            await ListingBookmark.deleteOne({ user, listing });
+            res.status(200).json({ message: 'Listing removed from bookmarks' });
+        } else {
+            // If bookmark doesn't exist, add it
+            const newBookmark = new ListingBookmark({ user, listing });
+            await newBookmark.save();
+            res.status(201).json({ message: 'Listing added to bookmarks' });
+        }
+    } catch (error) {
+        console.error('Error adding/removing bookmark:', error);
+        res.status(500).json({ error: 'An error occurred while processing the request' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/marketplace/is-bookmarked/{listingId}:
+ *   get:
+ *     summary: Check if a listing is bookmarked by a user
+ *     description: Check if a listing is bookmarked by a user based on the listing ID and user ID.
+ *     tags: [User]
+ *     parameters:
+ *       - name: listingId
+ *         in: path
+ *         description: The ID of the listing
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: user
+ *         in: query
+ *         description: The ID of the user
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully checked if the listing is bookmarked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isBookmarked:
+ *                   type: boolean
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+router.get('/marketplace/is-bookmarked/:listingId', async (req, res) => {
+    const { listingId } = req.params;
+    const { user } = req.query;
+
+    try {
+        const bookmark = await ListingBookmark.findOne({ user, listing: listingId });
+
+        if (bookmark) {
+            return res.json({ isBookmarked: true });
+        } else {
+            return res.json({ isBookmarked: false });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/marketplace/bookmarks/{userId}:
+ *   get:
+ *     summary: Get listing bookmarks of a user
+ *     description: Get listing bookmarks of a user based on the user ID.
+ *     tags: [User]
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: The ID of the user
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved user's listing bookmarks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/ListingBookmark'  # Reference to your ListingBookmark schema
+ *       500:
+ *         description: Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+router.get('/marketplace/bookmarks/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const bookmarks = await ListingBookmark.find({ user:userId }).populate({
+            path: 'listing',
+            populate: [
+                { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                { path: 'itemsForSale.category', model: 'ListingCategory' }
+            ]
+        });
+        res.status(200).json(bookmarks);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 // Start the Agenda scheduler
 (async () => {
