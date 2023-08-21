@@ -9978,12 +9978,17 @@ router.get('/marketplace/bookmarks/:userId', async (req, res) => {
                     { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
                 ]
             });
-        res.status(200).json(bookmarks);
+
+        // Filter out bookmarks with null listing
+        const filteredBookmarks = bookmarks.filter(bookmark => bookmark.listing);
+
+        res.status(200).json({ bookmarks: filteredBookmarks });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
 
 /**
  * @swagger
@@ -10817,6 +10822,200 @@ router.get('/marketplace/recent-activity/:userId', async (req, res) => {
     } catch (error) {
         console.error('Error fetching recent activity:', error);
         res.status(500).json({ error: 'An error occurred while fetching recent activity' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/marketplace/clicked-listings/{userId}:
+ *   get:
+ *     summary: Get the count of clicked listings for a user
+ *     tags: [User]
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: ID of the user whose clicked listings count is to be retrieved
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the count of clicked listings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clickedListingsCount:
+ *                   type: integer
+ *                   description: The count of clicked listings for the user
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while fetching clicked listings
+ */
+
+router.get('/marketplace/clicked-listings/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Populate the listing field in the recent activities
+        const populatedRecentActivities = await MarketplaceRecentActivity.find()
+            .populate({
+                path: 'listing',
+                populate: [
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
+                ]
+            });
+
+        // Count the number of listings where the user._id matches the provided userId
+        let clickedListingsCount = 0;
+        populatedRecentActivities.forEach(activity => {
+            if (activity.listing && activity.listing.user._id.toString() === userId) {
+                clickedListingsCount++;
+            }
+        });
+
+        res.json({ clickedListingsCount });
+    } catch (error) {
+        console.error('Error fetching clicked listings:', error);
+        res.status(500).json({ error: 'An error occurred while fetching clicked listings' });
+    }
+});
+
+router.get('/marketplace/saved-listings/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Find all bookmarks for the user
+        const bookmarks = await ListingBookmark.find({ user: userId })
+            .populate({
+                path: 'listing',
+                populate: [
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
+                ]
+            });
+
+        // Count the number of saved listings for the user
+        const savedListingsCount = bookmarks.length;
+
+        res.json({ savedListingsCount });
+    } catch (error) {
+        console.error('Error fetching saved listings:', error);
+        res.status(500).json({ error: 'An error occurred while fetching saved listings' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/marketplace/seller-followers/count/{sellerId}:
+ *   get:
+ *     summary: Count the number of followers for a seller
+ *     tags: [User]
+ *     parameters:
+ *       - name: sellerId
+ *         in: path
+ *         description: ID of the seller whose followers count to retrieve
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the count of followers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 followersCount:
+ *                   type: number
+ *                   example: 10
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while fetching followers count
+ */
+router.get('/marketplace/seller-followers/count/:sellerId', async (req, res) => {
+    const { sellerId } = req.params;
+
+    try {
+        // Count the number of followers for the seller
+        const followersCount = await ListingUserFollowing.countDocuments({ seller: sellerId });
+
+        res.json({ followersCount });
+    } catch (error) {
+        console.error('Error fetching followers count:', error);
+        res.status(500).json({ error: 'An error occurred while fetching followers count' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/marketplace/listings/{userId}:
+ *   get:
+ *     summary: Get listings for a specific user
+ *     tags: [User]
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: ID of the user whose listings to retrieve
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the user's listings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 listings:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Listing'
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while fetching listings
+ */
+router.get('/marketplace/listings/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Get listings for the specific user and populate the required fields
+        const listings = await Listing.find({ user: userId })
+            .populate('user', 'firstname lastname profilePhoto education personal')
+            .populate({
+                path: 'itemsForSale.category housingAndResources.category academicAssistance.category',
+                model: 'ListingCategory',
+            })
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({ listings });
+    } catch (error) {
+        console.error('Error getting listings:', error);
+        res.status(500).json({ error: 'An error occurred while fetching listings' });
     }
 });
 
