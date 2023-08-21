@@ -34,7 +34,7 @@ const FriendRequest = require("../models/FriendRequest");
 const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
-const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing } = require("../models/MarketPlace");
+const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity } = require("../models/MarketPlace");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -10686,6 +10686,137 @@ router.delete('/marketplace/:followerId/unfollow/:sellerId', async (req, res) =>
     } catch (error) {
         console.error('Error unfollowing:', error);
         res.status(500).json({ error: 'An error occurred while unfollowing' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/marketplace/recent-activity:
+ *   post:
+ *     summary: Store recent activity when a user visits a listing
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user
+ *                 example: 64e2b85115fab064054606db
+ *               listingId:
+ *                 type: string
+ *                 description: ID of the listing visited by the user
+ *                 example: 641317483c47e297bedf065f
+ *     responses:
+ *       '200':
+ *         description: Successful response indicating that the recent activity is stored or updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Recent activity stored successfully
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while storing recent activity
+ */
+
+// Route to store recent activity when a user visits a listing
+router.post('/marketplace/recent-activity', async (req, res) => {
+    const { userId, listingId } = req.body;
+
+    try {
+        const currentDateTime = new Date();
+
+        // Using the upsert option to either insert or update the recent activity
+        const result = await MarketplaceRecentActivity.updateOne(
+            { user: userId, listing: listingId },
+            { $set: { dateVisited: currentDateTime } },
+            { upsert: true }
+        );
+
+        if (result.ok) {
+            if (result.upserted) {
+                res.json({ message: 'Recent activity stored successfully' });
+            } else {
+                res.json({ message: 'Recent activity updated successfully' });
+            }
+        } else {
+            res.status(500).json({ error: 'An error occurred while storing recent activity' });
+        }
+    } catch (error) {
+        console.error('Error storing recent activity:', error);
+        res.status(500).json({ error: 'An error occurred while storing recent activity' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/marketplace/recent-activity/{userId}:
+ *   get:
+ *     summary: Get recent activity of a user
+ *     tags: [User]
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: ID of the user to retrieve recent activity for
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the user's recent activity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 recentActivity:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MarketplaceRecentActivity'
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while fetching recent activity
+ */
+
+router.get('/marketplace/recent-activity/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Find recent activity records for the user
+        const recentActivity = await MarketplaceRecentActivity.find({ user: userId })
+            .populate({
+                path: 'listing',
+                populate: [
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
+                ]
+            });
+        res.json({ recentActivity });
+    } catch (error) {
+        console.error('Error fetching recent activity:', error);
+        res.status(500).json({ error: 'An error occurred while fetching recent activity' });
     }
 });
 

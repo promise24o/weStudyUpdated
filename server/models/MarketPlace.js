@@ -328,6 +328,23 @@ const userFollowingSchema = new mongoose.Schema({
     }
 });
 
+const recentActivitySchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
+    },
+    listing: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Listing',
+        required: true
+    },
+    dateVisited: {
+        type: Date,
+        default: Date.now
+    }
+});
+
 module.exports = {
     ListingUserFollowing: mongoose.model('ListingUserFollowing', userFollowingSchema),
     ListingCategory: mongoose.model('ListingCategory', listingCategorySchema),
@@ -336,4 +353,5 @@ module.exports = {
     ReportListing: mongoose.model('ReportListing', reportSchema),
     ListingNotification: mongoose.model('ListingNotification', listingNotificationSchema),
     MarketplaceMessage: mongoose.model('MarketplaceMessage', messageSchema),
+    MarketplaceRecentActivity: mongoose.model('MarketplaceRecentActivity ', recentActivitySchema),
 };
