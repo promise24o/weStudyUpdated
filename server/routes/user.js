@@ -10048,6 +10048,48 @@ router.get('/marketplace/listing/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/marketplace/listing/is-bookmarked/{listingId}:
+ *   get:
+ *     summary: Check if a marketplace listing is bookmarked by a user
+ *     tags: [User]
+ *     parameters:
+ *       - name: listingId
+ *         in: path
+ *         description: ID of the listing to check for bookmark
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: userId
+ *         in: query
+ *         description: ID of the user to check if they bookmarked the listing
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with bookmark status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isBookmarked:
+ *                   type: boolean
+ *                   example: true (or) false
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Server error
+ */
+
 // Route to check if an event is bookmarked by a user
 router.get('/marketplace/listing/is-bookmarked/:listingId', async (req, res) => {
     const { listingId } = req.params;
@@ -10066,6 +10108,62 @@ router.get('/marketplace/listing/is-bookmarked/:listingId', async (req, res) => 
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+/**
+ * @swagger
+ * /users/marketplace/listing/bookmark/{listingId}:
+ *   post:
+ *     summary: Bookmark or unbookmark a marketplace listing
+ *     tags: [User]
+ *     parameters:
+ *       - name: listingId
+ *         in: path
+ *         description: ID of the listing to bookmark/unbookmark
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user bookmarking/unbookmarking the listing
+ *     responses:
+ *       '200':
+ *         description: Successful response with bookmark status message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Listing saved to bookmarks (or) Listing removed from bookmarks
+ *       '404':
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Listing not found
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Server error
+ */
 
 router.post('/marketplace/listing/bookmark/:listingId', async (req, res) => {
     const { listingId } = req.params;
@@ -10091,6 +10189,54 @@ router.post('/marketplace/listing/bookmark/:listingId', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+/**
+ * @swagger
+ * /users/marketplace/listing/report:
+ *   post:
+ *     summary: Report a marketplace listing
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               listingId:
+ *                 type: string
+ *                 description: ID of the listing to report
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user reporting the listing
+ *               reason:
+ *                 type: string
+ *                 description: Reason for reporting the listing
+ *               explanation:
+ *                 type: string
+ *                 description: Explanation for reporting the listing
+ *     responses:
+ *       '200':
+ *         description: Successful response with report confirmation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Listing reported successfully
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Server error
+ */
 
 router.post('/marketplace/listing/report', async (req, res) => {
     const { listingId, userId, reason, explanation } = req.body;
@@ -10123,6 +10269,53 @@ router.post('/marketplace/listing/report', async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/marketplace/send-message:
+ *   post:
+ *     summary: Send a message in the marketplace
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               senderId:
+ *                 type: string
+ *                 description: ID of the sender user
+ *               recipientId:
+ *                 type: string
+ *                 description: ID of the recipient user
+ *               listingId:
+ *                 type: string
+ *                 description: ID of the listing associated with the message
+ *               content:
+ *                 type: string
+ *                 description: Content of the message
+ *     responses:
+ *       '200':
+ *         description: Successful response with message sent confirmation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Message sent successfully
+ *       '500':
+ *         description: An error occurred while sending the message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while sending the message
+ */
 
 router.post('/marketplace/send-message', async (req, res) => {
     try {
@@ -10168,7 +10361,53 @@ router.post('/marketplace/send-message', async (req, res) => {
 });
 
 
-router.delete('/users/marketplace/listing/delete/:listingId', async (req, res) => {
+/**
+ * @swagger
+ * /users/marketplace/listing/delete/{listingId}:
+ *   delete:
+ *     summary: Delete a marketplace listing by ID
+ *     tags: [User]
+ *     parameters:
+ *       - name: listingId
+ *         in: path
+ *         description: ID of the listing to delete
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with delete message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Listing deleted successfully
+ *       '404':
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Listing not found
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while deleting the listing
+ */
+
+router.delete('/marketplace/listing/delete/:listingId', async (req, res) => {
     const { listingId } = req.params;
 
     try {
@@ -10187,6 +10426,49 @@ router.delete('/users/marketplace/listing/delete/:listingId', async (req, res) =
         res.status(500).json({ error: 'An error occurred while deleting the listing' });
     }
 });
+
+/**
+ * @swagger
+ * /users/marketplace/follow-seller:
+ *   post:
+ *     summary: Follow or unfollow a seller's listing
+ *     tags:
+ *       - User
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               followerId:
+ *                 type: string
+ *                 description: ID of the follower user
+ *               sellerId:
+ *                 type: string
+ *                 description: ID of the seller user
+ *     responses:
+ *       '200':
+ *         description: Successful response with follow/unfollow status message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Followed successfully
+ *       '500':
+ *         description: An error occurred while following/unfollowing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while following/unfollowing
+ */
 
 // Follow or Unfollow a seller
 router.post('/marketplace/follow-seller', async (req, res) => {
@@ -10216,6 +10498,49 @@ router.post('/marketplace/follow-seller', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/marketplace/check-follow:
+ *   get:
+ *     summary: Check if a user is following a seller's listing
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - name: followerId
+ *         in: query
+ *         description: ID of the follower user
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: sellerId
+ *         in: query
+ *         description: ID of the seller user
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the follow status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isFollowing:
+ *                   type: boolean
+ *                   example: true
+ *       '500':
+ *         description: An error occurred while checking follow
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while checking follow
+ */
+
 // Check if a user is following a seller's listing
 router.get('/marketplace/check-follow', async (req, res) => {
     const { followerId, sellerId } = req.query;
@@ -10237,6 +10562,44 @@ router.get('/marketplace/check-follow', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/marketplace/followings/{userId}:
+ *   get:
+ *     summary: Get followings of a user
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: ID of the user whose followings to retrieve
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the list of followings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 followings:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/UserFollowing'
+ *       '500':
+ *         description: An error occurred while fetching followings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while fetching followings
+ */
+
 // Get all followings of a particular user
 router.get('/marketplace/followings/:userId', async (req, res) => {
     const { userId } = req.params;
@@ -10254,6 +10617,77 @@ router.get('/marketplace/followings/:userId', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/marketplace/{followerId}/unfollow/{sellerId}:
+ *   delete:
+ *     summary: Unfollow a seller
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - name: followerId
+ *         in: path
+ *         description: ID of the follower user
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: sellerId
+ *         in: path
+ *         description: ID of the seller user
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Unfollowed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Unfollowed successfully
+ *       '404':
+ *         description: Following not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Following not found
+ *       '500':
+ *         description: An error occurred while unfollowing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while unfollowing
+ */
+
+// Remove a following
+router.delete('/marketplace/:followerId/unfollow/:sellerId', async (req, res) => {
+    const { followerId, sellerId } = req.params;
+
+    try {
+        // Check if the following exists
+        const existingFollowing = await ListingUserFollowing.findOneAndDelete({ follower: followerId, seller: sellerId });
+
+        if (existingFollowing) {
+            res.json({ message: 'Unfollowed successfully' });
+        } else {
+            res.status(404).json({ error: 'Following not found' });
+        }
+    } catch (error) {
+        console.error('Error unfollowing:', error);
+        res.status(500).json({ error: 'An error occurred while unfollowing' });
+    }
+});
 
 // Start the Agenda scheduler
 (async () => {
