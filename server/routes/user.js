@@ -34,7 +34,7 @@ const FriendRequest = require("../models/FriendRequest");
 const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
-const { ListingCategory, Listing, ListingBookmark } = require("../models/MarketPlace");
+const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing } = require("../models/MarketPlace");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -9791,10 +9791,14 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 router.get('/marketplace/listings', async (req, res) => {
     try {
         // Get all listings and populate the user field
-        const listings = await Listing.find().populate('user', 'firstname lastname profilePhoto education personal').populate({
-            path: 'itemsForSale.category',
-            model: 'ListingCategory',
-        }).sort({ createdAt: -1 });
+        const listings = await Listing.find()
+            .populate('user', 'firstname lastname profilePhoto education personal')
+            .populate({
+                path: 'itemsForSale.category housingAndResources.category academicAssistance.category',
+                model: 'ListingCategory',
+            })
+            .sort({ createdAt: -1 });
+
 
         const sortedListings = shuffleArray(listings);
 
@@ -9966,19 +9970,290 @@ router.get('/marketplace/is-bookmarked/:listingId', async (req, res) => {
 router.get('/marketplace/bookmarks/:userId', async (req, res) => {
     const { userId } = req.params;
     try {
-        const bookmarks = await ListingBookmark.find({ user:userId }).populate({
-            path: 'listing',
-            populate: [
-                { path: 'user', select: 'firstname lastname profilePhoto education personal' },
-                { path: 'itemsForSale.category', model: 'ListingCategory' }
-            ]
-        });
+        const bookmarks = await ListingBookmark.find({ user: userId })
+            .populate({
+                path: 'listing',
+                populate: [
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
+                ]
+            });
         res.status(200).json(bookmarks);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+/**
+ * @swagger
+ * /users/marketplace/listing/{id}:
+ *   get:
+ *     summary: Get a marketplace listing by ID
+ *     tags: [User]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: ID of the listing to retrieve
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the retrieved listing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Listing'
+ *       '404':
+ *         description: Listing not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Listing not found
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Server error
+ */
+router.get('/marketplace/listing/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        // Assuming you have a Listing model defined
+        const listing = await Listing.findById(id).populate('user', 'firstname lastname profilePhoto education personal')
+            .populate({
+                path: 'itemsForSale.category housingAndResources.category academicAssistance.category',
+                model: 'ListingCategory',
+            })
+
+        if (!listing) {
+            return res.status(404).json({ error: 'Listing not found' });
+        }
+
+        res.status(200).json({ listing });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Route to check if an event is bookmarked by a user
+router.get('/marketplace/listing/is-bookmarked/:listingId', async (req, res) => {
+    const { listingId } = req.params;
+    const { userId } = req.query;
+
+    try {
+        const bookmark = await ListingBookmark.findOne({ user: userId, listing: listingId });
+
+        if (bookmark) {
+            return res.json({ isBookmarked: true });
+        } else {
+            return res.json({ isBookmarked: false });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+router.post('/marketplace/listing/bookmark/:listingId', async (req, res) => {
+    const { listingId } = req.params;
+    const { userId } = req.body;
+
+    try {
+        const listing = await Listing.findById(listingId);
+        if (!listing) {
+            return res.status(404).json({ error: 'Listing not found' });
+        }
+
+        const bookmark = await ListingBookmark.findOne({ user: userId, listing: listingId });
+
+        if (bookmark) {
+            await ListingBookmark.deleteOne({ user: userId, listing: listingId });
+            return res.json({ message: 'Listing removed from bookmarks' });
+        } else {
+            await ListingBookmark.create({ user: userId, listing: listingId });
+            return res.json({ message: 'Listing saved to bookmarks' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+router.post('/marketplace/listing/report', async (req, res) => {
+    const { listingId, userId, reason, explanation } = req.body;
+
+    try {
+        // Check if the user has reported the listing before
+        const existingReport = await ReportListing.findOne({ listing: listingId, user: userId });
+
+        if (existingReport) {
+            return res.status(400).json({ message: 'You have already reported this listing' });
+        }
+
+        // Create a new report
+        const report = new ReportListing({
+            listing: listingId,
+            user: userId,
+            reason: reason,
+            explanation: explanation,
+            dateReported: new Date()
+        });
+
+        // Save the report
+        await report.save();
+
+        res.json({ message: 'Listing reported successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+
+router.post('/marketplace/send-message', async (req, res) => {
+    try {
+        const { senderId, recipientId, listingId, content } = req.body;
+
+        // Save the message to the database using Mongoose
+        const newMessage = {
+            sender: senderId,
+            receiver: recipientId,
+            content: content,
+            timeSent: new Date(),
+            status: 'sent'
+        };
+
+        // Find or create the chat between sender and receiver
+        let chat = await MarketplaceMessage.findOne({
+            $or: [
+                { sender: senderId, receiver: recipientId },
+                { sender: recipientId, receiver: senderId }
+            ]
+        });
+
+        if (!chat) { // Create a new chat if it doesn't exist
+            chat = new MarketplaceMessage({
+                sender: senderId,
+                receiver: recipientId,
+                listing: listingId,
+                messages: [newMessage]
+            });
+        } else { // Add the new message to the messages array
+            chat.messages.push(newMessage);
+        }
+
+        // Save the chat document
+        await chat.save();
+
+        // Respond with a success message or status code (200 OK)
+        res.json({ message: 'Message sent successfully' });
+    } catch (error) {
+        console.error('Error sending message:', error);
+        res.status(500).json({ error: 'An error occurred while sending the message' });
+    }
+});
+
+
+router.delete('/users/marketplace/listing/delete/:listingId', async (req, res) => {
+    const { listingId } = req.params;
+
+    try {
+        // Check if the listing exists
+        const listing = await Listing.findById(listingId);
+        if (!listing) {
+            return res.status(404).json({ error: 'Listing not found' });
+        }
+
+        // Delete the listing
+        await Listing.findByIdAndDelete(listingId);
+
+        res.json({ message: 'Listing deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting listing:', error);
+        res.status(500).json({ error: 'An error occurred while deleting the listing' });
+    }
+});
+
+// Follow or Unfollow a seller
+router.post('/marketplace/follow-seller', async (req, res) => {
+    const { followerId, sellerId } = req.body;
+
+    try {
+        // Check if the user is already following the seller
+        const existingFollowing = await ListingUserFollowing.findOne({ follower: followerId, seller: sellerId });
+
+        if (existingFollowing) {
+            // If already following, remove the following relationship
+            await ListingUserFollowing.findOneAndDelete({ follower: followerId, seller: sellerId });
+            res.json({ message: 'Unfollowed successfully' });
+        } else {
+            // If not following, create the following relationship
+            const newFollowing = new ListingUserFollowing({
+                follower: followerId,
+                seller: sellerId,
+                dateFollowed: new Date()
+            });
+            await newFollowing.save();
+            res.json({ message: 'Followed successfully' });
+        }
+    } catch (error) {
+        console.error('Error following/unfollowing:', error);
+        res.status(500).json({ error: 'An error occurred while following/unfollowing' });
+    }
+});
+
+// Check if a user is following a seller's listing
+router.get('/marketplace/check-follow', async (req, res) => {
+    const { followerId, sellerId } = req.query;
+    try {
+        // Check if the user is following the seller's listing
+
+        const isFollowing = await ListingUserFollowing.findOne({ follower: followerId, seller: sellerId });
+
+        if (isFollowing) {
+            return res.json({ isFollowing: true });
+        } else {
+            return res.json({ isFollowing: false });
+        }
+
+        res.json({ isFollow: isFollowing });
+    } catch (error) {
+        console.error('Error checking follow:', error);
+        res.status(500).json({ error: 'An error occurred while checking follow' });
+    }
+});
+
+// Get all followings of a particular user
+router.get('/marketplace/followings/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        // Find all followings of the user
+        const followings = await ListingUserFollowing.find({ follower: userId })
+            .populate({
+                path: 'seller',
+                select: 'firstname lastname personal education profilePhoto'
+            });
+        res.json({ followings });
+    } catch (error) {
+        console.error('Error fetching followings:', error);
+        res.status(500).json({ error: 'An error occurred while fetching followings' });
+    }
+});
+
 
 // Start the Agenda scheduler
 (async () => {

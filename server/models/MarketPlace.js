@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const listingCategorySchema = new mongoose.Schema({
+    listingType: {
+        type: String,
+        required: true,
+    },
     title: {
         type: String,
         required: true,
@@ -100,6 +104,7 @@ const listingSchema = new mongoose.Schema({
         },
         category: {
             type: String,
+            ref: "ListingCategory",
             required: function () {
                 return this.listingType === 'housingAndResources';
             }
@@ -155,6 +160,7 @@ const listingSchema = new mongoose.Schema({
         },
         category: {
             type: String,
+            ref: "ListingCategory",
             required: function () {
                 return this.listingType === 'academicAssistance';
             }
@@ -259,35 +265,71 @@ const listingNotificationSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema({
     sender: {
         type: mongoose.Schema.Types.ObjectId,
+        required: true,
         ref: 'user',
-        required: true
     },
-    recipient: {
+    receiver: {
         type: mongoose.Schema.Types.ObjectId,
+        required: true,
         ref: 'user',
-        required: true
     },
+     
     listing: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Listing',
         required: true
     },
-    content: {
-        type: String,
+    messages: [
+        {
+            sender: {
+                type: mongoose.Schema.Types.ObjectId,
+                required: true,
+                ref: 'user',
+            },
+            receiver: {
+                type: mongoose.Schema.Types.ObjectId,
+                required: true,
+                ref: 'user',
+            },
+            content: {
+                type: String,
+            },
+            timeSent: {
+                type: Date,
+                default: Date.now
+            },
+            status: {
+                type: String,
+                enum: ['sent', 'delivered', 'seen'],
+                default: 'sent'
+            },
+            deleted: {
+                type: Boolean,
+                default: false
+            }
+        },
+    ]
+});
+
+const userFollowingSchema = new mongoose.Schema({
+    follower: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
         required: true
     },
-    createdAt: {
+    seller: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
+    },
+    dateFollowed: {
         type: Date,
         default: Date.now
-    },
-    isRead: {
-        type: Boolean,
-        default: false
     }
 });
 
-
 module.exports = {
+    ListingUserFollowing: mongoose.model('ListingUserFollowing', userFollowingSchema),
     ListingCategory: mongoose.model('ListingCategory', listingCategorySchema),
     Listing: mongoose.model('Listing', listingSchema),
     ListingBookmark: mongoose.model('ListingBookmark', bookmarkSchema),

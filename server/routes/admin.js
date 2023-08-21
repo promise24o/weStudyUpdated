@@ -805,7 +805,7 @@ router.post ("/add-lisiting-category", upload4.single ("file"), async (req, res)
     const result = await cloudinary.uploader.upload (req.file.path);
 
     try { // Create a new category
-        const category = new ListingCategory ({title: data.title, banner_image: result.url});
+        const category = new ListingCategory ({title: data.title, listingType: data.listingType, banner_image: result.url});
         // Save the scholarship to the database
         await category.save ();
         // Send a response with the saved category
