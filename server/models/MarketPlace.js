@@ -51,11 +51,54 @@ const listingSchema = new mongoose.Schema({
     },
     listingType: {
         type: String,
-        enum: ['itemsForSale', 'housingAndResources', 'academicAssistance'],
+        enum: ['itemsForSale', 'jobListing', 'housingAndResources', 'academicAssistance'],
         required: true
     },
     location: {
         type: String,
+    },
+    jobListing: {
+        category: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ListingCategory",
+            required: function () {
+                return this.listingType === 'jobListing';
+            }
+        },
+        deadline: {
+            type: Date,
+            required: function () {
+                return this.listingType === 'jobListing';
+            }
+        },
+        description: {
+            type: String,
+            required: function () {
+                return this.listingType === 'jobListing';
+            }
+        },
+        link: {
+            type: String,
+            required: function () {
+                return this.listingType === 'jobListing';
+            }
+        },
+        organization: {
+            type: String,
+            required: function () {
+                return this.listingType === 'jobListing';
+            }
+        },
+        media: [
+            {
+                url: {
+                    type: String,
+                    required: function () {
+                        return this.listingType === 'jobListing';
+                    }
+                }
+            }
+        ]
     },
     itemsForSale: {
         category: {

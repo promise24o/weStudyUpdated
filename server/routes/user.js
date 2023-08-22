@@ -9750,6 +9750,70 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             return res.status(200).json({ message: "Listing created successfully" });
         }
+        if (listing === "jobListing") {
+            const {
+                user,
+                title,
+                category,
+                location,
+                listingType,
+                description,
+                deadline,
+                link,
+                organization,
+            } = JSON.parse(req.body.data);
+
+            // Check if the file size exceeds the limit
+            if (req.files.some(file => file.size > 20 * 1024 * 1024)) {
+                return res.status(400).json({ error: "File size exceeds limit (20MB)" });
+            }
+
+            const media = [];
+            for (const mediaFile of req.files) {
+                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileBuffer = mediaFile.buffer;
+
+                await b2.authorize();
+
+                const response = await b2.getUploadUrl({
+                    bucketId: process.env.BACKBLAZE_BUCKET_ID,
+                });
+
+                const uploadResponse = await b2.uploadFile({
+                    uploadUrl: response.data.uploadUrl,
+                    uploadAuthToken: response.data.authorizationToken,
+                    fileName: fileName,
+                    data: fileBuffer,
+                });
+
+                const bucketName = process.env.BACKBLAZE_BUCKET;
+                const uploadedFileName = uploadResponse.data.fileName;
+                const mediaUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+                media.push({
+                    url: mediaUrl,
+                });
+            }
+
+            // Create a new listing for housingAndResources
+            const newItemListing = await Listing.create({
+                user,
+                title,
+                visibility: true,
+                listingType,
+                location,
+                jobListing: {
+                    category,
+                    description,
+                    deadline,
+                    link,
+                    organization,
+                    media
+                }
+            });
+
+            return res.status(200).json({ message: "Listing created successfully" });
+        }
 
     } catch (error) {
         console.error("Error", error);
@@ -9794,7 +9858,7 @@ router.get('/marketplace/listings', async (req, res) => {
         const listings = await Listing.find()
             .populate('user', 'firstname lastname profilePhoto education personal')
             .populate({
-                path: 'itemsForSale.category housingAndResources.category academicAssistance.category',
+                path: 'itemsForSale.category housingAndResources.category academicAssistance.category jobListing.category',
                 model: 'ListingCategory',
             })
             .sort({ createdAt: -1 });
@@ -10817,7 +10881,7 @@ router.get('/marketplace/recent-activity/:userId', async (req, res) => {
                     { path: 'user', select: 'firstname lastname profilePhoto education personal' },
                     { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
                 ]
-            });
+            }).sort({ dateVisited:-1});
         res.json({ recentActivity });
     } catch (error) {
         console.error('Error fetching recent activity:', error);
