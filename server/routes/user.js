@@ -9554,6 +9554,71 @@ router.get("/marketplace/listing-categories", async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/marketplace/create-listing/{listingType}:
+ *   post:
+ *     summary: Create a new listing
+ *     description: Create a new listing based on the listing type
+ *     tags: [User]
+ *     parameters:
+ *       - name: listingType
+ *         in: path
+ *         required: true
+ *         description: The type of listing (itemsForSale, housingAndResources, academicAssistance, jobListing)
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Upload files
+ *               data:
+ *                 type: string
+ *                 description: JSON data containing listing information
+ *             required:
+ *               - files
+ *               - data
+ *     responses:
+ *       200:
+ *         description: Listing created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message
+ *       400:
+ *         description: Bad Request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   description: Error message
+ */
+
 router.post("/marketplace/create-listing/:listingType", upload10.array("files"), async (req, res) => {
     try {
         const listing = req.params.listingType;
