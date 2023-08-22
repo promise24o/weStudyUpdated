@@ -3,7 +3,7 @@ const {auth2} = require ("../middleware/auth");
 const cloudinary = require ("cloudinary").v2;
 const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const multer = require ("multer");
-
+const b2 = require('../utils/backblazer'); 
 
 // Models
 const {User} = require ("../models/Users");
@@ -191,6 +191,16 @@ const uploadVerification = multer ({
         height: 800
     }
 });
+
+const storage10 = multer.memoryStorage();
+
+const upload10 = multer({
+    storage: storage10,
+    limits: {
+        fileSize: 20 * 1024 * 1024,
+    },
+});
+
 
 
 router.get ("/", function (req, res) {
@@ -866,30 +876,55 @@ router.post ("/add-course", upload3.single ("file"), async (req, res) => {
 });
 
 
-router.put ("/update-course/:id", upload3.single ("file"), async (req, res) => {
+router.put("/update-course/:id", upload10.single("file"), async (req, res) => {
     try {
         const courseId = req.params.id;
-        const updatedCourse = JSON.parse (req.body.data);
-        let updatedCourseWithImage = {
-            ... updatedCourse
+        const data = JSON.parse(req.body.data);
+        
+        let updatedCourse = {
+            title: data.title,
+            category: data.category,
+            brief: data.brief,
+            editorContent: data.editorContent,
+            read_time: data.read_time,
+            slug: data.slug
         };
 
         if (req.file) {
-            const result = await cloudinary.uploader.upload (req.file.path);
-            updatedCourseWithImage.banner_image = result.url;
+            const uniqueIdentifier = Date.now();
+            const fileName = `${uniqueIdentifier}_${encodeURIComponent(req.file.originalname)}`;
+            const fileBuffer = req.file.buffer;
+
+            await b2.authorize();
+
+            const response = await b2.getUploadUrl({
+                bucketId: process.env.BACKBLAZE_BUCKET_ID,
+            });
+
+            const uploadResponse = await b2.uploadFile({
+                uploadUrl: response.data.uploadUrl,
+                uploadAuthToken: response.data.authorizationToken,
+                fileName: fileName,
+                data: fileBuffer,
+            });
+
+            const bucketName = process.env.BACKBLAZE_BUCKET;
+            const uploadedFileName = uploadResponse.data.fileName;
+            const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+            updatedCourse.banner_image = fileUrl;
         }
 
-        const filter = {
-            _id: courseId
-        };
-        const options = {
-            new: true
-        }; // return the updated document
+        const updatedCourseDoc = await Course.findByIdAndUpdate(courseId, updatedCourse, { new: true });
+
+        if (!updatedCourseDoc) {
+            return res.status(404).json({ message: "Course not found" });
+        }
 
 
-        res.status (201).send ({message: "Course Details Updated Successfully"});
-    } catch (err) {
-        res.status (500).json ({message: err.message});
+        res.status(200).send({ message: "Post Updated Successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error });
     }
 });
 
@@ -947,7 +982,7 @@ router.put ("/update-community-center-post/:id", upload5.single ("file"), async 
     try {
         const postId = req.params.id;
         const data = JSON.parse (req.body.data);
-
+        console.log(data);
         let updatedPost = {
             title: data.title,
             category: data.category,
