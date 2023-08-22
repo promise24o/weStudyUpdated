@@ -891,8 +891,7 @@ router.put("/update-course/:id", upload10.single("file"), async (req, res) => {
         };
 
         if (req.file) {
-            const uniqueIdentifier = Date.now();
-            const fileName = `${uniqueIdentifier}_${encodeURIComponent(req.file.originalname)}`;
+            const fileName = `${Date.now()}_${req.file.originalname.replace(/ /g, '_')}`;
             const fileBuffer = req.file.buffer;
 
             await b2.authorize();
@@ -909,7 +908,7 @@ router.put("/update-course/:id", upload10.single("file"), async (req, res) => {
             });
 
             const bucketName = process.env.BACKBLAZE_BUCKET;
-            const uploadedFileName = uploadResponse.data.fileName;
+            const uploadedFileName = uploadResponse.data.fileName; 
             const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
 
             updatedCourse.banner_image = fileUrl;
