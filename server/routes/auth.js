@@ -1737,7 +1737,7 @@ router.post("/user-request-otp", async (req, res) => {
 
 router.post("/donor-request-otp", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { emazil } = req.body;
 
     // Check if the email exists in the Donors collection
     const existingDonor = await Donors.findOne({ email });

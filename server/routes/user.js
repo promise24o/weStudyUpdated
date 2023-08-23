@@ -10853,10 +10853,10 @@ router.get('/marketplace/followings/:userId', async (req, res) => {
     try {
         // Find all followings of the user
         const followings = await ListingUserFollowing.find({ follower: userId })
-            .populate({
-                path: 'seller',
-                select: 'firstname lastname personal education profilePhoto'
-            });
+            .populate([
+                { path: 'seller', select: 'firstname lastname personal education profilePhoto' },
+                { path: 'follower', select: 'firstname lastname personal education profilePhoto' }
+            ]);
         res.json({ followings });
     } catch (error) {
         console.error('Error fetching followings:', error);
