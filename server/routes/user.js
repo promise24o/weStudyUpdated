@@ -9641,7 +9641,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9706,7 +9706,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9772,7 +9772,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9835,7 +9835,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();

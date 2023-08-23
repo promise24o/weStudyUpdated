@@ -658,38 +658,55 @@ router.post ("/add-scholarship", upload.single ("file"), async (req, res) => {
     }
 });
 
-router.put ("/update-scholarship/:id", upload.single ("file"), async (req, res) => {
+
+router.put("/update-scholarship/:id", upload10.single("file"), async (req, res) => {
     try {
         const scholarshipId = req.params.id;
-        const updatedScholarship = ({
-            title,
-            banner_image,
-            category,
-            brief,
-            editorContent,
-            read_time,
-            slug
-        } = JSON.parse (req.body.data));
+        const data = JSON.parse(req.body.data);
+
+        let updatedScholarship = {
+            title: data.title,
+            banner_image: data.banner_image,
+            category: data.category,
+            brief: data.brief,
+            editorContent: data.editorContent,
+            read_time: data.read_time,
+            slug: data.slug
+        };
 
         if (req.file) {
-            const result = await cloudinary.uploader.upload (req.file.path);
-            updatedMentor = {
-                ...updatedMentor,
-                avatar: result.avatar
-            };
+            const fileName = `scholarships/${Date.now()}_${req.file.originalname.replace(/ /g, '_')}`;
+            const fileBuffer = req.file.buffer;
+
+            await b2.authorize();
+
+            const response = await b2.getUploadUrl({
+                bucketId: process.env.BACKBLAZE_BUCKET_ID,
+            });
+
+            const uploadResponse = await b2.uploadFile({
+                uploadUrl: response.data.uploadUrl,
+                uploadAuthToken: response.data.authorizationToken,
+                fileName: fileName,
+                data: fileBuffer,
+            });
+
+            const bucketName = process.env.BACKBLAZE_BUCKET;
+            const uploadedFileName = uploadResponse.data.fileName;
+            const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+            updatedScholarship.banner_image = fileUrl;
         }
 
-        const filter = {
-            _id: scholarshipId
-        };
-        const options = {
-            new: true
-        }; // return the updated document
+        const updatedScholarshipDoc = await Scholarship.findByIdAndUpdate(scholarshipId, updatedScholarship, { new: true });
 
+        if (!updatedScholarshipDoc) {
+            return res.status(404).json({ message: "Scholarship not found" });
+        }
 
-        res.status (201).send ({message: "Scholarship Details Updated Successfully"});
-    } catch (err) {
-        res.status (500).json ({message: err.message});
+        res.status(200).send({ message: "Scholarship Details Updated Successfully" });
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error", error });
     }
 });
 
@@ -891,7 +908,7 @@ router.put("/update-course/:id", upload10.single("file"), async (req, res) => {
         };
 
         if (req.file) {
-            const fileName = `${Date.now()}_${req.file.originalname.replace(/ /g, '_')}`;
+            const fileName = `courses/${Date.now()}_${req.file.originalname.replace(/ /g, '_')}`;
             const fileBuffer = req.file.buffer;
 
             await b2.authorize();
