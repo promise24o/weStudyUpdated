@@ -9,6 +9,7 @@ const crypto = require("crypto");
 const moment = require('moment');
 const OneSignal = require('@onesignal/node-onesignal');
 const B2 = require('backblaze-b2');
+const axios = require('axios');
 
 
 const ejs = require("ejs");
@@ -848,22 +849,40 @@ router.post("/change-password", async (req, res) => {
  */
 
 // Route to upload user avatar
-router.post("/upload-avatar/:userId", upload.single("file"), async (req, res) => {
+router.post("/upload-avatar/:userId", upload10.single("file"), async (req, res) => {
     const userId = req.params.userId;
     try {
         if (!req.file) {
             return res.status(400).json({ error: "No photo uploaded" });
         }
 
-        // Update the user's photo in the database
+        // Upload the avatar image to Backblaze B2
+        const fileName = `avatars/${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const fileBuffer = req.file.buffer;
 
-        const result = await cloudinary.uploader.upload(req.file.path);
+        await b2.authorize();
 
+        const response = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const uploadResponse = await b2.uploadFile({
+            uploadUrl: response.data.uploadUrl,
+            uploadAuthToken: response.data.authorizationToken,
+            fileName: fileName,
+            data: fileBuffer,
+        });
+
+        const bucketName = process.env.BACKBLAZE_BUCKET;
+        const uploadedFileName = uploadResponse.data.fileName;
+        const avatarUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+        // Update the user's profile photo URL in the database
         const updatedUser = await User.findOneAndUpdate({
             _id: userId
         }, {
             $set: {
-                profilePhoto: result.secure_url
+                profilePhoto: avatarUrl
             }
         }, { new: true }).select("-password -token");
 
@@ -3764,8 +3783,7 @@ router.post("/stories/:userId", upload10.single("file"), async (req, res) => {
 
         let story = await Story.findOne({ id: id });
 
-        const uniqueIdentifier = Date.now();
-        const fileName = `${uniqueIdentifier}_${encodeURIComponent(req.file.originalname)}`;
+        const fileName = `stories/${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
         const fileBuffer = req.file.buffer;
 
         await b2.authorize();
@@ -3876,16 +3894,38 @@ router.post("/stories/:userId", upload10.single("file"), async (req, res) => {
  *             example:
  *               error: Internal Server Error
  */
-router.post("/create-reels/:user", upload5.single("file"), async (req, res) => {
+
+router.post("/create-reels/:user", upload10.single("file"), async (req, res) => {
     const userId = req.params.user;
     try {
         const {
             description
         } = JSON.parse(req.body.data);
 
+        // Generate a sanitized filename
+        const sanitizedFilename = req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `reels/${Date.now()}_${sanitizedFilename}`;
+
+        // Upload the file to Backblaze B2
+        await b2.authorize();
+        const response = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const uploadResponse = await b2.uploadFile({
+            uploadUrl: response.data.uploadUrl,
+            uploadAuthToken: response.data.authorizationToken,
+            fileName: fileName,
+            data: req.file.buffer,
+        });
+
+        const bucketName = process.env.BACKBLAZE_BUCKET;
+        const uploadedFileName = uploadResponse.data.fileName;
+        const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
         const reels = await Reels.create({
             user: userId,
-            video: req.file.path,
+            video: fileUrl,  
             description
         });
 
@@ -4914,21 +4954,42 @@ router.delete('/stories/:userId/:itemId', async (req, res) => {
  */
 
 // POST route to save a new post
-router.post("/share-post", upload4.array("file", 10), async (req, res) => {
+router.post("/share-post", upload10.array("file", 10), async (req, res) => {
     try {
         const { userId, content } = req.body;
         const files = req.files;
 
-        // Create an array of media objects with the URLs and types from Cloudinary
-        const media = files.map((file) => ({
-            url: file.path,
-            type: file.mimetype.includes("image") ? "image" : "video"
-        }));
+        const media = [];
 
-        // Create a new post instance
+        for (const file of files) {
+            const fileName = `posts/${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const fileBuffer = file.buffer;
+
+            await b2.authorize();
+
+            const response = await b2.getUploadUrl({
+                bucketId: process.env.BACKBLAZE_BUCKET_ID,
+            });
+
+            const uploadResponse = await b2.uploadFile({
+                uploadUrl: response.data.uploadUrl,
+                uploadAuthToken: response.data.authorizationToken,
+                fileName: fileName,
+                data: fileBuffer,
+            });
+
+            const bucketName = process.env.BACKBLAZE_BUCKET;
+            const uploadedFileName = uploadResponse.data.fileName;
+            const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
+            media.push({
+                url: fileUrl,
+                type: file.mimetype.includes("image") ? "image" : "video"
+            });
+        }
+
         const newPost = new Post({ userId, content, media });
 
-        // Save the post to the database
         await newPost.save();
 
         // Populate the userId field with additional user data
@@ -7589,7 +7650,7 @@ router.post('/send-message', async (req, res) => {
             newMessage.media = [];
             // Iterate through each media file and upload to Backblaze B2
             for (const mediaFile of message.media) {
-                const fileName = `${Date.now()}_${mediaFile.name.replace(/ /g, '_')}`;
+                const fileName = `chats/${Date.now()}_${mediaFile.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const fileBuffer = mediaFile.file;
 
                 await b2.authorize();
@@ -8040,15 +8101,67 @@ const scheduleEventNotifications = async (event) => {
 
 
 
-router.post('/create-event', upload6.single('file'), async (req, res) => {
+// router.post('/create-event', upload6.single('file'), async (req, res) => {
+//     try {
+//         const eventData = JSON.parse(req.body.data); // Parse the JSON data
+//         const { user, title, details, category, startDate, startTime, endDate, endTime, attendanceType, location, eventLink } = eventData;
+
+//         // Create a new Event object
+//         const event = new Event({
+//             user,
+//             banner_image: req.file.path,
+//             title,
+//             details,
+//             category,
+//             startDate,
+//             startTime,
+//             endDate,
+//             endTime,
+//             location,
+//             attendanceType,
+//             eventLink
+//         });
+
+//         // Save the event to the database
+//         const savedEvent = await event.save();
+
+//         res.status(201).json({ message: 'Event created successfully' });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Server Error' });
+//     }
+// });
+
+router.post('/create-event', upload10.single('file'), async (req, res) => {
     try {
         const eventData = JSON.parse(req.body.data); // Parse the JSON data
         const { user, title, details, category, startDate, startTime, endDate, endTime, attendanceType, location, eventLink } = eventData;
 
+        // Generate a sanitized filename
+        const sanitizedFilename = req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `events/${Date.now()}_${sanitizedFilename}`;
+
+        // Upload the file to Backblaze B2
+        await b2.authorize();
+        const response = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const uploadResponse = await b2.uploadFile({
+            uploadUrl: response.data.uploadUrl,
+            uploadAuthToken: response.data.authorizationToken,
+            fileName: fileName,
+            data: req.file.buffer,
+        });
+
+        const bucketName = process.env.BACKBLAZE_BUCKET;
+        const uploadedFileName = uploadResponse.data.fileName;
+        const fileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
         // Create a new Event object
         const event = new Event({
             user,
-            banner_image: req.file.path,
+            banner_image: fileUrl, // Use the B2 file URL
             title,
             details,
             category,
@@ -9641,7 +9754,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9706,7 +9819,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9772,7 +9885,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9835,7 +9948,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/ /g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -11145,6 +11258,61 @@ router.get('/marketplace/listings/:userId', async (req, res) => {
     } catch (error) {
         console.error('Error getting listings:', error);
         res.status(500).json({ error: 'An error occurred while fetching listings' });
+    }
+});
+
+
+router.get('/check-profile-photos', async (req, res) => {
+    try {
+        const users = await User.find({}, 'profilePhoto');
+
+        for (const user of users) {
+            if (user.profilePhoto) {
+                try {
+                    await axios.get(user.profilePhoto);
+                } catch (error) {
+                    if (error.response && error.response.status === 401) {
+                        // Delete the profilePhoto if it results in 404
+                        user.profilePhoto = undefined;
+                        await user.save();
+                    }
+                }
+            }
+        }
+
+        return res.status(200).json({ message: 'Profile photos checked and cleaned.' });
+    } catch (error) {
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.get('/check-post-media', async (req, res) => {
+    try {
+        const posts = await Post.find({}, 'media');
+
+        for (const post of posts) {
+            let isMediaAccessible = true;
+
+            for (const media of post.media) {
+                try {
+                    await axios.get(media.url);
+                } catch (error) {
+                    if (error.response && error.response.status === 401) {
+                        // If any media is not accessible, set the flag to false
+                        isMediaAccessible = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!isMediaAccessible) {
+                await Post.findByIdAndDelete(post._id);
+            }
+        }
+
+        return res.status(200).json({ message: 'Posts with inaccessible media removed.' });
+    } catch (error) {
+        return res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
