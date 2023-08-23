@@ -11249,7 +11249,7 @@ router.get('/marketplace/listings/:userId', async (req, res) => {
         const listings = await Listing.find({ user: userId })
             .populate('user', 'firstname lastname profilePhoto education personal')
             .populate({
-                path: 'itemsForSale.category housingAndResources.category academicAssistance.category',
+                path: 'jobListing.category itemsForSale.category housingAndResources.category academicAssistance.category',
                 model: 'ListingCategory',
             })
             .sort({ createdAt: -1 });
@@ -11258,6 +11258,56 @@ router.get('/marketplace/listings/:userId', async (req, res) => {
     } catch (error) {
         console.error('Error getting listings:', error);
         res.status(500).json({ error: 'An error occurred while fetching listings' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/marketplace/seller/{sellerId}/followers:
+ *   get:
+ *     summary: Get followers of a specific seller
+ *     tags: [User]
+ *     parameters:
+ *       - name: sellerId
+ *         in: path
+ *         description: ID of the seller whose followers to retrieve
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the seller's followers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 followers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while fetching followers
+ */
+router.get('/marketplace/seller/:sellerId/followers', async (req, res) => {
+    const { sellerId } = req.params;
+    try {
+        // Find all followers of the seller
+        const followers = await ListingUserFollowing.find({ seller: sellerId })
+            .populate('follower', 'firstname lastname personal education profilePhoto');
+        res.json({ followers });
+    } catch (error) {
+        console.error('Error fetching followers:', error);
+        res.status(500).json({ error: 'An error occurred while fetching followers' });
     }
 });
 
