@@ -450,6 +450,21 @@ router.post("/mentor-logout", async (req, res) => {
   }
 });
 
+// Logout Donor
+router.post("/donor-logout", async (req, res) => {
+  const donorId = req.body.id;
+  try {
+    // Remove the token from the donor's document
+    const donor = await Donors.findOne({ _id: donorId });
+    donor.token = null;
+    await donor.save();
+
+    res.status(200).send({ message: "Logout successful" });
+  } catch (error) {
+    res.status(500).send({ error: "Internal Server Error" });
+  }
+});
+
 // Logout Admin
 router.post("/admin-logout", auth2, async (req, res) => {
   const adminId = req.body.id;

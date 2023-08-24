@@ -7632,6 +7632,8 @@ router.put('/update-message-status/:receiverId/:senderId', async (req, res) => {
 router.post('/send-message', async (req, res) => {
     try {
         const message = req.body;
+        console.log(message)
+        
         // Assuming the message object is sent in the request body
 
         // Determine the message type
