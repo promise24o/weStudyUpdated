@@ -1534,8 +1534,8 @@ router.post("/verify-donor-otp", async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // Update the donor's status to Active
-    donor.status = "Active";
+    // Update the donor's status to Profile Pending
+    donor.status = "Profile Pending";
     await donor.save();
 
     // Remove the verified OTP record
@@ -1753,7 +1753,7 @@ router.post("/user-request-otp", async (req, res) => {
 router.post("/donor-request-otp", async (req, res) => {
   try {
     const { email } = req.body;
-
+    
     // Check if the email exists in the Donors collection
     const existingDonor = await Donors.findOne({ email });
     if (!existingDonor) {

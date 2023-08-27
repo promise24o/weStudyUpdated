@@ -49,7 +49,14 @@ const donorsSchema = new mongoose.Schema ({
     status: {
         type: String,
         enum: [
-            "Pending", "Active", "Suspended",
+            "Pending",
+            "Profile Pending",
+            "Application Submitted",
+            "Under Review",
+            "Approved",
+            "Active",
+            "Suspended",
+            "Rejected",
         ],
         default: "Pending",
         required: true

@@ -283,6 +283,10 @@ const listingNotificationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'user'
     },
+    message: {
+        type: String,
+        required: true,
+    },
     listing: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'listings'

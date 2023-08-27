@@ -35,7 +35,7 @@ const FriendRequest = require("../models/FriendRequest");
 const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
-const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity } = require("../models/MarketPlace");
+const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity, ListingNotification } = require("../models/MarketPlace");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -3988,7 +3988,7 @@ router.get('/reels', async (req, res) => {
             .populate({
                 path: 'comments.user',
                 select: 'firstname lastname profilePhoto liveFeedSettings',
-            })
+            }).sort({ createdAt: -1 })
             .exec();
         res.json(reels);
     } catch (error) {
@@ -8445,7 +8445,7 @@ router.get('/events/notifications/:userId', async (req, res) => {
     try {
         const notifications = await EventNotification.find({
             recipient: userId
-        });
+        }).sort({ date: -1 });
 
         res.json({ notifications });
     } catch (error) {
@@ -9737,6 +9737,7 @@ router.get("/marketplace/listing-categories", async (req, res) => {
 router.post("/marketplace/create-listing/:listingType", upload10.array("files"), async (req, res) => {
     try {
         const listing = req.params.listingType;
+
         if (listing === "itemsForSale") {
             const {
                 user,
@@ -9795,7 +9796,23 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
                     media
                 }
             });
+           
+            // Send notifications to all followers of the seller
+            const followers = await ListingUserFollowing.find({ seller: user }).populate('follower');
+            const sellerDetails = await User.findById(user)
 
+            const notificationMessage = `A seller you follow, ${sellerDetails.firstname + ' ' + sellerDetails.lastname} has created a new Listing on the marketplace - ${title.toUpperCase()}`;
+
+            for (const follower of followers) {
+                await ListingNotification.create({
+                    recipient: follower.follower,
+                    sender: user,
+                    listing: newItemListing._id,
+                    action: "created",
+                    isSystemNotification: true,
+                    message: notificationMessage
+                });
+            }
             return res.status(200).json({ message: "Listing created successfully" });
         }
         if (listing === "housingAndResources") {
@@ -9866,6 +9883,23 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
                 }
             });
 
+            // Send notifications to all followers of the seller
+            const followers = await ListingUserFollowing.find({ seller: user }).populate('follower');
+            const sellerDetails = await User.findById(user)
+
+            const notificationMessage = `A seller you follow, ${sellerDetails.firstname + ' ' + sellerDetails.lastname} has created a new Listing on the marketplace - ${title.toUpperCase()}`;
+
+            for (const follower of followers) {
+                await ListingNotification.create({
+                    recipient: follower.follower,
+                    sender: user,
+                    listing: newItemListing._id,
+                    action: "created",
+                    isSystemNotification: true,
+                    message: notificationMessage
+                });
+            }
+
             return res.status(200).json({ message: "Listing created successfully" });
         }
         if (listing === "academicAssistance") {
@@ -9927,6 +9961,23 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
                     media
                 }
             });
+
+            // Send notifications to all followers of the seller
+            const followers = await ListingUserFollowing.find({ seller: user }).populate('follower');
+            const sellerDetails = await User.findById(user)
+
+            const notificationMessage = `A seller you follow, ${sellerDetails.firstname + ' ' + sellerDetails.lastname} has created a new Listing on the marketplace - ${title.toUpperCase()}`;
+
+            for (const follower of followers) {
+                await ListingNotification.create({
+                    recipient: follower.follower,
+                    sender: user,
+                    listing: newItemListing._id,
+                    action: "created",
+                    isSystemNotification: true,
+                    message: notificationMessage
+                });
+            }
 
             return res.status(200).json({ message: "Listing created successfully" });
         }
@@ -9992,6 +10043,23 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
                 }
             });
 
+            // Send notifications to all followers of the seller
+            const followers = await ListingUserFollowing.find({ seller: user }).populate('follower');
+            const sellerDetails = await User.findById(user)
+
+            const notificationMessage = `A seller you follow, ${sellerDetails.firstname + ' ' + sellerDetails.lastname} has created a new Listing on the marketplace - ${title.toUpperCase()}`;
+
+            for (const follower of followers) {
+                await ListingNotification.create({
+                    recipient: follower.follower,
+                    sender: user,
+                    listing: newItemListing._id,
+                    action: "created",
+                    isSystemNotification: true,
+                    message: notificationMessage
+                });
+            }
+
             return res.status(200).json({ message: "Listing created successfully" });
         }
 
@@ -10000,6 +10068,52 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
+
+/**
+ * @swagger
+ * /users/marketplace/notifications/{userId}:
+ *   get:
+ *     summary: Get marketplace notifications for a user (buyer)
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID.
+ *     responses:
+ *       200:
+ *         description: List of marketplace notifications retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notifications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ListingNotification'
+ *       500:
+ *         description: Server error.
+ */
+
+// Route to get all marketplace notifications of a user (buyer)
+router.get('/marketplace/notifications/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const notifications = await ListingNotification.find({
+            recipient: userId
+        }).sort({ date: -1 });
+
+        res.json({ notifications });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 
 /**
  * @swagger
@@ -10036,7 +10150,7 @@ router.get('/marketplace/listings', async (req, res) => {
     try {
         // Get all listings and populate the user field
         const listings = await Listing.find()
-            .populate('user', 'firstname lastname profilePhoto education personal')
+            .populate('user', 'firstname lastname profilePhoto education personal createdAt')
             .populate({
                 path: 'itemsForSale.category housingAndResources.category academicAssistance.category jobListing.category',
                 model: 'ListingCategory',
@@ -10218,7 +10332,7 @@ router.get('/marketplace/bookmarks/:userId', async (req, res) => {
             .populate({
                 path: 'listing',
                 populate: [
-                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal createdAt' },
                     { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
                 ]
             });
@@ -10280,7 +10394,7 @@ router.get('/marketplace/listing/:id', async (req, res) => {
         const id = req.params.id;
 
         // Assuming you have a Listing model defined
-        const listing = await Listing.findById(id).populate('user', 'firstname lastname profilePhoto education personal')
+        const listing = await Listing.findById(id).populate('user', 'firstname lastname profilePhoto education personal createdAt')
             .populate({
                 path: 'itemsForSale.category housingAndResources.category academicAssistance.category',
                 model: 'ListingCategory',
@@ -10582,8 +10696,8 @@ router.post('/marketplace/send-message', async (req, res) => {
         // Find or create the chat between sender and receiver
         let chat = await MarketplaceMessage.findOne({
             $or: [
-                { sender: senderId, receiver: recipientId },
-                { sender: recipientId, receiver: senderId }
+                { sender: senderId, receiver: recipientId, listing:listingId },
+                { sender: recipientId, receiver: senderId, listing: listingId }
             ]
         });
 
@@ -10856,7 +10970,7 @@ router.get('/marketplace/followings/:userId', async (req, res) => {
         // Find all followings of the user
         const followings = await ListingUserFollowing.find({ follower: userId })
             .populate([
-                { path: 'seller', select: 'firstname lastname personal education profilePhoto' },
+                { path: 'seller', select: 'firstname lastname personal email education profilePhoto' },
                 { path: 'follower', select: 'firstname lastname personal education profilePhoto' }
             ]);
         res.json({ followings });
@@ -10865,6 +10979,62 @@ router.get('/marketplace/followings/:userId', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching followings' });
     }
 });
+
+/**
+ * @swagger
+ * /users/marketplace/followers/{userId}:
+ *   get:
+ *     summary: Get followers of a user
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         description: ID of the user whose followers to retrieve
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with the list of followers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 followers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/UserFollowing'
+ *       '500':
+ *         description: An error occurred while fetching followers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: An error occurred while fetching followers
+ */
+
+// Get all followers of a particular user
+router.get('/marketplace/followers/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        // Find all followers of the user
+        const followers = await ListingUserFollowing.find({ seller: userId })
+            .populate([
+                { path: 'seller', select: 'firstname lastname personal education profilePhoto' },
+                { path: 'follower', select: 'firstname lastname personal email profilePhoto' }
+            ]);
+        res.json({ followers });
+    } catch (error) {
+        console.error('Error fetching followers:', error);
+        res.status(500).json({ error: 'An error occurred while fetching followers' });
+    }
+});
+
 
 /**
  * @swagger
@@ -10924,8 +11094,13 @@ router.delete('/marketplace/:followerId/unfollow/:sellerId', async (req, res) =>
     const { followerId, sellerId } = req.params;
 
     try {
-        // Check if the following exists
-        const existingFollowing = await ListingUserFollowing.findOneAndDelete({ follower: followerId, seller: sellerId });
+        // Check if the following exists for the given follower and seller
+        const existingFollowing = await ListingUserFollowing.findOneAndDelete({
+            $or: [
+                { follower: followerId, seller: sellerId },
+                { follower: sellerId, seller: followerId } // Check if it exists in reversed order
+            ]
+        });
 
         if (existingFollowing) {
             res.json({ message: 'Unfollowed successfully' });
@@ -10990,18 +11165,18 @@ router.post('/marketplace/recent-activity', async (req, res) => {
     try {
         const currentDateTime = new Date();
 
-        // Using the upsert option to either insert or update the recent activity
-        const result = await MarketplaceRecentActivity.updateOne(
+        // Upserting the recent activity
+        const result = await MarketplaceRecentActivity.findOneAndUpdate(
             { user: userId, listing: listingId },
             { $set: { dateVisited: currentDateTime } },
-            { upsert: true }
+            { upsert: true, new: true } // Setting "new" to true returns the updated document
         );
 
-        if (result.ok) {
-            if (result.upserted) {
-                res.json({ message: 'Recent activity stored successfully' });
+        if (result) {
+            if (result._id) {
+                res.json({ message: 'Recent activity stored or updated successfully' });
             } else {
-                res.json({ message: 'Recent activity updated successfully' });
+                res.status(500).json({ error: 'An error occurred while storing recent activity' });
             }
         } else {
             res.status(500).json({ error: 'An error occurred while storing recent activity' });
@@ -11011,6 +11186,7 @@ router.post('/marketplace/recent-activity', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while storing recent activity' });
     }
 });
+
 
 /**
  * @swagger
@@ -11058,7 +11234,7 @@ router.get('/marketplace/recent-activity/:userId', async (req, res) => {
             .populate({
                 path: 'listing',
                 populate: [
-                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal createdAt' },
                     { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
                 ]
             }).sort({ dateVisited:-1});
@@ -11114,7 +11290,7 @@ router.get('/marketplace/clicked-listings/:userId', async (req, res) => {
             .populate({
                 path: 'listing',
                 populate: [
-                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal createdAt' },
                     { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
                 ]
             });
@@ -11143,7 +11319,7 @@ router.get('/marketplace/saved-listings/:userId', async (req, res) => {
             .populate({
                 path: 'listing',
                 populate: [
-                    { path: 'user', select: 'firstname lastname profilePhoto education personal' },
+                    { path: 'user', select: 'firstname lastname profilePhoto education personal createdAt' },
                     { path: 'itemsForSale.category housingAndResources.category academicAssistance.category', model: 'ListingCategory' }
                 ]
             });
@@ -11249,7 +11425,7 @@ router.get('/marketplace/listings/:userId', async (req, res) => {
     try {
         // Get listings for the specific user and populate the required fields
         const listings = await Listing.find({ user: userId })
-            .populate('user', 'firstname lastname profilePhoto education personal')
+            .populate('user', 'firstname lastname profilePhoto education personal createdAt')
             .populate({
                 path: 'jobListing.category itemsForSale.category housingAndResources.category academicAssistance.category',
                 model: 'ListingCategory',
@@ -11313,6 +11489,205 @@ router.get('/marketplace/seller/:sellerId/followers', async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /users/marketplace/category/{category}:
+ *   get:
+ *     summary: Get marketplace items by category
+ *     tags: [User]
+ *     parameters:
+ *       - name: category
+ *         in: path
+ *         description: Title of the category to retrieve items from
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response with items under the specified category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MarketplaceItem'
+ *       '404':
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       '500':
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+router.get('/marketplace/category/:category', async (req, res) => {
+    const { category } = req.params;
+    try {
+        const categoryExists = await ListingCategory.findOne({ title: { $regex: new RegExp(category, "i") } });
+
+        if (!categoryExists) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+        const listingType = categoryExists.listingType;
+
+        const itemsUnderCategory = await Listing.find({
+            'listingType': listingType,
+            [`${listingType}.category`]: categoryExists._id
+        }).populate('user', 'firstname lastname profilePhoto education personal createdAt')
+            .populate({
+                path: 'itemsForSale.category housingAndResources.category academicAssistance.category jobListing.category',
+                model: 'ListingCategory',
+            })
+            .sort({ createdAt: -1 });
+
+        const sortedListings = shuffleArray(itemsUnderCategory);;
+
+        res.json({sortedListings});
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/marketplace/notifications/unread/{userId}:
+ *   get:
+ *     summary: Count unread marketplace notifications for a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID.
+ *     responses:
+ *       200:
+ *         description: Count of unread marketplace notifications retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 unreadCount:
+ *                   type: integer
+ *       500:
+ *         description: Server error.
+ */
+
+// Route to count the number of unread marketplace notifications for a user
+router.get('/marketplace/notifications/unread/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const unreadCount = await ListingNotification.countDocuments({
+            recipient: userId,
+            isRead: false
+        });
+
+        res.json({ unreadCount });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /users/marketplace/notifications/mark-read/{userId}:
+ *   put:
+ *     summary: Mark all marketplace notifications as read for a user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: User ID.
+ *     responses:
+ *       200:
+ *         description: All marketplace notifications marked as read successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Success message.
+ *       500:
+ *         description: Server error.
+ */
+
+// Route to mark all marketplace notifications as read for a user
+router.put('/marketplace/notifications/mark-read/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        await ListingNotification.updateMany(
+            { recipient: userId, isRead: false },
+            { $set: { isRead: true } }
+        );
+
+        res.json({ message: 'All notifications marked as read' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+
+// Route to get all messages where the user is the buyer
+router.get('/marketplace/messages/buyer/:userId', async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+      const messages = await MarketplaceMessage.find({ 'sender': userId })
+      .populate('receiver listing')
+      .sort('messages.timeSent');
+
+    res.json({ messages });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Route to get all messages where the user is the seller
+router.get('/marketplace/messages/seller/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        const messages = await MarketplaceMessage.find({ 'receiver': userId })
+            .populate('sender listing')
+            .sort('messages.timeSent');
+
+        res.json({ messages });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+ 
 
 router.get('/check-profile-photos', async (req, res) => {
     try {
