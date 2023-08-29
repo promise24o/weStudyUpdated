@@ -874,9 +874,11 @@ router.post("/register-mentor", async (req, res) => {
     // Check if the email already exists in Mentors collection
     const existingMentor = await Mentors.findOne({ email });
     if (existingMentor) {
-      return res.status(400).json({
-        message: "Email already exists. Please choose a different email.",
-      });
+      return res
+        .status(400)
+        .json({
+          message: "Email already exists. Please choose a different email.",
+        });
     }
 
     // Check if the email already exists in User collection
@@ -896,6 +898,7 @@ router.post("/register-mentor", async (req, res) => {
       source: "Registration", // Source as "Registration"
     });
 
+    const savedMentor = await mentor.save();
 
     // Save the OTP in the OTP schema
     const otpData = new OTP({ email, otp });
@@ -998,9 +1001,11 @@ router.post("/register-donor", async (req, res) => {
     // Check if the email already exists in Mentors collection
     const existingDonor = await Donors.findOne({ email });
     if (existingDonor) {
-      return res.status(400).json({
-        message: "Email already exists. Please choose a different email.",
-      });
+      return res
+        .status(400)
+        .json({
+          message: "Email already exists. Please choose a different email.",
+        });
     }
 
     // // Check if the email already exists in User collection
@@ -1012,6 +1017,12 @@ router.post("/register-donor", async (req, res) => {
     const salt = await bcrypt.genSalt(Number(process.env.SALT));
     const hashPassword = await bcrypt.hash(password, salt);
 
+    const donors = new Donors({
+      fullname,
+      email,
+      password: hashPassword,
+      status: "Pending", // Default status for new donors
+    }).save();
 
     // Save the OTP in the OTP schema
     const otpData = new OTP({ email, otp });
