@@ -12215,58 +12215,52 @@ router.post('/raise/apply-for-raise/:userId', upload10.fields([{ name: 'semester
 });
 
 
+/**
+ * @swagger
+ * /users/raise/get-user-applications/{userId}:
+ *   get:
+ *     summary: Get all raise applications of a user
+ *     description: Retrieves all raise applications submitted by the specified user.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to retrieve raise applications for.
+ *     responses:
+ *       200:
+ *         description: Raise applications fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 raiseApplications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RaiseApplication'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+router.get('/raise/get-user-applications/:userId', async (req, res) => {
+    const userId = req.params.userId;
 
-router.get('/check-profile-photos', async (req, res) => {
     try {
-        const users = await User.find({}, 'profilePhoto');
-
-        for (const user of users) {
-            if (user.profilePhoto) {
-                try {
-                    await axios.get(user.profilePhoto);
-                } catch (error) {
-                    if (error.response && error.response.status === 401) {
-                        // Delete the profilePhoto if it results in 404
-                        user.profilePhoto = undefined;
-                        await user.save();
-                    }
-                }
-            }
-        }
-
-        return res.status(200).json({ message: 'Profile photos checked and cleaned.' });
+        const raiseApplications = await RaiseApplication.find({ user: userId });
+        res.status(200).json({ raiseApplications });
     } catch (error) {
-        return res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-router.get('/check-post-media', async (req, res) => {
-    try {
-        const posts = await Post.find({}, 'media');
-
-        for (const post of posts) {
-            let isMediaAccessible = true;
-
-            for (const media of post.media) {
-                try {
-                    await axios.get(media.url);
-                } catch (error) {
-                    if (error.response && error.response.status === 401) {
-                        // If any media is not accessible, set the flag to false
-                        isMediaAccessible = false;
-                        break;
-                    }
-                }
-            }
-
-            if (!isMediaAccessible) {
-                await Post.findByIdAndDelete(post._id);
-            }
-        }
-
-        return res.status(200).json({ message: 'Posts with inaccessible media removed.' });
-    } catch (error) {
-        return res.status(500).json({ error: 'Internal Server Error' });
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
     }
 });
 

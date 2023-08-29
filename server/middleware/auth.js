@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { User } = require('../models/Users');
 const { Mentors } = require('../models/Mentors');
 const Admin = require('../models/Admin');
-const Donors = require('../models/Donors');
+const {Donors} = require('../models/Donors');
 
 const auth = async (req, res, next) => {
     try { // Get token from header

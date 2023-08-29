@@ -140,34 +140,20 @@ const donorApplicationSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    agreementFile: {
-        type: String,
-        required: true,
-    },
     status: {
         type: String,
         enum: [
+            "Pending",
+            "Profile Pending",
             "Application Submitted",
             "Under Review",
-            "Pending Agreement",
-            "Agreement Completed",
             "Approved",
             "Active",
             "Suspended",
-            "Rejected",
-            "Completed"
+            "Rejected"
         ],
-        default: "Application Submitted"
+        default: "Pending"
     },
-    reasons: [{
-        action: {
-            type: String,
-        },
-        date: {
-            type: Date,
-            default: Date.now
-        }
-    }],
     lastUpdated: [
         {
             admin: {
@@ -256,6 +242,37 @@ const raiseApplicationSchema = new mongoose.Schema({
         type: String, 
         required: true,
     },
+    bannerImageFile: {
+        type: String,
+        required: true,
+    },
+    agreementFile: {
+        type: String,
+    },
+    status: {
+        type: String,
+        enum: [
+            "Application Submitted",
+            "Under Review",
+            "Pending Agreement",
+            "Agreement Completed",
+            "Approved",
+            "Active",
+            "Suspended",
+            "Rejected",
+            "Completed"
+        ],
+        default: "Application Submitted"
+    },
+    reasons: [{
+        action: {
+            type: String,
+        },
+        date: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     lastUpdated: [
         {
             admin: {
