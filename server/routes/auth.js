@@ -18,7 +18,7 @@ const toTitleCase = require("../utils/helper");
 const ejs = require("ejs");
 const fs = require("fs");
 const path = require("path");
-const Donors = require("../models/Donors");
+const {Donors} = require("../models/Donors");
 const VerificationBadge = require("../models/VerificationBadge");
 
 app.use(useragent.express());
