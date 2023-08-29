@@ -11657,6 +11657,44 @@ router.put('/marketplace/notifications/mark-read/:userId', async (req, res) => {
 });
 
 
+/**
+ * @swagger
+ * /users/marketplace/messages/buyer/{userId}:
+ *   get:
+ *     summary: Get messages where the user is the buyer
+ *     description: Retrieves messages where the specified user is the buyer.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user who is the buyer.
+ *     responses:
+ *       200:
+ *         description: Messages fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MarketplaceMessage'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
 // Route to get all messages where the user is the buyer
 router.get('/marketplace/messages/buyer/:userId', async (req, res) => {
   const userId = req.params.userId;
@@ -11672,6 +11710,44 @@ router.get('/marketplace/messages/buyer/:userId', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+/**
+ * @swagger
+ * /users/marketplace/messages/seller/{userId}:
+ *   get:
+ *     summary: Get messages where the user is the seller
+ *     description: Retrieves messages where the specified user is the seller.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user who is the seller.
+ *     responses:
+ *       200:
+ *         description: Messages fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MarketplaceMessage'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 
 // Route to get all messages where the user is the seller
 router.get('/marketplace/messages/seller/:userId', async (req, res) => {
@@ -11690,6 +11766,130 @@ router.get('/marketplace/messages/seller/:userId', async (req, res) => {
 });
  
 
+
+/**
+ * @swagger
+ * /users/become-donor/{userId}:
+ *   post:
+ *     summary: Submit or update a donor application
+ *     description: Submits or updates a donor application for the specified donor.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the donor to submit or update the application for.
+ *       - in: formData
+ *         name: file
+ *         type: file
+ *         required: true
+ *         description: Identification file to upload.
+ *       - in: formData
+ *         name: dob
+ *         type: string
+ *         required: true
+ *         description: Date of Birth of the donor.
+ *       - in: formData
+ *         name: contactAddress
+ *         type: string
+ *         required: true
+ *         description: Contact address of the donor.
+ *       - in: formData
+ *         name: phoneNo
+ *         type: string
+ *         required: true
+ *         description: Phone number of the donor.
+ *       - in: formData
+ *         name: sourceOfFunds
+ *         type: string
+ *         required: true
+ *         description: Source of funds for the donation.
+ *       - in: formData
+ *         name: donationPurpose
+ *         type: string
+ *         required: true
+ *         description: Purpose of the donation.
+ *       - in: formData
+ *         name: backgroundAffiliations
+ *         type: string
+ *         required: true
+ *         description: Background affiliations of the donor.
+ *       - in: formData
+ *         name: organization
+ *         type: string
+ *         required: true
+ *         description: Organization of the donor.
+ *       - in: formData
+ *         name: linkedinProfile
+ *         type: string
+ *         description: LinkedIn profile URL of the donor.
+ *       - in: formData
+ *         name: facebookUsername
+ *         type: string
+ *         description: Facebook username of the donor.
+ *       - in: formData
+ *         name: twitterHandle
+ *         type: string
+ *         description: Twitter handle of the donor.
+ *       - in: formData
+ *         name: amlAcknowledge
+ *         type: boolean
+ *         required: true
+ *         description: Anti-Money Laundering (AML) acknowledgment.
+ *     responses:
+ *       200:
+ *         description: Donor application updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 donor:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *       201:
+ *         description: Donor application submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 donor:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: No photo uploaded or required fields missing
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       404:
+ *         description: Donor not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 
 router.post('/raise/become-donor/:userId', upload10.single('file'), async (req, res) => {
     const userId = req.params.userId;
@@ -11804,6 +12004,44 @@ router.post('/raise/become-donor/:userId', upload10.single('file'), async (req, 
         });
     }
 });
+
+/**
+ * @swagger
+ * /users/raise/notifications/{userId}:
+ *   get:
+ *     summary: Get notifications for a user
+ *     description: Retrieves notifications for the specified user.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to retrieve notifications for.
+ *     responses:
+ *       200:
+ *         description: Notifications fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notifications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/DonorNotification'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 
 // Route to get notifications for a user
 router.get('/raise/notifications/:userId', async (req, res) => {

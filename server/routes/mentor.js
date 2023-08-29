@@ -1,36 +1,34 @@
 const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMentor");
-const cloudinary = require ("cloudinary").v2;
 const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const multer = require ("multer");
 const {Mentors, Schedule, MentorSessions} = require ("../models/Mentors");
 const router = require ("express").Router ();
-const crypto = require ("crypto");
 const bcrypt = require ("bcrypt");
 const { User } = require("../models/Users");
 const Chat = require("../models/Chat");
+const B2 = require('backblaze-b2');
 
 
-// Configure Cloudinary credentials
-cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET });
 
-// Configure Multer to use Cloudinary as the storage engine
-const randomString = crypto.randomBytes (8).toString ('hex');
-const storage = new CloudinaryStorage ({
-    cloudinary: cloudinary,
-    params: {
-        folder: "/mentors/avatars",
-        format: async () => "png",
-        public_id: () => randomString
-    }
-});
+// Create a multer storage engine
+const storage = multer.memoryStorage();
 
-// Create a multer instance with the storage engine and limits (if necessary)
-const upload = multer ({
+const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 1024 * 1024 * 5,
-        fieldSize: 1024 * 1024 * 5, // 5MB field size limit (adjust as needed)
-    }
+        fileSize: 20 * 1024 * 1024,
+    },
+});
+
+
+// Backblazer Authentication 
+const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
+const applicationKey = process.env.BACKBLAZE_APP_KEY;
+
+
+const b2 = new B2({
+    applicationKeyId: applicationKeyId,
+    applicationKey: applicationKey
 });
 
 
@@ -282,12 +280,37 @@ router.post ("/upload-avatar/:mentorId", upload.single ("file"), async (req, res
         // Update the mentor's photo in the database
 
         // const result = await cloudinary.uploader.upload (req.file.path);
+        if (!req.file) {
+            return res.status(400).json({ error: "No photo uploaded" });
+        }
+
+        // Upload the avatar image to Backblaze B2
+        const fileName = `mentorAvatars/${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
+        const fileBuffer = req.file.buffer;
+
+        await b2.authorize();
+
+        const response = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const uploadResponse = await b2.uploadFile({
+            uploadUrl: response.data.uploadUrl,
+            uploadAuthToken: response.data.authorizationToken,
+            fileName: fileName,
+            data: fileBuffer,
+        });
+
+        const bucketName = process.env.BACKBLAZE_BUCKET;
+        const uploadedFileName = uploadResponse.data.fileName;
+        const avatar = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+
 
         const updatedMentor = await Mentors.findOneAndUpdate ({
             _id: mentorId
         }, {
             $set: {
-                avatar: req.file.path
+                avatar: avatar
             }
         }, {new: true}).select ("-password -token");
 
