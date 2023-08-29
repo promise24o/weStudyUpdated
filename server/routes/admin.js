@@ -22,6 +22,7 @@ const MentorApplication = require ("../models/MentorApplication");
 const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMentor");
 const VerificationBadge = require ("../models/VerificationBadge");
 const { ListingCategory } = require("../models/MarketPlace");
+const { Donors, DonorApplication, DonorNotification } = require("../models/Donors");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
@@ -1181,6 +1182,103 @@ router.get ("/mentors-applications", async (req, res) => {
         res.status(200).json({ mentors: filteredMentorApplications, mentors2: filteredMentorApplications2 });
     } catch (err) {
         res.status (500).json ({message: err.message});
+    }
+});
+
+router.get ("/donors-applications", async (req, res) => {
+    try {
+        const donorsApplication = await DonorApplication.find().populate({
+            path: "user",
+            select: "-password -token",  
+        }).sort({ createdAt: -1 });
+        const filteredDonorApplications = donorsApplication.filter((donorApp) => donorApp.userId !== null);
+
+        res.status(200).json({ donors: filteredDonorApplications });
+    } catch (err) {
+        res.status (500).json ({message: err.message});
+    }
+});
+
+router.get("/donor-application/:id", async (req, res) => {
+    const id = req.params.id;
+    try {
+        const donorApplication = await DonorApplication.findById(id).populate({
+            path: "user",
+            select: "-password -token",
+        }).sort({ createdAt: -1 });
+
+        if (!donorApplication) {
+            return res.status(404).json({ message: "Donor application not found" });
+        }
+
+        res.status(200).json({ donorApplication });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+
+router.put('/update-donor-application-status/:id', async (req, res) => {
+    const id = req.params.id;
+    const { status, adminId } = req.body;
+
+    try {
+        let donorApplication = await DonorApplication.findById(id);
+
+        if (!donorApplication) {
+            return res.status(404).json({ error: 'Donor application not found' });
+        }
+
+        donorApplication.status = status;
+        donorApplication.lastUpdated.push({ admin: adminId, action: `Status updated to ${status}`, dateUpdated: new Date() });
+        await donorApplication.save();
+
+        if (donorApplication.applicationSource == "user") {
+            const user = await User.findOne({ _id: donorApplication.user });
+
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            if (status === 'Approved') {
+                user.isDonor = true;
+                user.isDonorStatus = 'Approved';
+            } else {
+                user.isDonor = false;
+                user.isDonorStatus = status;
+            }
+
+            await user.save();
+        } else if (donorApplication.applicationSource == "Donors") {
+            const donor = await Donors.findById(donorApplication.user);
+
+            if (!donor) {
+                return res.status(404).json({ error: 'Donor not found' });
+            }
+            if (status === 'Approved') {
+                donor.status = 'Approved';
+            }else{
+                donor.status = status;
+            }
+            await donor.save();
+        }
+
+
+        // Send notification to the user
+        const notificationMessage = `The status of your donor application has been changed to <strong>${status}</strong>`;
+        const notification = new DonorNotification({ recipient: donorApplication.user, action: notificationMessage, applicationSource: donorApplication.applicationSource });
+        await notification.save();
+
+        const application = await DonorApplication.findById(id).populate({
+            path: "user",
+            select: "-password -token",
+        });
+
+        res.status(200).json({ message: `Status changed to ${status}`, donor: application });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
     }
 });
 

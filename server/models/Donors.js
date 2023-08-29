@@ -1,8 +1,8 @@
-const mongoose = require ("mongoose");
-const jwt = require ("jsonwebtoken");
+const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
 
 
-const donorsSchema = new mongoose.Schema ({
+const donorsSchema = new mongoose.Schema({
     fullname: {
         type: String,
         required: true
@@ -82,15 +82,136 @@ const donorsSchema = new mongoose.Schema ({
     ]
 });
 
-donorsSchema.set ("timestamps", true);
+donorsSchema.set("timestamps", true);
+
+const donorApplicationSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        refPath: 'applicationSource',
+        required: true
+    },
+    applicationSource: {
+        type: String,
+        required: true,
+        enum: ['user', 'Donors']
+    },
+    dob: {
+        type: Date,
+        required: true,
+    },
+    contactAddress: {
+        type: String,
+        required: true,
+    },
+    phoneNo: {
+        type: String,
+        required: true,
+    },
+    sourceOfFunds: {
+        type: String,
+        required: true,
+    },
+    donationPurpose: {
+        type: String,
+        required: true,
+    },
+    backgroundAffiliations: {
+        type: String,
+        required: true,
+    },
+    organization: {
+        type: String,
+        required: true,
+    },
+    linkedinProfile: {
+        type: String,
+    },
+    facebookUsername: {
+        type: String,
+    },
+    twitterHandle: {
+        type: String,
+    },
+    amlAcknowledge: {
+        type: Boolean,
+        required: true,
+    },
+    identificationFile: {
+        type: String,
+        required: true,
+    },
+    status: {
+        type: String,
+        enum: [
+            "Pending",
+            "Profile Pending",
+            "Application Submitted",
+            "Under Review",
+            "Approved",
+            "Active",
+            "Suspended",
+            "Rejected"
+        ],
+        default: "Pending"
+    },
+    lastUpdated: [
+        {
+            admin: {
+                type: mongoose.ObjectId,
+                required: true,
+                ref: "Admin"
+            },
+            action: {
+                type: String,
+                required: true
+            },
+            dateUpdated: {
+                type: Date,
+                default: Date.now
+            }
+        }
+    ],
+}, {
+    timestamps: true,
+});
+
+const notificationSchema = new mongoose.Schema({
+    recipient: {
+        type: mongoose.Schema.Types.ObjectId,
+        refPath: 'applicationSource',
+        required: true
+    },
+    applicationSource: {
+        type: String,
+        required: true,
+        enum: ['user', 'Donors']
+    },
+    action: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: Date,
+        default: Date.now
+    },
+    isRead: {
+        type: Boolean,
+        default: false
+    },
+});
+
 
 donorsSchema.methods.generateAuthToken = async function () {
-    const token = jwt.sign ({
+    const token = jwt.sign({
         _id: this._id
-    }, process.env.JWT_SECRET_KEY, {expiresIn: "1d"});
+    }, process.env.JWT_SECRET_KEY, { expiresIn: "1d" });
     this.token = token;
-    await this.save ();
+    await this.save();
     return token;
 };
 
-module.exports = mongoose.model ("Donors", donorsSchema);
+module.exports = {
+    Donors: mongoose.model('Donors', donorsSchema),
+    DonorApplication: mongoose.model('DonorApplication', donorApplicationSchema),
+    DonorNotification: mongoose.model('DonorNotification', notificationSchema),
+};

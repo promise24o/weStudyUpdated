@@ -36,6 +36,7 @@ const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
 const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity, ListingNotification } = require("../models/MarketPlace");
+const { DonorApplication, DonorNotification } = require("../models/Donors");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -857,7 +858,7 @@ router.post("/upload-avatar/:userId", upload10.single("file"), async (req, res) 
         }
 
         // Upload the avatar image to Backblaze B2
-        const fileName = `avatars/${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const fileName = `avatars/${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
         const fileBuffer = req.file.buffer;
 
         await b2.authorize();
@@ -3783,7 +3784,7 @@ router.post("/stories/:userId", upload10.single("file"), async (req, res) => {
 
         let story = await Story.findOne({ id: id });
 
-        const fileName = `stories/${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const fileName = `stories/${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
         const fileBuffer = req.file.buffer;
 
         await b2.authorize();
@@ -3903,7 +3904,7 @@ router.post("/create-reels/:user", upload10.single("file"), async (req, res) => 
         } = JSON.parse(req.body.data);
 
         // Generate a sanitized filename
-        const sanitizedFilename = req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_');
+        const sanitizedFilename = req.file.originalname.replace(/\s+/g, '_');
         const fileName = `reels/${Date.now()}_${sanitizedFilename}`;
 
         // Upload the file to Backblaze B2
@@ -4962,7 +4963,7 @@ router.post("/share-post", upload10.array("file", 10), async (req, res) => {
         const media = [];
 
         for (const file of files) {
-            const fileName = `posts/${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const fileName = `posts/${Date.now()}_${file.originalname.replace(/\s+/g, '_')}`;
             const fileBuffer = file.buffer;
 
             await b2.authorize();
@@ -7652,7 +7653,7 @@ router.post('/send-message', async (req, res) => {
             newMessage.media = [];
             // Iterate through each media file and upload to Backblaze B2
             for (const mediaFile of message.media) {
-                const fileName = `chats/${Date.now()}_${mediaFile.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const fileName = `chats/${Date.now()}_${mediaFile.name.replace(/\s+/g, '_')}`;
                 const fileBuffer = mediaFile.file;
 
                 await b2.authorize();
@@ -8140,7 +8141,7 @@ router.post('/create-event', upload10.single('file'), async (req, res) => {
         const { user, title, details, category, startDate, startTime, endDate, endTime, attendanceType, location, eventLink } = eventData;
 
         // Generate a sanitized filename
-        const sanitizedFilename = req.file.originalname.replace(/[^a-zA-Z0-9]/g, '_');
+        const sanitizedFilename = req.file.originalname.replace(/\s+/g, '_');
         const fileName = `events/${Date.now()}_${sanitizedFilename}`;
 
         // Upload the file to Backblaze B2
@@ -9757,7 +9758,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/\s+/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9838,7 +9839,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/\s+/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -9921,7 +9922,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/\s+/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -10001,7 +10002,7 @@ router.post("/marketplace/create-listing/:listingType", upload10.array("files"),
 
             const media = [];
             for (const mediaFile of req.files) {
-                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const fileName = `marketplace/${Date.now()}_${mediaFile.originalname.replace(/\s+/g, '_')}`;
                 const fileBuffer = mediaFile.buffer;
 
                 await b2.authorize();
@@ -11661,8 +11662,8 @@ router.get('/marketplace/messages/buyer/:userId', async (req, res) => {
   const userId = req.params.userId;
 
   try {
-      const messages = await MarketplaceMessage.find({ 'sender': userId })
-      .populate('receiver listing')
+      const messages = await MarketplaceMessage.find({ 'receiver': userId })
+      .populate('sender receiver listing')
       .sort('messages.timeSent');
 
     res.json({ messages });
@@ -11677,8 +11678,8 @@ router.get('/marketplace/messages/seller/:userId', async (req, res) => {
     const userId = req.params.userId;
 
     try {
-        const messages = await MarketplaceMessage.find({ 'receiver': userId })
-            .populate('sender listing')
+        const messages = await MarketplaceMessage.find({ 'sender': userId })
+            .populate('sender receiver listing')
             .sort('messages.timeSent');
 
         res.json({ messages });
@@ -11688,6 +11689,137 @@ router.get('/marketplace/messages/seller/:userId', async (req, res) => {
     }
 });
  
+
+
+router.post('/raise/become-donor/:userId', upload10.single('file'), async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+      
+        const existingUser = await User.findById(userId);
+        if (!existingUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ error: "No photo uploaded" });
+        }
+
+        // Upload the avatar image to Backblaze B2
+        const fileName = `donorsIdentity/${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`;
+        const fileBuffer = req.file.buffer;
+
+        await b2.authorize();
+
+        const response = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const uploadResponse = await b2.uploadFile({
+            uploadUrl: response.data.uploadUrl,
+            uploadAuthToken: response.data.authorizationToken,
+            fileName: fileName,
+            data: fileBuffer,
+        });
+
+        const bucketName = process.env.BACKBLAZE_BUCKET;
+        const uploadedFileName = uploadResponse.data.fileName;
+        const identificationFile = `https://f005.backblazeb2.com/file/${bucketName}/${uploadedFileName}`;
+        
+        // Check if an existing donor application exists for the user
+        const existingApplication = await DonorApplication.findOne({ user: userId });
+
+        const {
+            dob,
+            contactAddress,
+            phoneNo,
+            sourceOfFunds,
+            donationPurpose,
+            backgroundAffiliations,
+            organization,
+            linkedinProfile,
+            facebookUsername,
+            twitterHandle,
+            amlAcknowledge
+        } = req.body;
+
+        const donorApplicationData = {
+            user: userId,
+            applicationSource: 'user',
+            dob,
+            contactAddress,
+            phoneNo,
+            sourceOfFunds,
+            donationPurpose,
+            backgroundAffiliations,
+            organization,
+            linkedinProfile,
+            facebookUsername,
+            twitterHandle,
+            amlAcknowledge: amlAcknowledge === 'true',  
+            identificationFile,
+        };
+
+        if (existingApplication) {
+            // Update existing donor application
+            existingApplication.set(donorApplicationData);
+            await existingApplication.save();
+
+            //update the user account data
+            existingUser.isDonorStatus = "Application Submitted";
+            existingUser.save();
+
+            const user = await User.findById(userId)
+                .select("-password -token")
+                .populate("friends.userId", "firstname lastname profilePhoto");
+
+            res.status(200).json({
+                message: "Donor application updated successfully!",
+                user: user
+            });
+        } else {
+            // Create a new donor application
+            const newDonorApplication = new DonorApplication(donorApplicationData);
+            await newDonorApplication.save();
+
+
+            //update the user account data
+            existingUser.isDonorStatus = "Application Submitted";
+            existingUser.save();
+
+            const user = await User.findById(userId)
+                .select("-password -token")
+                .populate("friends.userId", "firstname lastname profilePhoto");
+
+            res.status(200).json({
+                message: "Donor application updated successfully!",
+                user:user
+            });
+        }
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "An error occurred while processing the donor application.",
+        });
+    }
+});
+
+// Route to get notifications for a user
+router.get('/raise/notifications/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        const notifications = await DonorNotification.find({ recipient: userId })
+            .sort({ date: -1 })
+            .populate('recipient', '-password -token');  
+
+        res.status(200).json({ notifications });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching notifications.' });
+    }
+});
+
 
 router.get('/check-profile-photos', async (req, res) => {
     try {

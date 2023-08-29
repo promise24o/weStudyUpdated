@@ -36,7 +36,25 @@ const userSchema = new mongoose.Schema ({
         type: Boolean,
         default: false
     },
+    isDonor: {
+        type: Boolean,
+        default: false
+    },
     isMentorStatus: {
+        type: String,
+        enum: [
+            "Pending",
+            "Profile Pending",
+            "Application Submitted",
+            "Under Review",
+            "Approved",
+            "Active",
+            "Suspended",
+            "Rejected"
+        ],
+        default: "Pending"
+    },
+    isDonorStatus: {
         type: String,
         enum: [
             "Pending",
@@ -57,10 +75,6 @@ const userSchema = new mongoose.Schema ({
             "Suspended",
         ],
         default: "Active"
-    },
-    isDonor: {
-        type: Boolean,
-        default: false
     },
     verified: {
         type: Boolean,

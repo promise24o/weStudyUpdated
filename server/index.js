@@ -13,6 +13,7 @@ const connection = require ('./lib/mongoose');
 const userRoutes = require ('./routes/user');
 const authRoutes = require ('./routes/auth');
 const mentorRoutes = require ('./routes/mentor');
+const donorRoutes = require ('./routes/donor');
 const testRoutes = require ('./routes/test');
 const adminRoutes = require ('./routes/admin');
 const publicRoutes = require ('./routes/public');
@@ -20,6 +21,7 @@ const AIRoutes = require ('./routes/acadabooai');
 const Mentors = require ('./models/Mentors');
 const {User} = require ('./models/Users');
 const B2 = require('backblaze-b2');
+const { MarketplaceMessage } = require('./models/MarketPlace');
 
 
 //Setup Backblaze
@@ -48,9 +50,9 @@ const userSockets = new Map ();
 
 io.on ('connection', (socket) => {
     console.log ('A client connected');
-
+    
     // Add the socket to the clients array
-    clients.push (socket);
+    clients.push (socket.id);
 
     socket.on ('postUpdate', async (post) => {
         const postId = post._id;
@@ -139,8 +141,6 @@ io.on ('connection', (socket) => {
             userSockets.delete (userId);
         }
     });
-
-    
 
     socket.on ('sendMessage', async (message) => {
         try { 
@@ -331,80 +331,25 @@ io.on ('connection', (socket) => {
             console.error ('Error saving message:', error);
         }
     });
+ 
+    // Listen for new marketplace messages from clients
+    socket.on('sendMessageMarketplace', async (message) => {
+        const userId = message.sender;
+        const receiver = message.receiver;
+        try {
+            const messages = await MarketplaceMessage.find({ 'receiver': userId })
+                .populate('sender receiver listing')
+                .sort({ 'messages.timeSent': 1 }); // Corrected sorting
 
-    // socket.on ('sendMessage', async (message) => {
-    //     try { // Create a new message object
-    //         const newMessage = {
-    //             sender: message.sender._id,
-    //             receiver: message.receiver._id,
-    //             content: message.content,
-    //             timeSent: message.timeSent,
-    //             status: message.status
-    //         };
-
-    //         // Create a new emitted message object
-    //         const emittedMessage = {
-    //             sender: {
-    //                 model: message.sender.model,
-    //                 _id: message.sender._id
-    //             },
-    //             receiver: {
-    //                 model: message.receiver.model,
-    //                 _id: message.receiver._id
-    //             },
-    //             content: message.content,
-    //             timeSent: message.timeSent,
-    //             status: message.status
-    //         };
-
-
-    //         // Find the chat between sender A and receiver B
-    //         let chat = await Chat.findOne ({sender: message.sender._id, receiver: message.receiver._id});
-
-    //         if (! chat) { // Check if the reverse chat exists between sender B and receiver A
-    //             chat = await Chat.findOne ({sender: message.receiver._id, receiver: message.sender._id});
-    //         }
-
-    //         if (! chat) { // Create a new chat if neither chat exists
-    //             chat = new Chat ({
-    //                 sender: message.sender._id,
-    //                 receiver: message.receiver._id,
-    //                 senderModel: message.sender.model,
-    //                 receiverModel: message.receiver.model,
-    //                 messages: [newMessage]
-    //             });
-    //         } else { // Add the new message to the messages array
-    //             chat.messages.push (newMessage);
-    //         }
-
-    //         // Save the chat document
-    //         await chat.save ();
-
-    //         // Emit the message to the chat room
-    //         io.to (message.receiver._id).emit ('message', emittedMessage);
-    //         console.log ("Message Sent to " + message.receiver._id)
-    //     } catch (error) {
-    //         console.error ('Error saving message:', error);
-    //     }
-    // });
-
-    socket.on ("typing", (data) => { // Generate a unique room name based on sender and receiver IDs
-        const roomName = `${
-            data.sender
-        }-${
-            data.receiver
-        }`;
-
-        // Join the room representing the conversation between sender and receiver
-        socket.join (roomName);
-
-        // Broadcast the "is typing" status to the receiver in the room
-        socket.broadcast.to (roomName).emit ("typing", {
-            userId: data.sender,
-            isTyping: data.isTyping
-        });
+            console.log("worked")
+            socket.broadcast.emit('receiveMessageMarketplace', messages); 
+            
+        } catch (error) {
+            console.error(error);
+            socket.emit('receiveMessageMarketplace', { error: 'Server error' });  
+        }
     });
-
+    
     socket.on ('disconnect', () => {
         console.log ('Client disconnected');
         // Remove the disconnected socket from the clients array
@@ -442,6 +387,7 @@ app.use ('/api/admin/', adminRoutes);
 app.use ('/api/public/', publicRoutes);
 app.use ('/api/ai/', AIRoutes);
 app.use ('/api/mentor/', mentorRoutes);
+app.use ('/api/donor/', donorRoutes);
 app.use ('/api/test/', testRoutes);
 
 // Swagger Definition
