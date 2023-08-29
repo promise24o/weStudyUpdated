@@ -1191,7 +1191,7 @@ router.get ("/donors-applications", async (req, res) => {
             path: "user",
             select: "-password -token",  
         }).sort({ createdAt: -1 });
-        const filteredDonorApplications = donorsApplication.filter((donorApp) => donorApp.userId !== null);
+        const filteredDonorApplications = donorsApplication.filter((donorApp) => donorApp.user !== null);
 
         res.status(200).json({ donors: filteredDonorApplications });
     } catch (err) {
@@ -1286,12 +1286,12 @@ router.get ("/mentor-application/:id", async (req, res) => {
     try {
         const applicationId = req.params.id;
 
-        let mentorApplication = await MentorApplication.findOne ({_id: applicationId}).populate ("userId", "firstname lastname profilePhoto education createdAt").populate ("faculty");
+        let mentorApplication = await MentorApplication.findOne ({_id: applicationId}).populate ("userId", "firstname lastname email profilePhoto education createdAt").populate ("faculty");
 
         let userType = "student";
 
         if (! mentorApplication) {
-            mentorApplication = await MentorApplicationWithMentor.findOne ({_id: applicationId}).populate ("mentorId", "fullname avatar").populate ("faculty");
+            mentorApplication = await MentorApplicationWithMentor.findOne({ _id: applicationId }).populate("mentorId", "fullname email avatar").populate ("faculty");
 
             userType = "mentor";
         }

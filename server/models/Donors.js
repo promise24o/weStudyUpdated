@@ -140,20 +140,34 @@ const donorApplicationSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    agreementFile: {
+        type: String,
+        required: true,
+    },
     status: {
         type: String,
         enum: [
-            "Pending",
-            "Profile Pending",
             "Application Submitted",
             "Under Review",
+            "Pending Agreement",
+            "Agreement Completed",
             "Approved",
             "Active",
             "Suspended",
-            "Rejected"
+            "Rejected",
+            "Completed"
         ],
-        default: "Pending"
+        default: "Application Submitted"
     },
+    reasons: [{
+        action: {
+            type: String,
+        },
+        date: {
+            type: Date,
+            default: Date.now
+        }
+    }],
     lastUpdated: [
         {
             admin: {
@@ -200,6 +214,66 @@ const notificationSchema = new mongoose.Schema({
     },
 });
 
+const raiseApplicationSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.ObjectId,
+        required: true,
+        ref: "user",
+    },
+    title: {
+        type: String,
+        required: true,
+    },
+    reason: {
+        type: String,
+        required: true,
+    },
+    amountRequest: {
+        type: Number,
+        required: true,
+    },
+    displayPersonalDetails: {
+        type: Boolean,
+        default: true,
+    },
+    dob: {
+        type: Date,
+        required: true,
+    },
+    phoneNo: {
+        type: String,
+        required: true,
+    },
+    contactAddress: {
+        type: String,
+        required: true,
+    },
+    semesterResultFile: {
+        type: String, 
+        required: true,
+    },
+    identificationFile: {
+        type: String, 
+        required: true,
+    },
+    lastUpdated: [
+        {
+            admin: {
+                type: mongoose.ObjectId,
+                required: true,
+                ref: "Admin"
+            },
+            action: {
+                type: String,
+                required: true
+            },
+            dateUpdated: {
+                type: Date,
+                default: Date.now
+            }
+        }
+    ],
+});
 
 donorsSchema.methods.generateAuthToken = async function () {
     const token = jwt.sign({
@@ -214,4 +288,5 @@ module.exports = {
     Donors: mongoose.model('Donors', donorsSchema),
     DonorApplication: mongoose.model('DonorApplication', donorApplicationSchema),
     DonorNotification: mongoose.model('DonorNotification', notificationSchema),
+    RaiseApplication: mongoose.model('RaiseApplication', raiseApplicationSchema),
 };

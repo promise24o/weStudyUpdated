@@ -36,7 +36,7 @@ const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
 const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity, ListingNotification } = require("../models/MarketPlace");
-const { DonorApplication, DonorNotification } = require("../models/Donors");
+const { DonorApplication, DonorNotification, RaiseApplication } = require("../models/Donors");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -12057,6 +12057,163 @@ router.get('/raise/notifications/:userId', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching notifications.' });
     }
 });
+
+/**
+ * @swagger
+ * /users/raise/apply-for-raise/{userId}:
+ *   post:
+ *     summary: Apply for a raise
+ *     description: Submit an application for a raise with necessary details and files.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user applying for the raise.
+ *       - in: formData
+ *         name: title
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Title of the raise application.
+ *       - in: formData
+ *         name: reason
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Reason for applying for the raise.
+ *       - in: formData
+ *         name: amountRequest
+ *         schema:
+ *           type: number
+ *         required: true
+ *         description: Amount being requested in the raise.
+ *       - in: formData
+ *         name: displayPersonalDetails
+ *         schema:
+ *           type: boolean
+ *         description: Whether to display personal details in the raise application.
+ *       - in: formData
+ *         name: dob
+ *         schema:
+ *           type: string
+ *           format: date
+ *         required: true
+ *         description: Date of birth of the applicant.
+ *       - in: formData
+ *         name: phoneNo
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Phone number of the applicant.
+ *       - in: formData
+ *         name: contactAddress
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Contact address of the applicant.
+ *       - in: formData
+ *         name: semesterResultFile
+ *         type: file
+ *         description: Semester result file to upload.
+ *         required: true
+ *       - in: formData
+ *         name: identificationFile
+ *         type: file
+ *         description: Identification file to upload.
+ *         required: true
+ *     responses:
+ *       201:
+ *         description: Raise application submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// POST route to apply for a raise
+router.post('/raise/apply-for-raise/:userId', upload10.fields([{ name: 'semesterResultFile' }, { name: 'identificationFile' }]), async (req, res) => {
+    const userId = req.params.userId;
+
+    // Create a new raise application using the schema and request body
+    const raiseApplication = new RaiseApplication({
+        user: userId,
+        title: req.body.title,
+        reason: req.body.reason,
+        amountRequest: req.body.amountRequest,
+        displayPersonalDetails: req.body.displayPersonalDetails,
+        dob: req.body.dob,
+        phoneNo: req.body.phoneNo,
+        contactAddress: req.body.contactAddress,
+        semesterResultFile: null, // We'll set this value later
+        identificationFile: null, // We'll set this value later
+    });
+
+    try {
+        // Upload the files to Backblaze B2
+        const semesterResultFileBuffer = req.files['semesterResultFile'][0].buffer;
+        const identificationFileBuffer = req.files['identificationFile'][0].buffer;
+
+        const semesterResultFileName = `raise/semesterResult/${userId}_${Date.now()}_${req.files['semesterResultFile'][0].originalname.replace(/\s+/g, '_')}`;
+        const identificationFileName = `raise/identification/${userId}_${Date.now()}_${req.files['identificationFile'][0].originalname.replace(/\s+/g, '_')}`;
+
+        await b2.authorize();
+
+        const response1 = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const response2 = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const bucketName = process.env.BACKBLAZE_BUCKET;
+
+        const uploadResult1 = await b2.uploadFile({
+            uploadUrl: response1.data.uploadUrl,
+            uploadAuthToken: response1.data.authorizationToken,
+            fileName: semesterResultFileName,
+            data: semesterResultFileBuffer,
+        });
+
+        const uploadResult2 = await b2.uploadFile({
+            uploadUrl: response2.data.uploadUrl,
+            uploadAuthToken: response2.data.authorizationToken,
+            fileName: identificationFileName,
+            data: identificationFileBuffer,
+        });
+
+        const semesterResultFileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadResult1.data.fileName}`;
+        const identificationFileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadResult2.data.fileName}`;
+
+        // Update the raise application with file URLs
+        raiseApplication.semesterResultFile = semesterResultFileUrl;
+        raiseApplication.identificationFile = identificationFileUrl;
+
+        // Save the raise application to the database
+        const savedApplication = await raiseApplication.save();
+        res.status(201).json({message:"Raise Application submitted successfully"});
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'An error occurred while processing the raise application.' });
+    }
+});
+
 
 
 router.get('/check-profile-photos', async (req, res) => {
