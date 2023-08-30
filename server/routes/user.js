@@ -37,6 +37,7 @@ const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
 const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity, ListingNotification } = require("../models/MarketPlace");
 const { DonorApplication, DonorNotification, RaiseApplication, RaiseCategory } = require("../models/Donors");
+const BankDetails = require("../models/BankDetails");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -12489,6 +12490,246 @@ router.put('/raise/sign-agreement/:id',  async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while signing the agreement' });
+    }
+});
+
+router.get('/banks', async (req, res) => {
+    try {
+        const response = await axios.get('https://api.paystack.co/bank', {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+            }
+        });
+
+        const banks = response.data;
+        res.status(200).json({ banks });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching banks.' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /bank-details:
+ *   post:
+ *     summary: Save user bank details
+ *     description: Creates a new bank details entry for the authenticated user.
+ *     tags:
+ *       - Bank Details
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: body
+ *         name: bankDetails
+ *         schema:
+ *           type: object
+ *           properties:
+ *             bankName:
+ *               type: string
+ *             bankCode:
+ *               type: string
+ *             accountNumber:
+ *               type: string
+ *             bvn:
+ *               type: string
+ *         required: true
+ *         description: Bank details to be saved.
+ *     responses:
+ *       201:
+ *         description: Bank details saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 bankDetails:
+ *                   $ref: '#/components/schemas/BankDetails'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Create a new bank detail entry
+router.post('/bank-details/', async (req, res) => {
+    try {
+        const { bankName, bankCode, accountNumber, bvn } = req.body;
+        const userId = req.user._id;  
+
+        // Create a new bank details object
+        const bankDetails = new BankDetails({
+            user: userId,
+            bank: { name: bankName, code: bankCode },
+            accountNumber,
+            bvn
+        });
+
+        // Save the bank details to the database
+        await bankDetails.save();
+
+        res.status(201).json({ message: 'Bank details saved successfully', bankDetails });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while saving bank details' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/add-bank-details/{userId}:
+ *   post:
+ *     summary: Save user bank details
+ *     description: Creates a new bank details entry for the specified user.
+ *     tags:
+ *       - Bank Details
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to save bank details for.
+ *       - in: body
+ *         name: bankDetails
+ *         schema:
+ *           type: object
+ *           properties:
+ *             bankName:
+ *               type: string
+ *             bankCode:
+ *               type: string
+ *             accountNumber:
+ *               type: string
+ *             bvn:
+ *               type: string
+ *         required: true
+ *         description: Bank details to be saved.
+ *     responses:
+ *       201:
+ *         description: Bank details saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 bankDetails:
+ *                   $ref: '#/components/schemas/BankDetails'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+router.post('/add-bank-details/:userId', async (req, res) => {
+    try {
+        const { bankName, bankCode, accountNumber, bvn } = req.body;
+        const userId = req.params.userId;
+
+        // Check if bank details already exist for the user
+        let bankDetails = await BankDetails.findOne({ user: userId });
+
+        if (bankDetails) {
+            // Bank details already exist, update them
+            bankDetails.bank.name = bankName;
+            bankDetails.bank.code = bankCode;
+            bankDetails.accountNumber = accountNumber;
+            bankDetails.bvn = bvn;
+            await bankDetails.save();
+        } else {
+            // Bank details do not exist, create new entry
+            bankDetails = new BankDetails({
+                user: userId,
+                bank: { name: bankName, code: bankCode },
+                accountNumber,
+                bvn
+            });
+            await bankDetails.save();
+        }
+
+        res.status(201).json({ message: 'Bank details saved successfully', bankDetails });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while saving bank details' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/bank-details/{userId}:
+ *   get:
+ *     summary: Fetch user bank details
+ *     description: Retrieves the bank details for the specified user.
+ *     tags:
+ *       - Bank Details
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to fetch bank details for.
+ *     responses:
+ *       200:
+ *         description: Bank details fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 bankDetails:
+ *                   $ref: '#/components/schemas/BankDetails'
+ *       404:
+ *         description: Bank details not found for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+
+router.get('/bank-details/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Find the bank details for the specified user
+        const bankDetails = await BankDetails.findOne({ user: userId });
+
+        if (!bankDetails) {
+            return res.status(404).json({ message: 'Bank details not found for the user' });
+        }
+
+        res.status(200).json({ bankDetails });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching bank details' });
     }
 });
 

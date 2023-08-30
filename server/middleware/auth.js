@@ -50,7 +50,7 @@ const auth = async (req, res, next) => {
 const auth2 = async(req, res, next) => { // Get the token from the request headers
 
     const token = req.headers.authorization.replace('Bearer ', '').trim().replace(/"/g, '');
-
+    
     // Check if a token exists
     if (!token) {
         return res.status(401).json({ message: 'Authentication failed. No token provided.' });

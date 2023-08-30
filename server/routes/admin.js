@@ -4,6 +4,7 @@ const cloudinary = require ("cloudinary").v2;
 const {CloudinaryStorage} = require ("multer-storage-cloudinary");
 const multer = require ("multer");
 const b2 = require('../utils/backblazer'); 
+const crypto = require("crypto");
 
 // Models
 const {User} = require ("../models/Users");
@@ -23,6 +24,9 @@ const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMen
 const VerificationBadge = require ("../models/VerificationBadge");
 const { ListingCategory } = require("../models/MarketPlace");
 const { Donors, DonorApplication, DonorNotification, RaiseCategory, RaiseApplication } = require("../models/Donors");
+const BankDetails = require("../models/BankDetails");
+const { default: axios } = require("axios");
+const BankCustomer = require("../models/BankCustomer");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
@@ -1748,4 +1752,214 @@ router.put('/raise/update-agreement/:id', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while updating the status' });
     }
 });
+
+router.get('/banks', async (req, res) => {
+    try {
+        const response = await axios.get('https://api.paystack.co/bank', {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_SANDBOX}`
+            }
+        });
+
+        const banks = response.data;
+        res.status(200).json({ banks });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching banks.' });
+    }
+});
+
+router.get('/bank-details/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Find the bank details for the specified user
+        const bankDetails = await BankDetails.findOne({ user: userId }).populate("user");
+
+        if (!bankDetails) {
+            return res.status(404).json({ message: 'Bank details not found for the user' });
+        }
+
+        res.status(200).json({ bankDetails });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching bank details' });
+    }
+});
+
+
+router.post('/bank/create-customer', auth2, async (req, res) => {
+    try {
+        const { email, firstName, lastName, phone, user } = req.body;
+
+        const data = {
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            phone
+        };
+
+        const config = {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_SANDBOX}`,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const response = await axios.post('https://api.paystack.co/customer', data, config);
+
+        // Check if the response is successful before proceeding
+        if (response.data.status === true) {
+            // Check if the user already exists in the BankCustomer collection
+            const existingCustomer = await BankCustomer.findOne({ user: user });
+
+            if (existingCustomer) {
+                return res.status(400).json({ error: 'This user is already a customer' });
+            }
+
+            // Save the BankCustomer details to the database
+            const bankCustomer = new BankCustomer({
+                user: user,
+                customerCode: response.data.data.customer_code
+            });
+
+            await bankCustomer.save();
+
+            res.status(201).json({ message: "Customer created successfully" });
+        } else {
+            res.status(400).json({ error: 'Failed to create customer with Paystack' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while creating the customer' });
+    }
+});
+
+// Fetch customer by user ID
+router.get('/bank/fetch-customer/:userId', auth2, async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Find the BankCustomer associated with the user ID
+        const bankCustomer = await BankCustomer.findOne({ user: userId });
+
+        if (!bankCustomer) {
+            return res.status(404).json({ message: 'BankCustomer not found for the user' });
+        }
+
+        res.status(200).json({ bankCustomer });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching BankCustomer' });
+    }
+});
+
+
+router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
+    try {
+
+        const userId = req.params.userId;
+
+        const existingCustomer  = await BankCustomer.findOne({ user: userId });
+        const existingDetails   = await BankDetails.findOne({ user: userId }).populate("user");
+
+        if (!existingDetails) {
+            return res.status(400).json({ error: 'User does not have bank details' });
+        }
+
+        if (!existingCustomer) {
+            return res.status(400).json({ error: 'This user is not a customer' });
+        }
+
+        const customerCode = existingCustomer.customerCode
+        
+        const data = {
+            country: 'NG',
+            type: 'bank_account',
+            account_number: existingDetails.accountNumber,
+            bvn: existingDetails.bvn,
+            bank_code: existingDetails.bank.code,
+            first_name: existingDetails.user.firstname,
+            last_name: existingDetails.user.lastname
+        };
+
+        const config = {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_SANDBOX}`,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const response = await axios.post(`https://api.paystack.co/customer/${customerCode}/identification`, data, config);
+
+        res.status(200).json({message: response.data.message});
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while verifying identification' });
+    }
+});
+
+// Middleware to verify Paystack signature
+const verifyPaystackSignature = (request, response, next) => {
+    const headerSignature = request.headers['x-paystack-signature'];
+    const payload = JSON.stringify(request.body);
+    const secretKey = process.env.PAYSTACK_SECRET_SANDBOX;
+
+    const hmac = crypto.createHmac('sha512', secretKey);
+    hmac.update(payload);
+    const calculatedSignature = hmac.digest('hex');
+
+    if (calculatedSignature === headerSignature) {
+        next();
+    } else {
+        response.status(400).json({ error: 'Invalid request.' });
+    }
+};
+
+
+router.post('/webhook/paystack', verifyPaystackSignature, async (req, res) => {
+    const event = req.body.event;
+    const data = req.body.data;
+
+    switch (event) {
+        case WebHookTypes.dva_failed:
+            // Log notification.
+            // await WebhookNotification.create({...});
+            const aidFailed = await FinancialAid.findOneAndUpdate(
+                { 'user.email': data.customer.email, status: AidStatus.approved },
+                { dva_status: DVAIssueStatus.rejected }
+            );
+            if (!aidFailed) {
+                return res.json({ message: 'Received.' });
+            }
+            // ...
+
+        case WebHookTypes.dva_success:
+            // Log notification.
+            // await WebhookNotification.create({...});
+            const aidSuccess = await FinancialAid.findOneAndUpdate(
+                { 'user.email': data.customer.email, status: AidStatus.approved },
+                { dva_status: DVAIssueStatus.issued }
+            );
+            if (!aidSuccess) {
+                return res.json({ message: 'Received.' });
+            }
+            // ...
+            
+        case WebHookTypes.transfer_success:
+            // Log notification.
+            // await WebhookNotification.create({...});
+            const aidTransfer = await FinancialAid.findOne(
+                { 'user.email': data.customer.email, status: AidStatus.approved }
+            );
+            if (!aidTransfer) {
+                return res.json({ message: 'Received.' });
+            }
+            // ...
+            break;
+    }
+
+    res.json({ message: 'Received.' });
+});
+
 module.exports = router;

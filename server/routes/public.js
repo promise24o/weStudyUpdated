@@ -3,6 +3,7 @@ const {ScholarshipCategory, Scholarship} = require ('../models/Scholarships');
 const {CourseCategory, Course} = require ("../models/Courses");
 const {CommunityCategory, CommunityCenter} = require ("../models/CommunityCenter");
 const Institutions = require ('../models/Institutions');
+const crypto = require("crypto");
 
 
 router.get ('/', function (req, res) {
@@ -778,6 +779,33 @@ router.get ("/institution/:id", async (req, res) => {
     } catch (error) {
         res.status (500).send ({message: "Internal Server Error", error: error});
     }
+});
+
+
+
+// Middleware to verify Paystack signature
+const verifyPaystackSignature = (request, response, next) => {
+    const headerSignature = request.headers['x-paystack-signature'];
+    const payload = JSON.stringify(request.body);
+    const secretKey = process.env.PAYSTACK_SECRET_SANDBOX;
+
+    const hmac = crypto.createHmac('sha512', secretKey);
+    hmac.update(payload);
+    const calculatedSignature = hmac.digest('hex');
+
+    if (calculatedSignature === headerSignature) {
+        next();
+    } else {
+        response.status(400).json({ error: 'Invalid request.' });
+    }
+};
+
+
+router.post('/webhook/paystack', verifyPaystackSignature, async (req, res) => {
+    // Retrieve the request's body
+    const event = req.body;
+    // Do something with event
+    return res.status(200).json(event)
 });
 
 
