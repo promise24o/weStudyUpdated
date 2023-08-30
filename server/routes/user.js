@@ -11769,7 +11769,7 @@ router.get('/marketplace/messages/seller/:userId', async (req, res) => {
 
 /**
  * @swagger
- * /users/become-donor/{userId}:
+ * /users/raise/become-donor/{userId}:
  *   post:
  *     summary: Submit or update a donor application
  *     description: Submits or updates a donor application for the specified donor.
