@@ -22,7 +22,7 @@ const MentorApplication = require ("../models/MentorApplication");
 const MentorApplicationWithMentor = require ("../models/MentorApplicationWithMentor");
 const VerificationBadge = require ("../models/VerificationBadge");
 const { ListingCategory } = require("../models/MarketPlace");
-const { Donors, DonorApplication, DonorNotification } = require("../models/Donors");
+const { Donors, DonorApplication, DonorNotification, RaiseCategory, RaiseApplication } = require("../models/Donors");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
@@ -1572,5 +1572,180 @@ router.put ('/update-verification-badge/:userId', async (req, res) => {
     }
 });
 
+router.post('/raise/add-category', async (req, res) => {
+    try {
+        const { title } = req.body;
+        // Create a new category instance
+        const newCategory = new RaiseCategory({ title });
 
+        // Save the new category to the database
+        await newCategory.save();
+
+        // Retrieve all categories from the database
+        const categories = await RaiseCategory.find();
+
+        res.status(201).json({ message: 'Category added successfully', categories });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'An error occurred while adding the category' });
+    }
+});
+
+router.get('/raise/categories', async (req, res) => {
+    try {
+        // Retrieve all categories from the database
+        const categories = await RaiseCategory.find();
+
+        res.status(200).json({ categories });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'An error occurred while retrieving categories' });
+    }
+});
+
+router.put('/raise/update-category/:id', async (req, res) => {
+    try {
+        const categoryId = req.params.id;
+        const { title } = req.body;
+
+        // Find the category by _id
+        const category = await RaiseCategory.findById(categoryId);
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+
+        // Update the category's title
+        category.title = title;
+
+        // Save the updated category to the database
+        await category.save();
+
+        const categories = await RaiseCategory.find();
+
+        res.status(200).json({ message: 'Category updated successfully', categories });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while updating the category' });
+    }
+});
+
+
+router.get('/raise/get-user-applications', async (req, res) => {
+    try {
+        const raiseApplications = await RaiseApplication.find().populate("user").populate("category").sort({createdAt: -1});
+        res.status(200).json({ raiseApplications });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
+
+router.get('/raise/get-user-application/:id', async (req, res) => {
+    const id = req.params.id;
+    try {
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({createdAt: -1});
+        res.status(200).json({ raiseApplication });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
+
+// PUT route for adding a log to a raise application
+router.put('/raise/add-log/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { logValue, adminId } = req.body;
+
+        // Check if the raise application exists
+        const application = await RaiseApplication.findById(id);
+        if (!application) {
+            return res.status(404).json({ error: 'Raise application not found' });
+        }
+
+        // Add the log to the application's logs array
+        application.logs.push({ action: logValue });
+        application.lastUpdated.push({ admin: adminId, action: `Added log details -  ${logValue}`, dateUpdated: new Date() });
+       
+        // Save the application with the new log
+        await application.save();
+
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+
+        res.status(200).json({ message: 'Log added successfully', raiseApplication });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while adding the log' });
+    }
+});
+
+// PUT route for updating application status
+router.put('/raise/update-application-status/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, adminId } = req.body;
+
+        // Check if the application exists
+        const application = await RaiseApplication.findById(id);
+        if (!application) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        // Update the application status
+        application.status = status;
+        
+        // Add to lastUpdated array
+        application.lastUpdated.push({ admin: adminId, action: `Changed application status to -  ${status}` });
+
+        // Save the updated application
+        await application.save();
+        
+        const notificationMessage = `The status of your Raise Application <strong>${application.title}</strong> has been changed to <strong>${status}</strong>`;
+        const notification = new DonorNotification({ recipient: application.user, action: notificationMessage, applicationSource: "user" });
+        await notification.save();
+
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+
+        res.status(200).json({ message: 'Application status updated successfully', raiseApplication });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while updating the status' });
+    }
+});
+
+// PUT route for updating application status
+router.put('/raise/update-agreement/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { editorContent, adminId } = req.body;
+
+        // Check if the application exists
+        const application = await RaiseApplication.findById(id);
+        if (!application) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        // Update the application agreement
+        application.agreement = editorContent;
+        
+        // Add to lastUpdated array
+        application.lastUpdated.push({ admin: adminId, action: `Agreement between Acadaboo and User was updated` });
+
+        // Save the updated application
+        await application.save();
+        
+        const notificationMessage = `The agreement for your Raise Application <strong>${application.title}</strong> has been <strong>${`updated`}</strong>`;
+        const notification = new DonorNotification({ recipient: application.user, action: notificationMessage, applicationSource: "user" });
+        await notification.save();
+
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+
+        res.status(200).json({ message: 'Application status updated successfully', raiseApplication });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while updating the status' });
+    }
+});
 module.exports = router;

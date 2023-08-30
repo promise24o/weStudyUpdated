@@ -175,6 +175,8 @@ const donorApplicationSchema = new mongoose.Schema({
     timestamps: true,
 });
 
+donorApplicationSchema.set("timestamps", true);
+
 const notificationSchema = new mongoose.Schema({
     recipient: {
         type: mongoose.Schema.Types.ObjectId,
@@ -209,6 +211,11 @@ const raiseApplicationSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
+    },
+    category: {
+        type: mongoose.ObjectId,
+        required: true,
+        ref: "RaiseCategory",
     },
     reason: {
         type: String,
@@ -246,8 +253,15 @@ const raiseApplicationSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    agreementFile: {
+    agreement: {
         type: String,
+    },
+    agreementSigned: {
+        type: Boolean,
+        default: false
+    },
+    agreementSignedDate: {
+        type: Date,
     },
     status: {
         type: String,
@@ -264,7 +278,7 @@ const raiseApplicationSchema = new mongoose.Schema({
         ],
         default: "Application Submitted"
     },
-    reasons: [{
+    logs: [{
         action: {
             type: String,
         },
@@ -301,9 +315,19 @@ donorsSchema.methods.generateAuthToken = async function () {
     return token;
 };
 
+const raiseCategorySchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true,
+        unique: true
+    },
+});
+raiseCategorySchema.set('timestamps', true);
+
 module.exports = {
     Donors: mongoose.model('Donors', donorsSchema),
     DonorApplication: mongoose.model('DonorApplication', donorApplicationSchema),
     DonorNotification: mongoose.model('DonorNotification', notificationSchema),
     RaiseApplication: mongoose.model('RaiseApplication', raiseApplicationSchema),
+    RaiseCategory: mongoose.model('RaiseCategory', raiseCategorySchema),
 };

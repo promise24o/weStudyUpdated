@@ -36,7 +36,7 @@ const Chat = require("../models/Chat");
 const { Reels, ReelsBookmark } = require("../models/Reels");
 const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotification } = require("../models/Events");
 const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity, ListingNotification } = require("../models/MarketPlace");
-const { DonorApplication, DonorNotification, RaiseApplication } = require("../models/Donors");
+const { DonorApplication, DonorNotification, RaiseApplication, RaiseCategory } = require("../models/Donors");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -12080,6 +12080,12 @@ router.get('/raise/notifications/:userId', async (req, res) => {
  *         required: true
  *         description: Title of the raise application.
  *       - in: formData
+ *         name: category
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Category of the raise application.
+ *       - in: formData
  *         name: reason
  *         schema:
  *           type: string
@@ -12147,13 +12153,14 @@ router.get('/raise/notifications/:userId', async (req, res) => {
  */
 
 // POST route to apply for a raise
-router.post('/raise/apply-for-raise/:userId', upload10.fields([{ name: 'semesterResultFile' }, { name: 'identificationFile' }]), async (req, res) => {
+router.post('/raise/apply-for-raise/:userId', upload10.fields([{ name: 'semesterResultFile' }, { name: 'bannerImageFile' }, { name: 'identificationFile' }]), async (req, res) => {
     const userId = req.params.userId;
 
     // Create a new raise application using the schema and request body
     const raiseApplication = new RaiseApplication({
         user: userId,
         title: req.body.title,
+        category: req.body.category,
         reason: req.body.reason,
         amountRequest: req.body.amountRequest,
         displayPersonalDetails: req.body.displayPersonalDetails,
@@ -12162,15 +12169,18 @@ router.post('/raise/apply-for-raise/:userId', upload10.fields([{ name: 'semester
         contactAddress: req.body.contactAddress,
         semesterResultFile: null, // We'll set this value later
         identificationFile: null, // We'll set this value later
+        bannerImageFile: null, // We'll set this value later
     });
 
     try {
         // Upload the files to Backblaze B2
         const semesterResultFileBuffer = req.files['semesterResultFile'][0].buffer;
         const identificationFileBuffer = req.files['identificationFile'][0].buffer;
+        const bannerImageFileBuffer = req.files['bannerImageFile'][0].buffer;
 
         const semesterResultFileName = `raise/semesterResult/${userId}_${Date.now()}_${req.files['semesterResultFile'][0].originalname.replace(/\s+/g, '_')}`;
         const identificationFileName = `raise/identification/${userId}_${Date.now()}_${req.files['identificationFile'][0].originalname.replace(/\s+/g, '_')}`;
+        const bannerImageFileName = `raise/banner/${userId}_${Date.now()}_${req.files['bannerImageFile'][0].originalname.replace(/\s+/g, '_')}`;
 
         await b2.authorize();
 
@@ -12179,6 +12189,10 @@ router.post('/raise/apply-for-raise/:userId', upload10.fields([{ name: 'semester
         });
 
         const response2 = await b2.getUploadUrl({
+            bucketId: process.env.BACKBLAZE_BUCKET_ID,
+        });
+
+        const response3 = await b2.getUploadUrl({
             bucketId: process.env.BACKBLAZE_BUCKET_ID,
         });
 
@@ -12198,12 +12212,21 @@ router.post('/raise/apply-for-raise/:userId', upload10.fields([{ name: 'semester
             data: identificationFileBuffer,
         });
 
+        const uploadResult3 = await b2.uploadFile({
+            uploadUrl: response3.data.uploadUrl,
+            uploadAuthToken: response3.data.authorizationToken,
+            fileName: bannerImageFileName,
+            data: bannerImageFileBuffer,
+        });
+
         const semesterResultFileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadResult1.data.fileName}`;
         const identificationFileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadResult2.data.fileName}`;
+        const bannerImageFileUrl = `https://f005.backblazeb2.com/file/${bucketName}/${uploadResult3.data.fileName}`;
 
         // Update the raise application with file URLs
         raiseApplication.semesterResultFile = semesterResultFileUrl;
         raiseApplication.identificationFile = identificationFileUrl;
+        raiseApplication.bannerImageFile = bannerImageFileUrl;
 
         // Save the raise application to the database
         const savedApplication = await raiseApplication.save();
@@ -12256,11 +12279,216 @@ router.get('/raise/get-user-applications/:userId', async (req, res) => {
     const userId = req.params.userId;
 
     try {
-        const raiseApplications = await RaiseApplication.find({ user: userId });
+        const raiseApplications = await RaiseApplication.find({ user: userId }).populate("user").populate("category");
         res.status(200).json({ raiseApplications });
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/raise/get-user-applications/{userId}:
+ *   get:
+ *     summary: Get all raise applications of a user
+ *     description: Retrieves all raise applications submitted by the specified user.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to retrieve raise applications for.
+ *     responses:
+ *       200:
+ *         description: Raise applications fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 raiseApplications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RaiseApplication'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+router.get('/raise/categories', async (req, res) => {
+    try {
+        // Retrieve all categories from the database
+        const categories = await RaiseCategory.find();
+
+        res.status(200).json({ categories });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'An error occurred while retrieving categories' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/raise/get-application/{id}:
+ *   get:
+ *     summary: Get a specific raise application
+ *     description: Retrieves a specific raise application by its ID.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the raise application to retrieve.
+ *     responses:
+ *       200:
+ *         description: Raise application fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 raiseApplication:
+ *                   $ref: '#/components/schemas/RaiseApplication'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+router.get('/raise/get-application/:id', async (req, res) => {
+    const id = req.params.id;
+    try {
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+        res.status(200).json({ raiseApplication });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
+
+router.get('/raise/get-application/:id', async (req, res) => {
+    const id = req.params.id;
+    try {
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+        res.status(200).json({ raiseApplication });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
+
+/**
+ * @swagger
+ * /users/raise/sign-agreement/{id}:
+ *   put:
+ *     summary: Sign an agreement for a RaiseApplication
+ *     description: Signs an agreement for a specific RaiseApplication if the user is the owner.
+ *     tags:
+ *       - Raise
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the RaiseApplication to sign an agreement for.
+ *       - in: body
+ *         name: body
+ *         description: User ID of the requester.
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             user:
+ *               type: string
+ *               description: User ID of the requester.
+ *     responses:
+ *       200:
+ *         description: Agreement signed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       403:
+ *         description: User is not the owner of the RaiseApplication
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       404:
+ *         description: RaiseApplication not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// PUT route to sign an agreement for a RaiseApplication
+router.put('/raise/sign-agreement/:id',  async (req, res) => {
+    const { id } = req.params;
+    const { user } = req.body;
+
+    try {
+        // Check if the user is the owner of the RaiseApplication
+        const raiseApplication = await RaiseApplication.findById(id);
+        if (!raiseApplication) {
+            return res.status(404).json({ error: 'RaiseApplication not found' });
+        }
+
+        // Check Ownership 
+        if(raiseApplication.user != user){
+            return res.status(403).json({ error: 'You are not the owner of this RaiseApplication' });
+        }
+
+        // Update the RaiseApplication to indicate agreement signed
+        raiseApplication.agreementSigned = true;
+        raiseApplication.status = "Agreement Completed";
+
+        // Add the log to the application's logs array
+        raiseApplication.logs.push({ action: "Application signed successfully" });
+        await raiseApplication.save();
+
+        const application = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+
+        res.status(200).json({ message: 'Agreement signed successfully', application });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while signing the agreement' });
     }
 });
 
