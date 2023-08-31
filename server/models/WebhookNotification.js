@@ -1,11 +1,15 @@
 const mongoose = require('mongoose');
 
 const webhookNotificationSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user',
+        required: true
+    },
     event: String,
     data: Object,
-    timestamp: Date,
 });
-
+webhookNotificationSchema.set('timestamps', true);
 const WebhookNotification = mongoose.model('WebhookNotification', webhookNotificationSchema);
 
 module.exports = WebhookNotification;

@@ -1860,8 +1860,8 @@ router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
 
         const userId = req.params.userId;
 
-        const existingCustomer  = await BankCustomer.findOne({ user: userId });
-        const existingDetails   = await BankDetails.findOne({ user: userId }).populate("user");
+        const existingCustomer = await BankCustomer.findOne({ user: userId });
+        const existingDetails = await BankDetails.findOne({ user: userId }).populate("user");
 
         if (!existingDetails) {
             return res.status(400).json({ error: 'User does not have bank details' });
@@ -1872,7 +1872,7 @@ router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
         }
 
         const customerCode = existingCustomer.customerCode
-        
+
         const data = {
             country: 'NG',
             type: 'bank_account',
@@ -1892,14 +1892,13 @@ router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
 
         const response = await axios.post(`https://api.paystack.co/customer/${customerCode}/identification`, data, config);
 
-       
-            
-            //Update the account details of the user and set verficied to true
-            existingDetails.verified = true; 
-            existingDetails.save();
 
-            res.status(200).json({ message: response.data.message, bankDetails: existingDetails });
-         
+        //Update the account details of the user and set verficied to true
+        // existingDetails.verified = true;
+        // existingDetails.save();
+
+        res.status(200).json({ message: response.data.message, bankDetails: existingDetails });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while verifying identification' });
