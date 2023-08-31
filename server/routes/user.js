@@ -12638,7 +12638,7 @@ router.post('/bank-details/', async (req, res) => {
 
 router.post('/add-bank-details/:userId', async (req, res) => {
     try {
-        const { bankName, bankCode, accountNumber, bvn } = req.body;
+        const { bankName, bankCode, bankSlug, accountNumber, bvn } = req.body;
         const userId = req.params.userId;
 
         // Check if bank details already exist for the user
@@ -12648,6 +12648,7 @@ router.post('/add-bank-details/:userId', async (req, res) => {
             // Bank details already exist, update them
             bankDetails.bank.name = bankName;
             bankDetails.bank.code = bankCode;
+            bankDetails.bank.slug = bankSlug;
             bankDetails.accountNumber = accountNumber;
             bankDetails.bvn = bvn;
             await bankDetails.save();
@@ -12655,7 +12656,7 @@ router.post('/add-bank-details/:userId', async (req, res) => {
             // Bank details do not exist, create new entry
             bankDetails = new BankDetails({
                 user: userId,
-                bank: { name: bankName, code: bankCode },
+                bank: { name: bankName, code: bankCode, slug:bankSlug },
                 accountNumber,
                 bvn
             });

@@ -804,6 +804,7 @@ const verifyPaystackSignature = (request, response, next) => {
 router.post('/webhook/paystack', verifyPaystackSignature, async (req, res) => {
     // Retrieve the request's body
     const event = req.body;
+    console.log(event);
     // Do something with event
     return res.status(200).json(event)
 });

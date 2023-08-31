@@ -1757,7 +1757,7 @@ router.get('/banks', async (req, res) => {
     try {
         const response = await axios.get('https://api.paystack.co/bank', {
             headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_SANDBOX}`
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`
             }
         });
 
@@ -1801,7 +1801,7 @@ router.post('/bank/create-customer', auth2, async (req, res) => {
 
         const config = {
             headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_SANDBOX}`,
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
                 'Content-Type': 'application/json'
             }
         };
@@ -1825,7 +1825,7 @@ router.post('/bank/create-customer', auth2, async (req, res) => {
 
             await bankCustomer.save();
 
-            res.status(201).json({ message: "Customer created successfully" });
+            res.status(201).json({ message: "Customer created successfully", customer: bankCustomer });
         } else {
             res.status(400).json({ error: 'Failed to create customer with Paystack' });
         }
@@ -1885,14 +1885,21 @@ router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
 
         const config = {
             headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_SANDBOX}`,
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
                 'Content-Type': 'application/json'
             }
         };
 
         const response = await axios.post(`https://api.paystack.co/customer/${customerCode}/identification`, data, config);
 
-        res.status(200).json({message: response.data.message});
+       
+            
+            //Update the account details of the user and set verficied to true
+            existingDetails.verified = true; 
+            existingDetails.save();
+
+            res.status(200).json({ message: response.data.message, bankDetails: existingDetails });
+         
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while verifying identification' });
@@ -1903,7 +1910,7 @@ router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
 const verifyPaystackSignature = (request, response, next) => {
     const headerSignature = request.headers['x-paystack-signature'];
     const payload = JSON.stringify(request.body);
-    const secretKey = process.env.PAYSTACK_SECRET_SANDBOX;
+    const secretKey = process.env.PAYSTACK_SECRET_LIVE;
 
     const hmac = crypto.createHmac('sha512', secretKey);
     hmac.update(payload);
