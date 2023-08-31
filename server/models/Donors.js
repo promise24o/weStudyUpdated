@@ -306,6 +306,8 @@ const raiseApplicationSchema = new mongoose.Schema({
     ],
 });
 
+raiseApplicationSchema.set('timestamps', true);
+
 donorsSchema.methods.generateAuthToken = async function () {
     const token = jwt.sign({
         _id: this._id

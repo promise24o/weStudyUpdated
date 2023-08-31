@@ -8,6 +8,7 @@ const { DonorNotification } = require('../models/Donors');
 const BankCustomer = require('../models/BankCustomer');
 const BankDetails = require('../models/BankDetails');
 const WebhookNotification = require('../models/WebhookNotification');
+const DedicatedVirtualAccount = require('../models/DedicatedVirtualAccount');
 
 
 router.get ('/', function (req, res) {
@@ -833,9 +834,52 @@ router.post('/webhook/paystack', async (req, res) => {
             const notification = new DonorNotification({ recipient: existingCustomer.user, action: notificationMessage, applicationSource: "user" });
             await notification.save();
         }  
+        if (event && event.event === 'dedicatedaccount.assign.failed') {
+
+            const existingCustomer = await BankCustomer.findOne({ customerCode: event.data.customer_code });
+
+            //Save webhook information
+            const webhook = new WebhookNotification({
+                event: event.event,
+                data: event.data,
+                user: existingCustomer.user
+            });
+            await webhook.save();
+
+            // Send Notification to User 
+            const notificationMessage = `Unable to create Virtual Account. Please verify your bank details or contact support`;
+            const notification = new DonorNotification({ recipient: existingCustomer.user, action: notificationMessage, applicationSource: "user" });
+            await notification.save();
+        } 
+        if (event && event.event === 'dedicatedaccount.assign.success') {
+
+            const existingCustomer = await BankCustomer.findOne({ customerCode: event.data.customer_code });
+
+            //Save webhook information
+            const webhook = new WebhookNotification({
+                event: event.event,
+                data: event.data,
+                user: existingCustomer.user
+            });
+            await webhook.save();
+
+            // Create new DVA 
+            const dva = new DedicatedVirtualAccount({
+                user: existingCustomer.user,
+                bank: event.data.dedicated_account.bank,
+                account_number: event.data.dedicated_account.account_number,
+                account_name: event.data.dedicated_account.account_name,
+            })
+            await dva.save();
+            
+            // Send Notification to User 
+            const notificationMessage = `Virtual account created successfully`;
+            const notification = new DonorNotification({ recipient: existingCustomer.user, action: notificationMessage, applicationSource: "user" });
+            await notification.save();
+        }   
         
     }
-    res.send(200);
+    res.sendStatus(200);
 });
 
 

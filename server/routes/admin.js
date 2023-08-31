@@ -27,6 +27,7 @@ const { Donors, DonorApplication, DonorNotification, RaiseCategory, RaiseApplica
 const BankDetails = require("../models/BankDetails");
 const { default: axios } = require("axios");
 const BankCustomer = require("../models/BankCustomer");
+const WebhookNotification = require("../models/WebhookNotification");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
@@ -1636,7 +1637,29 @@ router.put('/raise/update-category/:id', async (req, res) => {
 
 router.get('/raise/get-user-applications', async (req, res) => {
     try {
-        const raiseApplications = await RaiseApplication.find().populate("user").populate("category").sort({createdAt: -1});
+        const raiseApplications = await RaiseApplication.find().populate("user").populate("category").sort({ updatedAt: -1});
+        res.status(200).json({ raiseApplications });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
+
+router.get('/raise/get-user-applications/:categoryId', async (req, res) => {
+    const category = req.params.categoryId;
+    try {
+        const raiseApplications = await RaiseApplication.find({ category }).populate("user").populate("category").sort({ updatedAt: -1});
+        res.status(200).json({ raiseApplications });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
+
+router.get('/raise/get-user-applications/status/:status', async (req, res) => {
+    const status = req.params.status;
+    try {
+        const raiseApplications = await RaiseApplication.find({ status }).populate("user").populate("category").sort({ updatedAt: -1});
         res.status(200).json({ raiseApplications });
     } catch (error) {
         console.log(error);
@@ -1941,7 +1964,7 @@ router.delete('/bank/delete-customer/:userId', auth2, async (req, res) => {
     }
 });
 
-router.delete('/bank/generate-virtual-account/:userId', auth2, async (req, res) => {
+router.post('/bank/generate-virtual-account/:userId', auth2, async (req, res) => {
     try {
 
         const userId = req.params.userId;
@@ -1959,6 +1982,11 @@ router.delete('/bank/generate-virtual-account/:userId', auth2, async (req, res) 
 
         const customerCode = existingCustomer.customerCode
         
+        const data = {
+            customer: customerCode,
+            preferred_bank: 'wema-bank'
+        };
+
         const config = {
             headers: {
                 Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
@@ -1966,33 +1994,34 @@ router.delete('/bank/generate-virtual-account/:userId', auth2, async (req, res) 
             }
         };
 
-        const getCustomer = await axios.get(`https://api.paystack.co/customer/${customerCode}`,  config);
-         
-        console.log(getCustomer);
-        res.status(200).json(getCustomer.data);
-         
+        const createDVA = await axios.get(`https://api.paystack.co/dedicated_account`, data, config);        
+        
+        res.status(200).json(createDVA.data);        
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while deleting account' });
     }
 });
 
-// Middleware to verify Paystack signature
-const verifyPaystackSignature = (request, response, next) => {
-    const headerSignature = request.headers['x-paystack-signature'];
-    const payload = JSON.stringify(request.body);
-    const secretKey = process.env.PAYSTACK_SECRET_LIVE;
 
-    const hmac = crypto.createHmac('sha512', secretKey);
-    hmac.update(payload);
-    const calculatedSignature = hmac.digest('hex');
+// Fetch customer webhook notifications
+router.get('/bank/webhook-notifications/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
 
-    if (calculatedSignature === headerSignature) {
-        next();
-    } else {
-        response.status(400).json({ error: 'Invalid request.' });
+        
+        const notifications = await WebhookNotification.find({ user: userId }).sort({ createdAt: -1 });
+
+        if (!notifications) {
+            return res.status(404).json({ message: 'No Notification found for this user' });
+        }
+
+        res.status(200).json({ notifications });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching notifications' });
     }
-};
+});
 
  
 module.exports = router;

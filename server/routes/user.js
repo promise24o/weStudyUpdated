@@ -12651,6 +12651,7 @@ router.post('/add-bank-details/:userId', async (req, res) => {
             bankDetails.bank.slug = bankSlug;
             bankDetails.accountNumber = accountNumber;
             bankDetails.bvn = bvn;
+            bankDetails.verified = false,
             await bankDetails.save();
         } else {
             // Bank details do not exist, create new entry
