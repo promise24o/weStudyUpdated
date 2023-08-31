@@ -782,31 +782,16 @@ router.get ("/institution/:id", async (req, res) => {
 });
 
 
-
-// Middleware to verify Paystack signature
-const verifyPaystackSignature = (request, response, next) => {
-    const headerSignature = request.headers['x-paystack-signature'];
-    const payload = JSON.stringify(request.body);
-    const secretKey = process.env.PAYSTACK_SECRET_SANDBOX;
-
-    const hmac = crypto.createHmac('sha512', secretKey);
-    hmac.update(payload);
-    const calculatedSignature = hmac.digest('hex');
-
-    if (calculatedSignature === headerSignature) {
-        next();
-    } else {
-        response.status(400).json({ error: 'Invalid request.' });
+router.post('/webhook/paystack', async (req, res) => {
+    const secret = process.env.PAYSTACK_SECRET_LIVE;
+    //validate event
+    const hash = crypto.createHmac('sha512', secret).update(JSON.stringify(req.body)).digest('hex');
+    if (hash == req.headers['x-paystack-signature']) {
+        // Retrieve the request's body
+        const event = req.body;
+        console.log(event)
     }
-};
-
-
-router.post('/webhook/paystack', verifyPaystackSignature, async (req, res) => {
-    // Retrieve the request's body
-    const event = req.body;
-    console.log(event);
-    // Do something with event
-    return res.status(200).json(event)
+    res.send(200);
 });
 
 

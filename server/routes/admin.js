@@ -1906,6 +1906,78 @@ router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
     }
 });
 
+router.delete('/bank/delete-customer/:userId', auth2, async (req, res) => {
+    try {
+
+        const userId = req.params.userId;
+
+        const existingCustomer  = await BankCustomer.findOne({ user: userId });
+        const existingDetails   = await BankDetails.findOne({ user: userId }).populate("user");
+
+        if (!existingDetails) {
+            return res.status(400).json({ error: 'User does not have bank details' });
+        }
+
+        if (!existingCustomer) {
+            return res.status(400).json({ error: 'This user is not a customer' });
+        }
+
+        const customerCode = existingCustomer.customerCode
+        
+        const config = {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const getCustomer = await axios.get(`https://api.paystack.co/customer/${customerCode}`,  config);
+         
+        console.log(getCustomer);
+        res.status(200).json(getCustomer.data);
+         
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while deleting account' });
+    }
+});
+
+router.delete('/bank/generate-virtual-account/:userId', auth2, async (req, res) => {
+    try {
+
+        const userId = req.params.userId;
+
+        const existingCustomer  = await BankCustomer.findOne({ user: userId });
+        const existingDetails   = await BankDetails.findOne({ user: userId }).populate("user");
+
+        if (!existingDetails) {
+            return res.status(400).json({ error: 'User does not have bank details' });
+        }
+
+        if (!existingCustomer) {
+            return res.status(400).json({ error: 'This user is not a customer' });
+        }
+
+        const customerCode = existingCustomer.customerCode
+        
+        const config = {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const getCustomer = await axios.get(`https://api.paystack.co/customer/${customerCode}`,  config);
+         
+        console.log(getCustomer);
+        res.status(200).json(getCustomer.data);
+         
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while deleting account' });
+    }
+});
+
 // Middleware to verify Paystack signature
 const verifyPaystackSignature = (request, response, next) => {
     const headerSignature = request.headers['x-paystack-signature'];
@@ -1923,50 +1995,5 @@ const verifyPaystackSignature = (request, response, next) => {
     }
 };
 
-
-router.post('/webhook/paystack', verifyPaystackSignature, async (req, res) => {
-    const event = req.body.event;
-    const data = req.body.data;
-
-    switch (event) {
-        case WebHookTypes.dva_failed:
-            // Log notification.
-            // await WebhookNotification.create({...});
-            const aidFailed = await FinancialAid.findOneAndUpdate(
-                { 'user.email': data.customer.email, status: AidStatus.approved },
-                { dva_status: DVAIssueStatus.rejected }
-            );
-            if (!aidFailed) {
-                return res.json({ message: 'Received.' });
-            }
-            // ...
-
-        case WebHookTypes.dva_success:
-            // Log notification.
-            // await WebhookNotification.create({...});
-            const aidSuccess = await FinancialAid.findOneAndUpdate(
-                { 'user.email': data.customer.email, status: AidStatus.approved },
-                { dva_status: DVAIssueStatus.issued }
-            );
-            if (!aidSuccess) {
-                return res.json({ message: 'Received.' });
-            }
-            // ...
-            
-        case WebHookTypes.transfer_success:
-            // Log notification.
-            // await WebhookNotification.create({...});
-            const aidTransfer = await FinancialAid.findOne(
-                { 'user.email': data.customer.email, status: AidStatus.approved }
-            );
-            if (!aidTransfer) {
-                return res.json({ message: 'Received.' });
-            }
-            // ...
-            break;
-    }
-
-    res.json({ message: 'Received.' });
-});
-
+ 
 module.exports = router;
