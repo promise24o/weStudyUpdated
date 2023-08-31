@@ -6,6 +6,8 @@ const Institutions = require ('../models/Institutions');
 const crypto = require("crypto");
 const { DonorNotification } = require('../models/Donors');
 const BankCustomer = require('../models/BankCustomer');
+const BankDetails = require('../models/BankDetails');
+const WebhookNotification = require('../models/WebhookNotification');
 
 
 router.get ('/', function (req, res) {
@@ -806,6 +808,28 @@ router.post('/webhook/paystack', async (req, res) => {
 
             // Send Notification to User 
             const notificationMessage = `Your account verification failed. Reason <strong>${event.data.reason}</strong>`;
+            const notification = new DonorNotification({ recipient: existingCustomer.user, action: notificationMessage, applicationSource: "user" });
+            await notification.save();
+        }  
+        if (event && event.event === 'customeridentification.success') {
+          
+            const existingCustomer = await BankCustomer.findOne({ customerCode: event.data.customer_code});
+            
+            //Save webhook information
+            const webhook = new WebhookNotification({
+                event: event.event,
+                data: event.data, 
+                user: existingCustomer.user
+            });
+            await webhook.save();
+
+            //Update Bank Details 
+            const bankDetails = await BankDetails.findOne({ user: existingCustomer.user });
+            bankDetails.verified = true;
+            bankDetails.save();
+
+            // Send Notification to User 
+            const notificationMessage = `Your account is verified successfully`;
             const notification = new DonorNotification({ recipient: existingCustomer.user, action: notificationMessage, applicationSource: "user" });
             await notification.save();
         }  
