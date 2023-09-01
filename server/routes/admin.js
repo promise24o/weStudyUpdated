@@ -28,6 +28,7 @@ const BankDetails = require("../models/BankDetails");
 const { default: axios } = require("axios");
 const BankCustomer = require("../models/BankCustomer");
 const WebhookNotification = require("../models/WebhookNotification");
+const DedicatedVirtualAccount = require("../models/DedicatedVirtualAccount");
 
 // Configure Cloudinary credentials
 cloudinary.config({ cloud_name: process.env.CLOUD_NAME, api_key: process.env.CLOUD_API, api_secret: process.env.CLOUD_SECRET});
@@ -1776,6 +1777,42 @@ router.put('/raise/update-agreement/:id', async (req, res) => {
     }
 });
 
+// PUT route for updating application status
+router.put('/raise/update-duration/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { durationData, adminId } = req.body;
+
+        // Check if the application exists
+        const application = await RaiseApplication.findById(id);
+        if (!application) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        // Update the application duration data
+        application.duration.startDate = durationData.startDate;
+        application.duration.endDate = durationData.endDate;
+        
+        // Add to lastUpdated array
+        application.lastUpdated.push({ admin: adminId, action: `Update the duration start date and end date of the application` });
+
+        // Save the updated application
+        await application.save();
+        
+        const notificationMessage = `The Duration for your Raise Campaign <strong>${application.title}</strong> has been updated from <strong>${durationData.startDate}</strong> to <strong>${durationData.endDate}</strong>`;
+        const notification = new DonorNotification({ recipient: application.user, action: notificationMessage, applicationSource: "user" });
+        await notification.save();
+
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+
+        res.status(200).json({ message: 'Application Duration updated successfully', raiseApplication });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while updating the status' });
+    }
+});
+
 router.get('/banks', async (req, res) => {
     try {
         const response = await axios.get('https://api.paystack.co/bank', {
@@ -1913,20 +1950,33 @@ router.post('/bank/verify-account-details/:userId', auth2, async (req, res) => {
             }
         };
 
-        const response = await axios.post(`https://api.paystack.co/customer/${customerCode}/identification`, data, config);
+        try {
+            const response = await axios.post(`https://api.paystack.co/customer/${customerCode}/identification`, data, config);
 
+            // Update the account details of the user and set verified to true
+            // existingDetails.verified = true;
+            // await existingDetails.save();
 
-        //Update the account details of the user and set verficied to true
-        // existingDetails.verified = true;
-        // existingDetails.save();
+            res.status(200).json({ message: response.data.message, bankDetails: existingDetails });
+        } catch (error) {
+            if (error.response && error.response.status === 400) {
+                // Update the account details of the user and set verified to true
+                existingDetails.verified = true;
+                await existingDetails.save();
 
-        res.status(200).json({ message: response.data.message, bankDetails: existingDetails });
+                res.status(400).json({ error: error.response.data.message });
+            } else {
+                console.error(error);
+                res.status(500).json({ error: 'An error occurred while verifying identification' });
+            }
+        }
 
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while verifying identification' });
     }
 });
+
 
 router.delete('/bank/delete-customer/:userId', auth2, async (req, res) => {
     try {
@@ -1994,12 +2044,50 @@ router.post('/bank/generate-virtual-account/:userId', auth2, async (req, res) =>
             }
         };
 
-        const createDVA = await axios.get(`https://api.paystack.co/dedicated_account`, data, config);        
-        
+        const createDVA = await axios.post(`https://api.paystack.co/dedicated_account`, data, config);     
+
+        // Check if a DVA already exists for the user
+        const existingDVA = await DedicatedVirtualAccount.findOne({ user: existingCustomer.user });
+
+        if (!existingDVA) {
+            // Create new DVA 
+            const dva = new DedicatedVirtualAccount({
+                user: existingCustomer.user,
+                bank: createDVA.data.data.bank,
+                account_number: createDVA.data.data.account_number,
+                account_name: createDVA.data.data.account_name,
+            });
+            await dva.save();
+        }
+
+        // Send Notification to User 
+        const notificationMessage = `Virtual account created successfully`;
+        const notification = new DonorNotification({ recipient: existingCustomer.user, action: notificationMessage, applicationSource: "user" });
+        await notification.save();        
+    
         res.status(200).json(createDVA.data);        
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while deleting account' });
+    }
+});
+
+// Fetch DedicatedVirtualAccount of a user
+router.get('/bank/fetch-dva/:userId', auth2, async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Find the DedicatedVirtualAccount for the specified user
+        const dva = await DedicatedVirtualAccount.findOne({ user: userId });
+
+        if (!dva) {
+            return res.status(404).json({ message: 'DedicatedVirtualAccount not found for the user' });
+        }
+
+        res.status(200).json({ dva });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching DedicatedVirtualAccount' });
     }
 });
 

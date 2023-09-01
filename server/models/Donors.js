@@ -263,6 +263,14 @@ const raiseApplicationSchema = new mongoose.Schema({
     agreementSignedDate: {
         type: Date,
     },
+    duration: {
+        startDate: {
+            type: Date,
+        },
+        endDate: {
+            type: Date,
+        },
+    },
     status: {
         type: String,
         enum: [

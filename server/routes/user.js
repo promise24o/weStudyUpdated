@@ -38,6 +38,7 @@ const { EventCategory, Event, Bookmark, EventBookmark, ReportEvent, EventNotific
 const { ListingCategory, Listing, ListingBookmark, ReportListing, MarketplaceMessage, ListingUserFollowing, MarketplaceRecentActivity, ListingNotification } = require("../models/MarketPlace");
 const { DonorApplication, DonorNotification, RaiseApplication, RaiseCategory } = require("../models/Donors");
 const BankDetails = require("../models/BankDetails");
+const DedicatedVirtualAccount = require("../models/DedicatedVirtualAccount");
 
 
 const applicationKeyId = process.env.BACKBLAZE_APP_KEY_ID;
@@ -12493,6 +12494,37 @@ router.put('/raise/sign-agreement/:id',  async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /users/banks:
+ *   get:
+ *     summary: Fetch banks
+ *     description: Retrieves a list of banks.
+ *     tags:
+ *       - User
+ *     responses:
+ *       200:
+ *         description: Banks fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 banks:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Bank'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
 router.get('/banks', async (req, res) => {
     try {
         const response = await axios.get('https://api.paystack.co/bank', {
@@ -12732,6 +12764,131 @@ router.get('/bank-details/:userId', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'An error occurred while fetching bank details' });
+    }
+});
+
+
+
+/**
+ * @swagger
+ * /users/bank/fetch-dva/{userId}:
+ *   get:
+ *     summary: Fetch DedicatedVirtualAccount of a user
+ *     description: Retrieves the DedicatedVirtualAccount of a user by their ID.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to fetch DedicatedVirtualAccount for.
+ *     responses:
+ *       200:
+ *         description: DedicatedVirtualAccount fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dva:
+ *                   $ref: '#/components/schemas/DedicatedVirtualAccount'
+ *       404:
+ *         description: DedicatedVirtualAccount not found for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Fetch DedicatedVirtualAccount of a user
+router.get('/bank/fetch-dva/:userId',  async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Find the DedicatedVirtualAccount for the specified user
+        const dva = await DedicatedVirtualAccount.findOne({ user: userId });
+
+        if (!dva) {
+            return res.status(404).json({ message: 'DedicatedVirtualAccount not found for the user' });
+        }
+
+        res.status(200).json({ dva });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching DedicatedVirtualAccount' });
+    }
+});
+
+
+
+/**
+ * @swagger
+ * /users/raise/fetch-approved-raise:
+ *   get:
+ *     summary: Fetch approved raise
+ *     description: Retrieves the approved raise.
+ *     tags:
+ *       - User
+ *     responses:
+ *       200:
+ *         description: Approved raise fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaigns:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RaiseApplication'
+ *       404:
+ *         description: No approved raise found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Fetch DedicatedVirtualAccount of a user
+router.get('/raise/fetch-approved-raise',  async (req, res) => {
+    try {
+
+        const raise = await RaiseApplication.find({ status: "Approved" }).populate("user").populate("category");;
+
+        if (!raise) {
+            return res.status(404).json({ message: 'No Raise found' });
+        }
+
+        res.status(200).json({ campaigns: raise });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching approved raises' });
     }
 });
 
