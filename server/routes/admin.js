@@ -2111,5 +2111,91 @@ router.get('/bank/webhook-notifications/:userId', async (req, res) => {
     }
 });
 
+
+
+// PUT route for updating the user raise status
+router.put('/user/raise/update-user-status/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { actionType, applicationId, adminId } = req.body;
+
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User does not exists' });
+        }
+
+        if (actionType === "apply-for-raise"){
+            //Create Admin Log
+            const adminLogAction = `Updated apply for raise status of ${user.firstname} ${user.lastname} to ${user.privileges.applyForRaise}`
+            const adminLog = new Admin.AdminLog({
+                admin: adminId,
+                action: adminLogAction
+            });
+
+            adminLog.save();
+
+            // Update the user priviilege status for apply for raise
+            user.privileges.applyForRaise = !user.privileges.applyForRaise;
+
+
+            // Save the updated user
+            await user.save();
+
+
+            let notificationMessage = '';
+
+            if (user.privileges.applyForRaise) {
+                notificationMessage = `Hooray 👏👏👏!, You are now cleared to apply for raise on Acadaboo.`;
+            } else {
+                notificationMessage = `You no longer have permission to apply for raise on Acadaboo.`;
+            }
+
+            const notification = new DonorNotification({ recipient: id, action: notificationMessage, applicationSource: "user" });
+            await notification.save();
+
+            const raiseApplication = await RaiseApplication.findById(applicationId).populate("user").populate("category").sort({ createdAt: -1 });
+
+            res.status(200).json({ message: 'Apply for Raise status updated successfully', raiseApplication });
+        }
+
+        if(actionType === "bank-details"){
+            //Create Admin Log
+            const adminLogAction = `Updated view bank details status of ${user.firstname} ${user.lastname} to ${user.privileges.showBankDetails}`
+            const adminLog = new Admin.AdminLog({
+                admin: adminId,
+                action: adminLogAction
+            });
+
+            adminLog.save();
+
+            // Update the user priviilege status for apply for raise
+            user.privileges.showBankDetails = !user.privileges.showBankDetails;
+
+
+            // Save the updated user
+            await user.save();
+
+
+            let notificationMessage = '';
+
+            if (user.privileges.showBankDetails) {
+                notificationMessage = `Hooray 👏👏👏!, You can now view, add and edit bank details on Acadaboo.`;
+            } else {
+                notificationMessage = `You no longer have permission to view bank details on Acadaboo.`;
+            }
+
+            const notification = new DonorNotification({ recipient: id, action: notificationMessage, applicationSource: "user" });
+            await notification.save();
+
+            const raiseApplication = await RaiseApplication.findById(applicationId).populate("user").populate("category").sort({ createdAt: -1 });
+
+            res.status(200).json({ message: 'Bank Details status updated successfully', raiseApplication });
+        }
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while updating the status' });
+    }
+});
  
 module.exports = router;

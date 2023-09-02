@@ -12377,7 +12377,7 @@ router.get('/raise/categories', async (req, res) => {
 router.get('/raise/get-application/:id', async (req, res) => {
     const id = req.params.id;
     try {
-        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ updatedAt: -1 });
         res.status(200).json({ raiseApplication });
     } catch (error) {
         console.log(error);
@@ -12385,11 +12385,50 @@ router.get('/raise/get-application/:id', async (req, res) => {
     }
 });
 
-router.get('/raise/get-application/:id', async (req, res) => {
-    const id = req.params.id;
+
+/**
+ * @swagger
+ * /users/raise/get-user-applications/category/{categoryId}:
+ *   get:
+ *     summary: Get user applications by category
+ *     description: Retrieves user applications by a specified category, with a status of "Funding," and where personal details should be displayed.
+ *     tags:
+ *       - User
+ *     parameters:
+ *       - in: path
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the category to filter user applications.
+ *     responses:
+ *       200:
+ *         description: User applications retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 raiseApplications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RaiseApplication'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+router.get('/raise/get-user-applications/category/:categoryId', async (req, res) => {
+    const category = req.params.categoryId;
     try {
-        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ createdAt: -1 });
-        res.status(200).json({ raiseApplication });
+        const raiseApplications = await RaiseApplication.find({ category,  status: "Funding", displayPersonalDetails: true }).populate("user").populate("category").sort({ updatedAt: -1 });
+        res.status(200).json({ raiseApplications });
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
@@ -12879,7 +12918,7 @@ router.get('/bank/fetch-dva/:userId',  async (req, res) => {
 router.get('/raise/fetch-approved-raise',  async (req, res) => {
     try {
 
-        const raise = await RaiseApplication.find({ status: "Approved" }).populate("user").populate("category");;
+        const raise = await RaiseApplication.find({ status: "Funding", displayPersonalDetails:true  }).populate("user").populate("category").sort({ updatedAt: -1 });
 
         if (!raise) {
             return res.status(404).json({ message: 'No Raise found' });
@@ -12891,6 +12930,7 @@ router.get('/raise/fetch-approved-raise',  async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching approved raises' });
     }
 });
+
 
 // Start the Agenda scheduler
 (async () => {

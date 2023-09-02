@@ -199,7 +199,7 @@ const userSchema = new mongoose.Schema ({
             type: Boolean,
             default: false
         },
-        scale: {
+        scale: {    
             type: Number
         },
         grading: [
@@ -285,6 +285,24 @@ const userSchema = new mongoose.Schema ({
     },
      dateBadgeVerified: {
        type: Date,
+    },
+    privileges: {
+        showBankDetails: {
+            type: Boolean,
+            default: false
+        },
+        applyForRaise: {
+            type: Boolean,
+            default: true
+        },
+        postMarketPlace: {
+            type: Boolean,
+            default: true
+        },
+        postEvent: {
+            type: Boolean,
+            default: true
+        },
     },
 });
 

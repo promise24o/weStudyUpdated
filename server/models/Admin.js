@@ -35,7 +35,19 @@ const adminSchema = new mongoose.Schema ({
 
 });
 
+const adminLogSchema = new mongoose.Schema({
+    admin: {
+        type: mongoose.ObjectId,
+        required: true,
+        ref: "admin",
+    },
+    action: {
+        type: String,
+        required: true,
+    },
+});
 
+adminLogSchema.set ('timestamps', true);
 adminSchema.set ('timestamps', true);
 
 adminSchema.methods.generateAuthToken = async function () {
@@ -47,4 +59,16 @@ adminSchema.methods.generateAuthToken = async function () {
     return token;
 };
 
-module.exports = mongoose.model ('Admin', adminSchema);
+
+// Export admin model
+const Admin = mongoose.model('Admin', adminSchema);
+module.exports = Admin;
+
+// Export adminLog model
+const AdminLog = mongoose.model('AdminLog', adminLogSchema);
+module.exports.AdminLog = AdminLog;
+
+
+
+
+

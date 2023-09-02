@@ -279,6 +279,7 @@ const raiseApplicationSchema = new mongoose.Schema({
             "Pending Agreement",
             "Agreement Completed",
             "Approved",
+            "Funding",
             "Active",
             "Suspended",
             "Rejected",
