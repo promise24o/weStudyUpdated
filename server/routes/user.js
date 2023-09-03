@@ -9672,6 +9672,88 @@ router.get("/marketplace/listing-categories", async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * tags:
+ *   name: Marketplace
+ *   description: APIs for managing marketplace messages
+ * 
+ * /users/marketplace/messages/{senderId}/{receiverId}:
+ *   get:
+ *     summary: Get Messages between Sender and Receiver
+ *     description: Get messages between a sender and a receiver, sorted by timeSent in descending order.
+ *     tags: [User]
+ *     parameters:
+ *       - name: senderId
+ *         in: path
+ *         required: true
+ *         type: string
+ *         description: Sender's ID
+ *       - name: receiverId
+ *         in: path
+ *         required: true
+ *         type: string
+ *         description: Receiver's ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Message'  # Replace with the correct schema reference for the Message model
+ *       400:
+ *         description: Bad Request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 error:
+ *                   type: object
+ */
+
+// Define the route to get messages
+router.get('/marketplace/messages/:senderId/:receiverId', async (req, res) => {
+    const { senderId, receiverId } = req.params;
+
+    try {
+        // Find messages between the sender and receiver
+        const result = await MarketplaceMessage.findOne({
+            $or: [
+                { sender: senderId, receiver: receiverId },
+                { sender: receiverId, receiver: senderId },
+            ],
+        }, 'messages')
+            .exec();
+
+        if (!result || !result.messages) {
+            return res.status(404).json({ message: 'No messages found' });
+        }
+
+        // Sort the messages within the array by timeSent in descending order
+        const sortedMessages = result.messages.sort((a, b) => b.timeSent - a.timeSent);
+
+        res.status(200).json(sortedMessages);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 /**
  * @swagger
  * /users/marketplace/create-listing/{listingType}:
@@ -12914,7 +12996,6 @@ router.get('/bank/fetch-dva/:userId',  async (req, res) => {
  *                   type: string
  */
 
-// Fetch DedicatedVirtualAccount of a user
 router.get('/raise/fetch-approved-raise',  async (req, res) => {
     try {
 

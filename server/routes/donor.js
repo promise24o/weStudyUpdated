@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const multer = require("multer");
-const { DonorApplication, Donors, DonorNotification } = require("../models/Donors");
+const { DonorApplication, Donors, DonorNotification, RaiseApplication, RaiseCategory } = require("../models/Donors");
 const B2 = require('backblaze-b2');
 
 
@@ -325,5 +325,115 @@ router.get('/raise/notifications/:userId', async (req, res) => {
 });
 
 
+router.get('/raise/fetch-approved-raise', async (req, res) => {
+    try {
+        const raise = await RaiseApplication.find({ status: "Funding"}).populate("user").populate("category").sort({ updatedAt: -1 });
+
+        if (!raise) {
+            return res.status(404).json({ message: 'No Raise found' });
+        }
+
+        res.status(200).json({ campaigns: raise });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching approved raises' });
+    }
+});
+
+/**
+ * @swagger
+ * /donor/raise/get-user-applications/{userId}:
+ *   get:
+ *     summary: Get all raise applications of a user
+ *     description: Retrieves all raise applications submitted by the specified user.
+ *     tags:
+ *       - Donor
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to retrieve raise applications for.
+ *     responses:
+ *       200:
+ *         description: Raise applications fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 raiseApplications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/RaiseApplication'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+router.get('/raise/categories', async (req, res) => {
+    try {
+        // Retrieve all categories from the database
+        const categories = await RaiseCategory.find();
+
+        res.status(200).json({ categories });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'An error occurred while retrieving categories' });
+    }
+});
+
+
+/**
+ * @swagger
+ * /donor/raise/campaign/{id}:
+ *   get:
+ *     summary: Get a specific raise application
+ *     description: Retrieves a specific raise application by its ID.
+ *     tags:
+ *       - Donor
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the raise application to retrieve.
+ *     responses:
+ *       200:
+ *         description: Raise application fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 raiseApplication:
+ *                   $ref: '#/components/schemas/RaiseApplication'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+router.get('/raise/campaign/:id', async (req, res) => {
+    const id = req.params.id;
+    try {
+        const raiseApplication = await RaiseApplication.findById(id).populate("user").populate("category").sort({ updatedAt: -1 });
+        res.status(200).json({ raiseApplication });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
+    }
+});
 
 module.exports = router;
