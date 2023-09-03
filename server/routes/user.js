@@ -9756,6 +9756,79 @@ router.get('/marketplace/messages/:senderId/:receiverId', async (req, res) => {
 
 /**
  * @swagger
+ * tags:
+ *   name: Marketplace
+ *   description: APIs for managing marketplace messages
+ * 
+ * /users/marketplace/messages/{userId}:
+ *   get:
+ *     summary: Get Messages for a Specific User
+ *     description: Get messages for a specific user (whether the user is the sender or receiver), sorted by timeSent in descending order.
+ *     tags: [User]
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         type: string
+ *         description: ID of the user to retrieve messages for
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Message'  # Replace with the correct schema reference for the Message model
+ *       404:
+ *         description: No Messages Found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ */
+
+// Define the route to get messages for a specific userId
+router.get('/marketplace/messages/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        // Find messages where the userId is either the sender or receiver
+        const messages = await MarketplaceMessage.find({
+            $or: [
+                { sender: userId },
+                { receiver: userId },
+            ],
+        })
+            .sort('-messages.timeSent')
+            .exec();
+
+        if (!messages || messages.length === 0) {
+            return res.status(404).json({ message: 'No messages found' });
+        }
+
+        res.status(200).json(messages);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+/**
+ * @swagger
  * /users/marketplace/create-listing/{listingType}:
  *   post:
  *     summary: Create a new listing
