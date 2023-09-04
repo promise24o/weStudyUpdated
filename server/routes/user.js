@@ -9812,6 +9812,9 @@ router.get('/marketplace/messages/:userId', async (req, res) => {
                 { receiver: userId },
             ],
         })
+            .populate("sender")
+            .populate("receiver")
+            .populate("listing")
             .sort('-messages.timeSent')
             .exec();
 

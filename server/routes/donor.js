@@ -3,8 +3,7 @@ const multer = require("multer");
 const { DonorApplication, Donors, DonorNotification, RaiseApplication, RaiseCategory } = require("../models/Donors");
 const B2 = require('backblaze-b2');
 const DedicatedVirtualAccount = require("../models/DedicatedVirtualAccount");
-
-
+const axios = require('axios');
 
 // Create a multer storage engine
 const storage = multer.memoryStorage();
@@ -501,6 +500,40 @@ router.get('/bank/fetch-dva/:userId', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching DedicatedVirtualAccount' });
     }
 });
+
+
+router.post('/raise/check-complete-transfer/:campaignId', async (req, res) => {
+    try {
+        const campaignId = req.params.campaignId;
+        const { user, amount, accountId } = req.body;
+        
+        console.log(accountId);
+
+        const apiUrl = `https://api.paystack.co/dedicated_account/${accountId}`;
+
+        const config = {
+            headers: {
+                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        try {
+            const response = await axios.get(apiUrl, config);
+            console.log(response.data);
+            // res.json(response.data);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while Checking Transaction status' });
+    }
+});
+
+
 
 
 module.exports = router;
