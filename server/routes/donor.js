@@ -505,28 +505,9 @@ router.get('/bank/fetch-dva/:userId', async (req, res) => {
 router.post('/raise/check-complete-transfer/:campaignId', async (req, res) => {
     try {
         const campaignId = req.params.campaignId;
-        const { user, amount, accountId } = req.body;
+        const { donor, amount } = req.body;
+
         
-        console.log(accountId);
-        const transId = 3082872448;
-
-        const apiUrl = `https://api.paystack.co/transaction/${transId}`;
-
-        const config = {
-            headers: {
-                Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
-                'Content-Type': 'application/json'
-            }
-        };
-
-        try {
-            const response = await axios.get(apiUrl, config);
-            console.log(response.data);
-            res.json({customer:response.data});
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
 
     } catch (error) {
         console.error(error);
