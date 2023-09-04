@@ -9,6 +9,7 @@ const BankCustomer = require('../models/BankCustomer');
 const BankDetails = require('../models/BankDetails');
 const WebhookNotification = require('../models/WebhookNotification');
 const DedicatedVirtualAccount = require('../models/DedicatedVirtualAccount');
+const Transactions = require('../models/Transactions');
 
 
 router.get ('/', function (req, res) {
@@ -897,7 +898,30 @@ router.post('/webhook/paystack', async (req, res) => {
                 reference: event.data.reference
             });
             await webhook.save();
-            
+
+            const transId = event.data.id;
+
+            const apiUrl = `https://api.paystack.co/transaction/${transId}`;
+
+            const config = {
+                headers: {
+                    Authorization: `Bearer ${process.env.PAYSTACK_SECRET_LIVE}`,
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            try {
+                const response = await axios.get(apiUrl, config);
+                //Save the transaction details
+                const transaction = new Transactions({
+                    id: event.data.id,
+                    data: response.data,
+                });
+                await transaction.save();
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ error: 'Internal server error' });
+            }   
         }   
         
     }

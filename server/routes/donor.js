@@ -508,8 +508,9 @@ router.post('/raise/check-complete-transfer/:campaignId', async (req, res) => {
         const { user, amount, accountId } = req.body;
         
         console.log(accountId);
+        const transId = 3082872448;
 
-        const apiUrl = `https://api.paystack.co/dedicated_account/${accountId}`;
+        const apiUrl = `https://api.paystack.co/transaction/${transId}`;
 
         const config = {
             headers: {
@@ -521,7 +522,7 @@ router.post('/raise/check-complete-transfer/:campaignId', async (req, res) => {
         try {
             const response = await axios.get(apiUrl, config);
             console.log(response.data);
-            // res.json(response.data);
+            res.json({customer:response.data});
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: 'Internal server error' });
