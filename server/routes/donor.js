@@ -2,6 +2,7 @@ const router = require("express").Router();
 const multer = require("multer");
 const { DonorApplication, Donors, DonorNotification, RaiseApplication, RaiseCategory } = require("../models/Donors");
 const B2 = require('backblaze-b2');
+const DedicatedVirtualAccount = require("../models/DedicatedVirtualAccount");
 
 
 
@@ -435,5 +436,71 @@ router.get('/raise/campaign/:id', async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching raise applications.' });
     }
 });
+
+
+/**
+ * @swagger
+ * /donor/bank/fetch-dva/{userId}:
+ *   get:
+ *     summary: Fetch DedicatedVirtualAccount of a user
+ *     description: Retrieves the DedicatedVirtualAccount of a user by their ID.
+ *     tags:
+ *       - Donor
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID of the user to fetch DedicatedVirtualAccount for.
+ *     responses:
+ *       200:
+ *         description: DedicatedVirtualAccount fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dva:
+ *                   $ref: '#/components/schemas/DedicatedVirtualAccount'
+ *       404:
+ *         description: DedicatedVirtualAccount not found for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+
+// Fetch DedicatedVirtualAccount of a user
+router.get('/bank/fetch-dva/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+
+        // Find the DedicatedVirtualAccount for the specified user
+        const dva = await DedicatedVirtualAccount.findOne({ user: userId });
+
+        if (!dva) {
+            return res.status(404).json({ message: 'DedicatedVirtualAccount not found for the user' });
+        }
+
+        res.status(200).json({ dva });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while fetching DedicatedVirtualAccount' });
+    }
+});
+
 
 module.exports = router;

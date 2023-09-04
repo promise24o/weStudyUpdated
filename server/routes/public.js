@@ -877,6 +877,17 @@ router.post('/webhook/paystack', async (req, res) => {
             const notification = new DonorNotification({ recipient: existingCustomer.user, action: notificationMessage, applicationSource: "user" });
             await notification.save();
         }   
+        if (event && event.event === 'transfer.success') {
+
+            //Save webhook information
+            const webhook = new WebhookNotification({
+                event: event.event,
+                data: event.data,
+                reference: event.data.reference
+            });
+            await webhook.save();
+            
+        }   
         
     }
     res.sendStatus(200);
