@@ -888,6 +888,17 @@ router.post('/webhook/paystack', async (req, res) => {
             await webhook.save();
             
         }   
+        if (event && event.event === 'charge.success') {
+
+            //Save webhook information
+            const webhook = new WebhookNotification({
+                event: event.event,
+                data: event.data,
+                reference: event.data.reference
+            });
+            await webhook.save();
+            
+        }   
         
     }
     res.sendStatus(200);
